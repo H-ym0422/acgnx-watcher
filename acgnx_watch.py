@@ -340,14 +340,28 @@ RE_BTIH = re.compile(r"urn:btih:([0-9a-zA-Z]{32,40})", re.I)
 
 EP_PATTERNS = [
     re.compile(r"\[(\d{1,3})(?:v\d)?\]"),                    # [02] [01v2]
-    re.compile(r"\[(\d{1,3})\s*[-~～]\s*(\d{1,3})[^\]]{0,10}\]"),  # [01-26] [01-12合集] [01-12完]
+    # [01-26] [01-12合集] [01-12完] [01-28+SPx11]
+    # （后面跟 +SPx11 / SP 之类能有十几个字符，原来限死 10 个字符就漏了 —— 2026-10-16 用户反馈）
+    re.compile(r"\[(\d{1,3})\s*[-~～]\s*(\d{1,3})[^\]]{0,20}\]"),
     re.compile(r"[-–—]\s*(\d{1,3})(?:v\d)?\s*(?:[\[\(（]|$)"),  # - 03 [
     re.compile(r"\bS\d{1,2}E(\d{1,2})\b", re.I),             # S01E03
     re.compile(r"第\s*(\d{1,3})\s*[话話集話]"),                 # 第12集 / 第12话
     re.compile(r"(?<![a-z])ep?\.?\s*(\d{1,3})(?![0-9])", re.I),  # EP10 / E10
+    # 「蓝色监狱 / Blue Lock 26 [WebRip ...]」——番名后直接跟数字再跟画质标签。
+    # 数字前必须是非字母（否则 "Lock 26" 里的字母会挡住），数字后必须紧跟画质标签，
+    # 这样「1080」「2024」这类不会被误当集数。
+    re.compile(r"(?<![0-9A-Za-z.])(\d{1,3})\s*[\[\(（]\s*"
+               r"(?:Web|WEB|web|Blu|BluRay|BD|BDRip|BDTV|BDRemux|1080|2160|720|4K|4k|HDR)",
+               re.I),
 ]
 # 合集的其它常见写法
 EP_RANGE_WORD = re.compile(r"(?:Vol\.?\s*)?(\d{1,3})\s*[-~～]\s*(\d{1,3})\s*[话話集]")
+# 「S01 | 01-28+SPx11」这种**不在方括号里**的裸区间。
+# 注意：区间有两个捕获组，必须放在区间解析区，不能混进 EP_PATTERNS 的单集循环
+#（那个循环只读 group(1)，会把 01-28 误当成第 01 集）。2026-10-16 踩过。
+EP_RANGE_BARE = re.compile(
+    r"(?<![0-9])(?:^|[^\d.])(\d{1,2})\s*[-~～]\s*(\d{1,2})"
+    r"\s*(?:\+\s*SP|\bSP\b|[话話集])")
 EP_COMPLETE = re.compile(r"全\s*(\d{1,3})\s*[话話集]")
 RE_BATCH_HINT = re.compile(r"合集|全集|完結|完结|\bBatch\b|\bFin\b", re.I)
 
@@ -363,12 +377,15 @@ def extract_episode(title: str) -> str:
     m = EP_RANGE_WORD.search(title)           # 01-12话 / Vol.1-6
     if m:
         return f"{int(m.group(1)):02d}-{int(m.group(2)):02d}"
+    m = EP_RANGE_BARE.search(title)           # S01 | 01-28+SPx11（不在方括号里的裸区间）
+    if m:
+        return f"{int(m.group(1)):02d}-{int(m.group(2)):02d}"
     m = EP_COMPLETE.search(title)             # 全12话
     if m:
         return f"01-{int(m.group(1)):02d}"
 
     for pat in (EP_PATTERNS[0], EP_PATTERNS[2], EP_PATTERNS[3],
-                EP_PATTERNS[4], EP_PATTERNS[5]):
+                EP_PATTERNS[4], EP_PATTERNS[5], EP_PATTERNS[6]):
         m = pat.search(title)
         if m:
             return f"{int(m.group(1)):02d}"
@@ -731,20 +748,29 @@ def build_push_content(item: dict, rule: dict, prefix: str,
         # 只在真的换了组时才说明原因，且把「为什么」放在后面当补充，不抢主信息
         lines.append(f"※ 你指定的「{want}」这一集还没出，这个是自动找的替补")
 
-    # 字幕形式（简日双语 / 简繁日内封 …）。没标出来的就不写这一行。
+    # 字幕形式（简日双语 / 简繁日内封 …）。
+    # 没标出来时**照样写出这一行**并说清为什么 ——
+    # 省略整行的话，你分不清是「脚本没解析出来」还是「这集本来就是生肉」。
+    # （2026-10-16 你问「为什么没标注」：实测 50 条里 37 条标不出，主要是 ABEMA 生肉）
     if item.get("_variant"):
         lines.append(f"字幕形式：{item['_variant']}")
+    else:
+        lines.append("字幕形式：未标注（这个组没标，多半是生肉/原始片源）")
+
     if rev > 1:
         lines.append(f"版本：v{rev}（修正版）")
 
+    # 集数。原来解析不出时会退回用 magnet 的 btih 当键，显示出来就是一串哈希，
+    # 看着像乱码。现在明确说明是整季打包（2026-10-16 你问「为什么有的磁力没标集数」）。
     ep = item.get("episode") or ""
-    if ep:
-        if "-" in ep:
-            lines.append(f"集数：第 {ep} 集（合集/整季）")
-        elif ep == "合集":
-            lines.append("集数：合集")
-        else:
-            lines.append(f"集数：第 {ep} 集")
+    if not ep:
+        lines.append("集数：整季打包，没有单一集数（这条磁力是整季的）")
+    elif "-" in ep:
+        lines.append(f"集数：第 {ep} 集（合集/整季）")
+    elif ep == "合集":
+        lines.append("集数：合集（标题里没写具体范围）")
+    else:
+        lines.append(f"集数：第 {ep} 集")
 
     if item.get("size"):
         lines.append(f"大小：{item['size']}")
