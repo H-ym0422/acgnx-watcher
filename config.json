@@ -148,32 +148,6 @@
       "note": ""
     },
     {
-      "id": "r1792165373",
-      "name": "葬送的芙莉莲（LoliHouse）",
-      "enabled": true,
-      "keywords": [
-        "葬送的芙莉莲"
-      ],
-      "include_any": [
-        "葬送的芙莉莲",
-        "葬送的芙莉莲 第二季",
-        "Sousou no Frieren 2nd Season"
-      ],
-      "exclude_any": [],
-      "group": [
-        "LoliHouse"
-      ],
-      "variant_prefer": [
-        "简日双语",
-        "简繁日内封",
-        "简日内嵌",
-        "简体",
-        "简"
-      ],
-      "fallback_any_group": true,
-      "note": ""
-    },
-    {
       "id": "r1792165392",
       "name": "蓝色监狱（LoliHouse）",
       "enabled": true,
