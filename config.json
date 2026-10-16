@@ -15,7 +15,8 @@
     "retry": 2,
     "proxy": "",
     "poll_jitter_seconds": 20,
-    "watch_global_feed": true
+    "watch_global_feed": true,
+    "skip_traditional_only": true
   },
   "rules": [
     {

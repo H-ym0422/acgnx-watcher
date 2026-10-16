@@ -235,6 +235,9 @@ DEFAULT_CONFIG = {
         "proxy": "",
         "poll_jitter_seconds": 20,
         "watch_global_feed": True,
+        # 只要繁体字幕（繁日內嵌、繁體 这种）的版本直接不推。
+        # 「简繁日内封」这种同时含简体的不受影响。
+        "skip_traditional_only": True,
     },
     "rules": []
 }
@@ -334,21 +337,39 @@ RE_BTIH = re.compile(r"urn:btih:([0-9a-zA-Z]{32,40})", re.I)
 
 EP_PATTERNS = [
     re.compile(r"\[(\d{1,3})(?:v\d)?\]"),                    # [02] [01v2]
-    re.compile(r"\[(\d{1,3})-(\d{1,3})\]"),                  # [01-26] 合集
+    re.compile(r"\[(\d{1,3})\s*[-~～]\s*(\d{1,3})[^\]]{0,10}\]"),  # [01-26] [01-12合集] [01-12完]
     re.compile(r"[-–—]\s*(\d{1,3})(?:v\d)?\s*(?:[\[\(（]|$)"),  # - 03 [
     re.compile(r"\bS\d{1,2}E(\d{1,2})\b", re.I),             # S01E03
 ]
+# 合集的其它常见写法
+EP_RANGE_WORD = re.compile(r"(?:Vol\.?\s*)?(\d{1,3})\s*[-~～]\s*(\d{1,3})\s*[话話集]")
+EP_COMPLETE = re.compile(r"全\s*(\d{1,3})\s*[话話集]")
+RE_BATCH_HINT = re.compile(r"合集|全集|完結|完结|\bBatch\b|\bFin\b", re.I)
 
 
 def extract_episode(title: str) -> str:
-    """从标题里抽出集数标识，用于把同一集的不同版本归并成一组。"""
-    m = EP_PATTERNS[1].search(title)
+    """抽出集数标识，用来把同一集的不同版本归并成一组。
+
+    单集返回 '02'，合集/整季打包返回 '01-12' 这样的范围。
+    合集必须跟单集区分开 —— 否则第 12 集出了合集，会被当成"第 12 集已推过"而漏掉。"""
+    m = EP_PATTERNS[1].search(title)          # [01-12] / [01-12合集]
     if m:
         return f"{int(m.group(1)):02d}-{int(m.group(2)):02d}"
+    m = EP_RANGE_WORD.search(title)           # 01-12话 / Vol.1-6
+    if m:
+        return f"{int(m.group(1)):02d}-{int(m.group(2)):02d}"
+    m = EP_COMPLETE.search(title)             # 全12话
+    if m:
+        return f"01-{int(m.group(1)):02d}"
+
     for pat in (EP_PATTERNS[0], EP_PATTERNS[2], EP_PATTERNS[3]):
         m = pat.search(title)
         if m:
             return f"{int(m.group(1)):02d}"
+
+    # 明说了是合集但没给范围 —— 单独归一类，别跟单集混
+    if RE_BATCH_HINT.search(title):
+        return "合集"
     return ""
 
 
@@ -417,6 +438,69 @@ def parse_feed(xml_text: str) -> list[dict]:
 # --------------------------------------------------------------------------
 # 规则匹配
 # --------------------------------------------------------------------------
+RE_BRACKET = re.compile(r"[\[【]([^\]】]{0,60})[\]】]")
+RE_VARIANT = re.compile(r"简|繁|内封|内嵌|双语|chs|cht", re.I)
+# 括号里出现这些词，说明那是组名/来源，不是字幕形式
+RE_NOT_VARIANT = re.compile(
+    r"字幕组|字幕社|漢化|汉化|發布|发布|壓制|压制|搬運|搬运|raws|vcb|baha|bilibili",
+    re.I)
+# v2 / 修正版 这类"同一集的修订版本"
+RE_REVISION = re.compile(r"(?<![a-za-z])v(?:er\.?\s*)?(\d{1,2})(?![a-za-z0-9])", re.I)
+RE_REVISION_WORD = re.compile(r"修正版|改訂版|改订版|修正|repack|重新压制|重製|重制", re.I)
+
+
+def extract_variant(title: str) -> str:
+    """抽字幕形式，例如「简日双语」「简繁日内封」「简繁外挂字幕」。
+    这些信息基本都在标题最后一个方括号里。"""
+    for s in reversed(RE_BRACKET.findall(title)):
+        s = s.strip()
+        if len(s) <= 24 and RE_VARIANT.search(s) and not RE_NOT_VARIANT.search(s):
+            return s
+    m = re.search(r"[\(（]([^)）]{1,24})[\)）]", title)
+    if m and RE_VARIANT.search(m.group(1)) and not RE_NOT_VARIANT.search(m.group(1)):
+        return m.group(1).strip()
+    return ""
+
+
+def is_traditional_only(variant: str) -> bool:
+    """判断这个版本是不是「只有繁体字幕」。
+    简繁双语的（如「简繁日内封」）会同时含简，不算。"""
+    if not variant:
+        return False                      # 没标形式的（生肉、搬运）不拦
+    n = norm(variant)
+    if "cht" in n and "chs" not in n:
+        return True
+    return ("繁" in n) and ("简" not in n)
+
+
+def get_revision(title: str) -> int:
+    """返回修订号：无标记 / v1 = 1，v2 = 2，v3 = 3……
+    用来让「同一集后来出了 v2」也能再推一次。"""
+    rev = 1
+    for m in RE_REVISION.finditer(title):
+        try:
+            rev = max(rev, int(m.group(1)))
+        except ValueError:
+            pass
+    if RE_REVISION_WORD.search(title):
+        rev = max(rev, 2)
+    return rev
+
+
+def _seen_pair(v):
+    """把 state 里存的值解析成 (最好档位, 最大修订号)。
+    档位越小越优；修订号越大越新。兼容只存了档位的老格式。"""
+    if v is None:
+        return None
+    if isinstance(v, int):
+        return (v, 1)
+    a, _, b = str(v).partition(":")
+    try:
+        return (int(a), int(b or 1))
+    except ValueError:
+        return None
+
+
 def get_variant_tier(title: str, prefer: list[str]) -> int:
     """返回标题在偏好列表里的优先级档位，越小越优先；都没命中返回 999。"""
     if not prefer:
@@ -459,12 +543,32 @@ def build_push_content(item: dict, rule: dict, prefix: str,
     """返回 (标题, 正文)。
     标题保证单行 —— Server酱 / PushPlus 的标题都不允许出现换行。"""
     name = rule.get("name") or item["title"][:60]
-    tag = "（更优版本）" if upgrade else ""
+    rev = item.get("_rev", 1)
+    if upgrade:
+        tag = "（修正版）" if rev > 1 else "（更优版本）"
+    else:
+        tag = ""
     title = f"{prefix}{tag}{name}"[:120]
 
     lines = [f"标题：{item['title']}"]
     if rule.get("group"):
         lines.append(f"字幕组：{'/'.join(rule['group'])}")
+
+    # 字幕形式（简日双语 / 简繁日内封 …）。没标出来的就不写这一行。
+    if item.get("_variant"):
+        lines.append(f"字幕形式：{item['_variant']}")
+    if rev > 1:
+        lines.append(f"版本：v{rev}（修正版）")
+
+    ep = item.get("episode") or ""
+    if ep:
+        if "-" in ep:
+            lines.append(f"集数：第 {ep} 集（合集/整季）")
+        elif ep == "合集":
+            lines.append("集数：合集")
+        else:
+            lines.append(f"集数：第 {ep} 集")
+
     if item.get("size"):
         lines.append(f"大小：{item['size']}")
     if item.get("pub_dt"):
@@ -778,16 +882,24 @@ def collect(cfg: dict) -> list[dict]:
             time.sleep(0.5)  # 温柔一点，别把站点惹毛了
 
     # ---- 规则匹配 ----
+    skip_trad = s.get("skip_traditional_only", True)
     matched: list[dict] = []
     for ri, rule in enumerate(rules):
         rid = rule_id(rule, ri)
         for it in all_items.values():
-            if match_rule(it, rule):
-                m = dict(it)
-                m["_rule"] = rule
-                m["_rid"] = rid
-                m["_tier"] = get_variant_tier(it["title"], rule.get("variant_prefer") or [])
-                matched.append(m)
+            if not match_rule(it, rule):
+                continue
+            variant = extract_variant(it["title"])
+            if skip_trad and is_traditional_only(variant):
+                continue                      # 只要繁体的版本直接丢掉
+            m = dict(it)
+            m["_rule"] = rule
+            m["_rid"] = rid
+            m["_tier"] = get_variant_tier(it["title"], rule.get("variant_prefer") or [])
+            m["_variant"] = variant
+            m["_rev"] = get_revision(it["title"])
+            m["_seen"] = f"{m['_tier']}:{m['_rev']}"   # 存进 state 的格式
+            matched.append(m)
 
     # 同一条目可能被多条规则命中，去重
     uniq: dict[tuple, dict] = {}
@@ -799,7 +911,9 @@ def collect(cfg: dict) -> list[dict]:
 
 
 def sort_key(m: dict):
-    return (m["_tier"], -(m["pub_dt"].timestamp() if m.get("pub_dt") else 0))
+    """越小越优先：先看字幕形式档位，再看得修订号高的（v2 优于 v1），最后看新的。"""
+    return (m.get("_tier", 0), -m.get("_rev", 1),
+            -(m["pub_dt"].timestamp() if m.get("pub_dt") else 0))
 
 
 # --------------------------------------------------------------------------
@@ -847,10 +961,12 @@ def run_cycle(cfg: dict, state: dict, dry_run: bool = False) -> int:
         for (rid, ep), items in groups.items():
             items.sort(key=sort_key)
             best = items[0]
-            prev_tier = state["episodes"].get(f"{rid}|{ep}")
-            if prev_tier is not None and best["_tier"] >= prev_tier:
-                continue          # 已经推过同等或更好的版本，不重复打扰
-            pushes.append((best, prev_tier is not None))
+            prev = _seen_pair(state["episodes"].get(f"{rid}|{ep}"))
+            # 两种情况值得打扰你：字幕形式更好了，或者这一集出了修正版（v2 及以后）
+            if prev is not None and best["_tier"] >= prev[0] and best["_rev"] <= prev[1]:
+                continue
+            # prev 存在 = 是"更优版本/修正版"；不存在 = 这是第一次见到这一集
+            pushes.append((best, prev is not None))
 
     sent = 0
     gap = max(0, int(settings.get("push_min_interval_seconds", 13)))
@@ -871,10 +987,17 @@ def run_cycle(cfg: dict, state: dict, dry_run: bool = False) -> int:
         sent += 1
 
     if not dry_run:
-        # 给每个 (规则, 集数) 记下当前最优档位，等更优版本出现再补推
+        # 记下「见过的最好档位:见过的最大修订号」，档位和修订号各自单调，不会因为
+        # 后出的版本字幕形式更差就把记录冲低（否则会出现反复补推）
         for (rid, ep), items in groups.items():
             items.sort(key=sort_key)
-            state["episodes"].setdefault(f"{rid}|{ep}", items[0]["_tier"])
+            best = items[0]
+            key = f"{rid}|{ep}"
+            prev = _seen_pair(state["episodes"].get(key))
+            if prev is None:
+                state["episodes"][key] = f"{best['_tier']}:{best['_rev']}"
+            else:
+                state["episodes"][key] = f"{min(prev[0], best['_tier'])}:{max(prev[1], best['_rev'])}"
         state["initialized"] = True
         save_state(state)
 

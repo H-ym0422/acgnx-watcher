@@ -120,22 +120,9 @@ def search(term: str) -> list[dict]:
     return aw.parse_feed(aw.http_get(base + path, timeout=15, retry=2) or "")
 
 
-RE_VARIANT = re.compile(r"简|繁|内封|内嵌|双语|CHS|CHT", re.I)
-# 这些词出现说明括号里是组名/来源，不是字幕类型
-RE_NOT_VARIANT = re.compile(r"字幕组|字幕社|漢化|汉化|發布|发布|壓制|压制|搬運|搬运|Raws|VCB|LoliHouse", re.I)
-
-
 def extract_variant(title: str) -> str:
-    """从标题里抽出这个版本的字幕类型，例如「简繁日内封」「简日双语」「繁日內嵌」。
-    这类信息基本都在标题最后一个方括号里，且不会含「字幕组」这类词。"""
-    for s in reversed(BRACKET.findall(title)):
-        s = s.strip()
-        if len(s) <= 24 and RE_VARIANT.search(s) and not RE_NOT_VARIANT.search(s):
-            return s
-    m = re.search(r"[\(（]([^)）]{1,24})[\)）]", title)
-    if m and RE_VARIANT.search(m.group(1)) and not RE_NOT_VARIANT.search(m.group(1)):
-        return m.group(1).strip()
-    return ""
+    """抽字幕形式。实现放在 acgnx_watch 里，推送时也用它，保证两边一致。"""
+    return aw.extract_variant(title)
 
 
 def rank_groups(items: list[dict]) -> list[dict]:
@@ -363,7 +350,7 @@ def inspect_and_seed(rule: dict) -> list[tuple[str, dict]]:
     st = aw.load_state()
     for ep, items in groups.items():
         items.sort(key=aw.sort_key)
-        st["episodes"].setdefault(f"{rule['id']}|{ep}", items[0]["_tier"])
+        st["episodes"].setdefault(f"{rule['id']}|{ep}", items[0]["_seen"])
     st["initialized"] = True
     aw.save_state(st)
 
@@ -451,9 +438,15 @@ def render_watchlist() -> str:
     ]
     for r in rules:
         rid = r.get("id") or ""
-        eps = sorted((k.split("|", 1)[1] for k in eps_map
-                      if k.startswith(rid + "|")), key=ep_sort_key)
-        latest = f"第 {eps[-1]} 集" if eps else "暂时没有"
+        # 只拿「01」「01-12」这种能看懂的集数键。标题里没写集数的条目会用 btih 当键，
+        # 那种键不适合显示给人看，从列表里排除（它照样参与去重，不影响功能）
+        eps = [k.split("|", 1)[1] for k in eps_map if k.startswith(rid + "|")]
+        eps = sorted((e for e in eps if re.fullmatch(r"\d{1,3}(?:-\d{1,3})?", e)),
+                     key=ep_sort_key)
+        if eps:
+            latest = f"第 {eps[-1]} 集" + ("（合集）" if "-" in eps[-1] else "")
+        else:
+            latest = "暂时没有"
         grp = " / ".join(r.get("group") or []) or "任意字幕组"
         # 规则名里已经带了字幕组，表格里只留番名部分
         name = (r.get("name") or "?").split("（")[0]
