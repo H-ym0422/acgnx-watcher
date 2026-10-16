@@ -1213,6 +1213,7 @@ def run_cycle(cfg: dict, state: dict, dry_run: bool = False) -> int:
                     pushes.append((best, is_up))
 
     sent = 0
+    failed: set[tuple[str, str]] = set()   # 推送失败的 (规则id, 集数)，这些不记为已看
     gap = max(0, int(settings.get("push_min_interval_seconds", 13)))
     for idx, (best, is_upgrade) in enumerate(pushes):
         rule = best["_rule"]
@@ -1227,13 +1228,19 @@ def run_cycle(cfg: dict, state: dict, dry_run: bool = False) -> int:
                 # PushPlus 消息接口限「1 分钟最多 5 次」，集中补推时把请求摊开
                 log.info("等待 %d 秒再发下一条（避开平台频率限制）…", gap)
                 time.sleep(gap)
-            send_notification(title, body, settings)
+            if not send_notification(title, body, settings):
+                # 没推出去就别记成「已看」，下一轮还会推，否则这集就永久漏了
+                # （2026-10-16 修：原来返回值被丢掉，推送失败照样标记已看）
+                failed.add((best["_rid"], best.get("episode") or best["btih"]))
+                log.warning("这条没推成功，本轮不标记为已看，下一轮会重推")
         sent += 1
 
     if not dry_run:
         # 记下「见过的最好档位:见过的最大修订号」，档位和修订号各自单调，不会因为
         # 后出的版本字幕形式更差就把记录冲低（否则会出现反复补推）
         for (rid, ep), items in groups.items():
+            if (rid, ep) in failed:
+                continue          # 上一条没推成功，别记成已看，下一轮还会推
             best = best_of(items)
             key = f"{rid}|{ep}"
             prev = _seen_pair(state["episodes"].get(key))
