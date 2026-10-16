@@ -577,6 +577,50 @@ def get_variant_tier(title: str, prefer: list[str]) -> int:
     return 999
 
 
+# ---- 分季识别 ----
+# 只认比较明确的写法，宁可不认也别认错（比如裸的罗马数字 Ⅱ 太容易误伤）
+CN_DIGITS = {"一": 1, "二": 2, "三": 3, "四": 4, "五": 5,
+             "六": 6, "七": 7, "八": 8, "九": 9, "十": 10}
+RE_SEASON_CN = re.compile(r"第\s*([一二三四五六七八九十\d]{1,2})\s*[季期部]")
+RE_SEASON_EN = re.compile(r"(?:^|[\s\[【_\-])(?:s|season)\s*0?(\d{1,2})(?![0-9pPiI])", re.I)
+RE_SEASON_ORD = re.compile(r"\b(\d{1,2})\s*(?:st|nd|rd|th)\s*season\b", re.I)
+
+
+def extract_season(title: str) -> int | None:
+    """从标题里判断这是第几季。认不出返回 None（多数第一季压根不标）。"""
+    m = RE_SEASON_CN.search(title)
+    if m:
+        v = m.group(1)
+        if v.isdigit():
+            return int(v)
+        # 「十二季」这种：十位先看
+        if v == "十":
+            return 10
+        if v.startswith("十"):
+            return 10 + CN_DIGITS.get(v[1:], 0)
+        if v.endswith("十"):
+            return CN_DIGITS.get(v[0], 0) * 10
+        return CN_DIGITS.get(v)
+    m = RE_SEASON_ORD.search(title)
+    if m:
+        return int(m.group(1))
+    m = RE_SEASON_EN.search(title)
+    if m:
+        n = int(m.group(1))
+        if 1 <= n <= 20:
+            return n
+    return None
+
+
+def season_ok(title: str, want: int) -> bool:
+    """标题是不是「第 want 季」。没标季号的当第一季 —— 大多数字幕组做第一季时
+    压根不写「第一季」，而第二季一定会标出来。"""
+    got = extract_season(title)
+    if got is None:
+        return int(want) == 1
+    return got == int(want)
+
+
 def match_rule(item: dict, rule: dict) -> bool:
     nt = norm(item["title"])
     na = norm(item["author"])
@@ -587,6 +631,11 @@ def match_rule(item: dict, rule: dict) -> bool:
 
     exc = rule.get("exclude_any") or []
     if exc and any(norm(k) in nt for k in exc):
+        return False
+
+    # 分季过滤：想只看第一季，就别让第二三四五季混进来
+    sea = rule.get("season")
+    if sea and not season_ok(item["title"], int(sea)):
         return False
 
     grp = rule.get("group") or []

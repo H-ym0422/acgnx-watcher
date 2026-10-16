@@ -17,3 +17,18 @@ body:
       placeholder: 绿茶字幕组
     validations:
       required: false
+  - type: input
+    id: season
+    attributes:
+      label: 第几季（可选）
+      description: 多季番只想看某一季时填数字，比如 1。留空 = 不限季。注意搜索只覆盖最近发布，老季得靠 BD / 合集
+      placeholder: "1"
+    validations:
+      required: false
+  - type: markdown
+    attributes:
+      value: |
+        **找不到老季怎么办**：搜索只覆盖最近发布的条目。
+        比如《无职转生》今年出到第四季，直接搜只能搜到当前在播的那季；
+        想看第一季，把标题改成 `加番 无职转生 BD` 或 `加番 无职转生 合集`，
+        一般能捞到后来重发的 BD 合集。

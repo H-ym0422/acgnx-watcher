@@ -57,24 +57,43 @@ jobs:
         run: |
           trim() { printf '%s' "$1" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//'; }
 
+          # 按「### 字段名」取某个字段的内容（Issue 模板生成的正文就是这个结构）。
+          # 不按行号取，是因为模板有多个可选输入框，空着的会把位置错开。
+          grab_field() {
+            printf '%s\n' "$1" | awk -v k="$2" '
+              /^#{1,6}[[:space:]]/ { inside = index($0, k) > 0; next }
+              inside {
+                gsub(/^[[:space:]]+/, ""); gsub(/[[:space:]]+$/, "")
+                if (length($0)) { print; exit }
+              }'
+          }
+
           # 没有交互终端，向导任何时候都不该卡在 input() 上
           export PYTHONUNBUFFERED=1
 
-          # ---------------------------------------------------------------
-          # 先在正文里找「字幕组」，找不到就往下走
-          # ---------------------------------------------------------------
+          # 字幕组：优先按字段名取；取不到再退回「第一行非空内容」的老办法
           grab_group() {
-            local txt="$1"
-            local v
-            v="$(printf '%s\n' "$txt" | sed -n 's/^[[:space:]]*字幕组[[:space:]]*[：:][[:space:]]*//p' | head -1)"
+            local txt="$1" v raw
+            v="$(grab_field "$txt" "字幕组")"
             if [ -z "$v" ]; then
-              v="$(printf '%s\n' "$txt" | grep -v '^[[:space:]]*$' | grep -v '^#' | grep -v '^<!--' | head -1)"
+              raw="$(printf '%s\n' "$txt" | grep -v '^[[:space:]]*$' | grep -v '^#' | grep -v '^<!--' | head -1)"
+              raw="$(trim "$raw")"
+              # 纯数字多半是「第几季」被填在了自由正文里，不能当字幕组
+              case "$raw" in ''|*[!0-9]*) v="$raw" ;; *) v="" ;; esac
             fi
-            printf '%s' "$(trim "$v")"
+            printf '%s' "$v"
+          }
+
+          # 第几季：只认纯数字
+          grab_season() {
+            local v
+            v="$(trim "$(grab_field "$1" "季")")"
+            case "$v" in ''|*[!0-9]*) printf '' ;; *) printf '%s' "$v" ;; esac
           }
 
           STEP=done
           OUT=""
+          SEA=""
 
           case "$EVENT" in
             issues)
@@ -87,13 +106,18 @@ jobs:
                 *) MODE=add; KW="$(trim "$I_TITLE")"; NOPREFIX=1 ;;
               esac
               GRP="$(grab_group "$I_BODY")"
+              SEA="$(grab_season "$I_BODY")"
 
-              echo "事件=新 Issue | 模式=$MODE | 关键词=$KW | 字幕组=${GRP:-（待选）} | 忘了写前缀=$NOPREFIX"
+              echo "事件=新 Issue | 模式=$MODE | 关键词=$KW | 字幕组=${GRP:-（待选）} | 季=${SEA:-不限} | 忘了写前缀=$NOPREFIX"
 
               if [ "$MODE" = "add" ] && [ -z "$GRP" ]; then
                 # —— 第一步：只列清单，先不加 ——
                 STEP=survey
-                OUT="$(python add_rule.py --survey "$KW" 2>&1 || true)"
+                if [ -n "$SEA" ]; then
+                  OUT="$(python add_rule.py --survey "$KW" --season "$SEA" 2>&1 || true)"
+                else
+                  OUT="$(python add_rule.py --survey "$KW" 2>&1 || true)"
+                fi
                 [ -z "$OUT" ] && OUT="没搜到「$KW」。试试日文原名、罗马音，或者只取其中 2~4 个字。"
               elif [ "$MODE" = "list" ]; then
                 OUT="$(python add_rule.py --render --no-push 2>&1 || true)"
@@ -101,6 +125,7 @@ jobs:
                 OUT="$(python add_rule.py --del-name "$KW" --no-push 2>&1 || true)"
               else
                 ARGS=("$KW" --yes --no-push --notify --backfill all)
+                [ -n "$SEA" ] && ARGS+=(--season "$SEA")
                 IFS=',' read -ra G <<< "$GRP"
                 for g in "${G[@]}"; do
                   g="$(trim "$g")"
@@ -115,7 +140,8 @@ jobs:
               # —— 第二步：用户在清单下面回复了 ——
               KW="$(trim "${I_TITLE#加番}")"
               PICK="$(printf '%s\n' "$C_BODY" | head -1 | tr -d '`' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
-              echo "事件=回复 | 关键词=$KW | 回复=$PICK"
+              SEA="$(grab_season "$I_BODY")"
+              echo "事件=回复 | 关键词=$KW | 回复=$PICK | 季=${SEA:-不限}"
 
               # 已经加过就别重复加
               if python add_rule.py --exists "$KW" > /dev/null 2>&1; then
@@ -123,6 +149,7 @@ jobs:
                 OUT="「$KW」已经在追了，没有重复添加。想换字幕组的话，先发一个标题是「删番 $KW」的 Issue，然后再加一次。"
               else
                 ARGS=("$KW" --yes --no-push --notify --backfill all)
+                [ -n "$SEA" ] && ARGS+=(--season "$SEA")
                 if [[ "$PICK" == "任意" || "$PICK" == "any" || "$PICK" == "*" ]]; then
                   ARGS+=(--any-group)
                 elif [[ "$PICK" =~ ^[0-9]+([,，、[:space:]]+[0-9]+)*$ ]]; then
@@ -151,7 +178,7 @@ jobs:
           echo "STEP=$STEP" >> "$GITHUB_OUTPUT"
           {
             echo "RESULT<<ACGNX_EOF"
-            printf '%s\n' "$OUT" | tail -c 2500
+            printf '%s\n' "$OUT" | tail -c 8000
             echo "ACGNX_EOF"
           } >> "$GITHUB_OUTPUT"
 
@@ -179,7 +206,7 @@ jobs:
           script: |
             const ok = process.env.JOBSTATUS === 'success';
             const step = process.env.STEP || '';
-            const out = (process.env.OUT || '(没有输出)').slice(0, 2500);
+            const out = (process.env.OUT || '(没有输出)').slice(0, 8000);
 
             let tail;
             if (!ok) {

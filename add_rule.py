@@ -82,6 +82,39 @@ def extract_variant(title: str) -> str:
     return aw.extract_variant(title)
 
 
+def ep_numbers(keys) -> set[int]:
+    """把 ['01','02','05-08'] 这种集数键展开成 {1,2,5,6,7,8}。
+    跨度太夸张的不展开（防止 [01-1000] 这种把内存吃光）。"""
+    out: set[int] = set()
+    for k in keys:
+        m = re.match(r"^(\d{1,4})(?:-(\d{1,4}))?$", (k or "").strip())
+        if not m:
+            continue
+        a = int(m.group(1))
+        b = int(m.group(2) or a)
+        if b - a > 300:
+            continue
+        out.update(range(a, b + 1))
+    return out
+
+
+def cover_text(nums: set[int], limit: int = 6) -> str:
+    """把集数集合说成人话：「第 01~09 集（9 集）」，有缺集就标出来。"""
+    if not nums:
+        return "暂时没有"
+    lo, hi = min(nums), max(nums)
+    if hi == lo:
+        return f"第 {lo:02d} 集"
+    if hi - lo > 200:
+        return f"第 {lo:02d}~{hi:02d} 集"
+    gaps = sorted(set(range(lo, hi + 1)) - nums)
+    tail = ""
+    if gaps:
+        shown = "、".join(f"{g:02d}" for g in gaps[:limit])
+        tail = f"，缺 {shown}" + ("等" if len(gaps) > limit else "")
+    return f"第 {lo:02d}~{hi:02d} 集（{len(nums)} 集{tail}）"
+
+
 def rank_groups(items: list[dict]) -> list[dict]:
     """把一批条目按字幕组归并排序，并统计每个组都发过哪些字幕类型。
 
@@ -94,10 +127,14 @@ def rank_groups(items: list[dict]) -> list[dict]:
             if "&" in t or "＆" in t:
                 continue
             key = aw.norm(t)
-            g = grp.setdefault(key, {"name": t, "n": 0, "last": None, "vs": {}})
+            g = grp.setdefault(key, {"name": t, "n": 0, "last": None, "vs": {},
+                                     "eps": set()})
             if len(t) < len(g["name"]):
                 g["name"] = t
             g["n"] += 1
+            ep = aw.extract_episode(i["title"])
+            if ep:
+                g["eps"].add(ep)
             v = extract_variant(i["title"])
             if v:
                 g["vs"][v] = g["vs"].get(v, 0) + 1
@@ -108,24 +145,32 @@ def rank_groups(items: list[dict]) -> list[dict]:
     order = sorted(grp.values(), key=lambda g: (-g["n"], g["name"]))
     for g in order:
         g["variants"] = [k for k, _ in sorted(g["vs"].items(), key=lambda kv: -kv[1])]
+        g["cover"] = cover_text(ep_numbers(g["eps"]))
     return order
 
 
-def survey_text(term: str, limit: int = 20) -> str | None:
-    """生成「谁在做、各是什么类型」的清单（Markdown），供 Issue 回复用。"""
+def survey_text(term: str, limit: int = 20, season: int = 0) -> str | None:
+    """生成「谁在做、覆盖哪些集、各是什么类型」的清单（Markdown），供 Issue 回复用。"""
     items = search(term)
     if not items:
         return None
+    if season and int(season) > 0:
+        items = [i for i in items if aw.season_ok(i["title"], int(season))]
+        if not items:
+            return f"没搜到「{term}」第 {season} 季的条目。试试去掉季数，或者换个写法。"
     order = rank_groups(items)
     if not order:
         return None
 
-    out = [f"搜到 **{len(order)}** 个字幕组在做「{term}」。回复这条 Issue 告诉我要哪个：", ""]
+    head = f"搜到 **{len(order)}** 个字幕组在做「{term}」"
+    if season:
+        head += f"第 {season} 季"
+    out = [head + "。回复这条 Issue 告诉我要哪个：", ""]
     for i, g in enumerate(order[:limit], 1):
         last = f"{g['last']:%m-%d}" if g["last"] else "  -  "
-        vs = "、".join(g["variants"][:4]) if g["variants"] else "未标注字幕类型"
+        vs = "、".join(g["variants"][:4]) if g["variants"] else "未标注"
         out.append(f"`{i:>2}`  **{g['name']}**  ·  {g['n']} 条，最近 {last}")
-        out.append(f"　　类型：{vs}")
+        out.append(f"　　覆盖 {g['cover']} · 类型 {vs}")
     if len(order) > limit:
         out.append(f"　　　（还有 {len(order) - limit} 个，没列出来）")
 
@@ -136,11 +181,13 @@ def survey_text(term: str, limit: int = 20) -> str | None:
     return "\n".join(out)
 
 
-def resolve_picks(term: str, picks: list[int]) -> list[str]:
+def resolve_picks(term: str, picks: list[int], season: int = 0) -> list[str]:
     """把用户在清单里选的序号换算回字幕组名。"""
     items = search(term)
     if not items:
         return []
+    if season and int(season) > 0:
+        items = [i for i in items if aw.season_ok(i["title"], int(season))]
     order = rank_groups(items)
     names = []
     for p in picks:
@@ -152,7 +199,7 @@ def resolve_picks(term: str, picks: list[int]) -> list[str]:
 def pick(term: str, want_all_groups: bool, forced_groups: list[str],
          extra_aliases: list[str] | None = None,
          auto_top: int = 0, pick_indexes: list[int] | None = None,
-         fallback: bool = True) -> dict | None:
+         fallback: bool = True, season: int = 0) -> dict | None:
     print(f"\n🔍 正在 ACGNX 搜索「{term}」...")
     items = search(term)
     if not items:
@@ -160,6 +207,15 @@ def pick(term: str, want_all_groups: bool, forced_groups: list[str],
         print("    · 番名写法和站上不一致（试试日文原名、罗马音，或只取其中 2~4 个字）")
         print("    · 站点这一轮恰好返回空（偶发，等一会儿重试）")
         return None
+
+    # 多季番：只留想看的那一季
+    if season and int(season) > 0:
+        before = len(items)
+        items = [i for i in items if aw.season_ok(i["title"], int(season))]
+        print(f"🎬 只要第 {season} 季：{before} 条 -> {len(items)} 条")
+        if not items:
+            print(f"⚠️  没搜到第 {season} 季的条目。试试不加 --season，看看各季都怎么标的。")
+            return None
 
     ds = [i["pub_dt"] for i in items if i.get("pub_dt")]
     span = f"，跨度 {min(ds):%Y-%m-%d} ~ {max(ds):%Y-%m-%d}" if ds else ""
@@ -170,12 +226,13 @@ def pick(term: str, want_all_groups: bool, forced_groups: list[str],
         print("⚠️  没识别出任何字幕组名，可能是条目太少。")
         return None
 
-    print("\n📺 在做这部番的字幕组（含各自发过的字幕类型）：")
+    print("\n📺 在做这部番的字幕组（含覆盖集数和字幕类型）：")
     for idx, g in enumerate(order, 1):
         last = f"{g['last']:%m-%d}" if g["last"] else "  -  "
-        vs = "、".join(g["variants"][:4]) if g["variants"] else "未标注字幕类型"
+        vs = "、".join(g["variants"][:4]) if g["variants"] else "未标注"
         print(f"   [{idx:>2}] {g['name']:<26} {g['n']:>3} 条   最近 {last}")
-        print(f"        类型：{vs}")
+        print(f"        覆盖 {g['cover']}")
+        print(f"        类型 {vs}")
 
     # ---- 选字幕组 ----
     selected: list[str] = []
@@ -256,7 +313,7 @@ def pick(term: str, want_all_groups: bool, forced_groups: list[str],
     for a in aliases:
         print(f"     · {a}")
 
-    return {
+    rule = {
         "id": f"r{int(time.time())}",
         "name": f"{term}（{'任意字幕组' if not selected else '/'.join(selected[:2]) + ('等' if len(selected) > 2 else '')}）",
         "enabled": True,
@@ -270,6 +327,10 @@ def pick(term: str, want_all_groups: bool, forced_groups: list[str],
         "fallback_any_group": bool(fallback),
         "note": "",
     }
+    if season and int(season) > 0:
+        rule["season"] = int(season)
+        print(f"\n🎬 已设为「只收第 {season} 季」—— 标题里标了别的季号的会被丢掉")
+    return rule
 
 
 def append_rule(rule: dict) -> None:
@@ -549,6 +610,8 @@ def main() -> None:
                     help=f"生成/刷新「{WATCHLIST_NAME}」并打印（手机上直接看这个文件）")
     ap.add_argument("--no-fallback", action="store_true",
                     help="只推指定字幕组；默认会用别的组补上他们没做的集数")
+    ap.add_argument("--season", type=int, default=0, metavar="N",
+                    help="多季番只想看第 N 季时用，例如 --season 1")
     ap.add_argument("--exists", metavar="关键词",
                     help="只检查这部番是不是已经在追了，在追就退出码 0、否则 1")
     ap.add_argument("--del", dest="delete", type=int, metavar="N", help="删除第 N 条规则")
@@ -568,11 +631,11 @@ def main() -> None:
         raise SystemExit(1)
 
     if args.survey:
-        term = args.term or input("哪部番？（2~4 个最有辨识度的字）\n> ").strip()
+        term = args.term or input("哪部番？（2~4 个最有辨识力的字）\n> ").strip()
         if not term:
             print("没输入番名。")
             return
-        txt = survey_text(term)
+        txt = survey_text(term, season=args.season)
         print(txt if txt else
               f"没搜到「{term}」。试试日文原名、罗马音，或者只取其中 2~4 个字。")
         return
@@ -650,7 +713,8 @@ def main() -> None:
     rule = pick(term, args.any_group, args.group, args.also,
                 auto_top=2 if args.auto_group else 0,
                 pick_indexes=pick_indexes,
-                fallback=not args.no_fallback)
+                fallback=not args.no_fallback,
+                season=args.season)
     if rule is None:
         if args.notify:
             s = aw.load_config()["settings"]
