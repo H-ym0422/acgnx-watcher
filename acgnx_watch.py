@@ -709,13 +709,21 @@ def build_push_content(item: dict, rule: dict, prefix: str,
         tag = ""
     title = f"{prefix}{tag}{name}"[:120]
 
-    lines = [f"标题：{item['title']}"]
+    # 推送时间放在最前面，像微信聊天记录那样一眼看到是几点收到的
+    # （2026-10-16 用户要求：年月日都要）
+    lines = [f"推送时间：{datetime.now():%Y年%m月%d日 %H:%M}", ""]
+    lines.append(f"标题：{item['title']}")
+
+    # 字幕组：显示的是**实际发布这个文件的组**。
+    # 之前这里显示的是「规则里配置的组」，导致兜底时会连着出现两个组名，
+    # 而且上面写着「字幕组：喵萌奶茶屋」下面又写「指定字幕组还没有」，
+    # 看着自相矛盾（2026-10-16 用户反馈）。
     want = " / ".join(rule.get("group") or []) or "任意字幕组"
-    lines.append(f"字幕组：{want}")
+    src = actual_group(item) or "其它字幕组"
+    lines.append(f"字幕组：{src}")
     if item.get("_fallback"):
-        # 指定字幕组没做这一集（还没出、或者中途弃番了），这条是兜底抓来的
-        src = actual_group(item) or "其它字幕组"
-        lines.append(f"※ 这一集指定字幕组还没有，本条来自：{src}")
+        # 只在真的换了组时才说明原因，且把「为什么」放在后面当补充，不抢主信息
+        lines.append(f"※ 你指定的「{want}」这一集还没出，这个是自动找的替补")
 
     # 字幕形式（简日双语 / 简繁日内封 …）。没标出来的就不写这一行。
     if item.get("_variant"):
