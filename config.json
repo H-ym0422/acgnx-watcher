@@ -97,31 +97,6 @@
       ],
       "note": "",
       "fallback_any_group": true
-    },
-    {
-      "id": "r1792143744",
-      "name": "金牌得主（爱恋字幕社/喵萌奶茶屋）",
-      "enabled": true,
-      "keywords": [
-        "金牌得主"
-      ],
-      "include_any": [
-        "金牌得主"
-      ],
-      "exclude_any": [],
-      "group": [
-        "爱恋字幕社",
-        "喵萌奶茶屋"
-      ],
-      "variant_prefer": [
-        "简日双语",
-        "简繁日内封",
-        "简日内嵌",
-        "简体",
-        "简"
-      ],
-      "note": "",
-      "fallback_any_group": true
     }
   ]
 }
