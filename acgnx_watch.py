@@ -1394,7 +1394,6 @@ def main() -> None:
 
     if args.test:
         s = cfg["settings"]
-        chans = available_channels(s)
         title = f"{s.get('title_prefix') or '【新番速递】'}推送通路正常（这是一条演示）"
         # 直接用真实推送的排版函数拼一条样例，这样看到的就是将来真正收到的样子
         demo = {
@@ -1408,12 +1407,10 @@ def main() -> None:
             "name": "学生会有洞（喵萌奶茶屋）",
             "group": ["喵萌奶茶屋", "nekomoekissaten"],
         }, "")
-        body = ("👇 下面就是将来真正推送时的样子（磁力是假的，别下）：\n\n"
-                + demo_body
-                + "\n\n────────────────────\n"
-                + f"已配置的渠道：{'、'.join(CHANNEL_LABEL[c] for c in chans) if chans else '（一个都没配）'}\n"
-                + f"强制指定：{s.get('push_channel')}\n"
-                + "以后有新集，会用一模一样的格式推给你。")
+        # 演示尾巴只保留一句提醒。之前还附「已配置的渠道 / 强制指定」，
+        # 那是指令行（feishu_app 只在内存里有），只有开发时看，推给你没意义（2026-10-16 用户反馈）。
+        body = ("👇 上面就是将来真正推送时的样子（磁力是假的，别下）\n\n"
+                + demo_body)
         ok, _mid = send_notification(title, body, s)
         print("测试消息发送" + ("成功 ✅" if ok else "失败 ❌（检查 config.json 里的 token / SendKey）"))
         return
