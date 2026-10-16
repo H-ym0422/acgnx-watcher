@@ -122,30 +122,6 @@
       ],
       "note": "",
       "fallback_any_group": true
-    },
-    {
-      "id": "r1792150224",
-      "name": "尼古喵喵（LoliHouse）",
-      "enabled": true,
-      "keywords": [
-        "尼古喵喵"
-      ],
-      "include_any": [
-        "尼古喵喵"
-      ],
-      "exclude_any": [],
-      "group": [
-        "LoliHouse"
-      ],
-      "variant_prefer": [
-        "简日双语",
-        "简繁日内封",
-        "简日内嵌",
-        "简体",
-        "简"
-      ],
-      "fallback_any_group": true,
-      "note": ""
     }
   ]
 }
