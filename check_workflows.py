@@ -88,6 +88,19 @@ def main() -> int:
                 print(f"      第 {i} 行：{text.splitlines()[i-1][:80]}")
 
         t = list(trig.keys()) if isinstance(trig, dict) else trig
+
+        # GitHub 的 if: 表达式不是 YAML，查表达式语法错误要单独扫。
+        # 踩过的坑：用正则删条件时留下「&& && &&)」，YAML 照样合法，
+        # 但 GitHub 解析表达式失败 → 整个 job 静默不跑，只有 job 列表是空的。
+        for job in (doc.get("jobs") or {}).values():
+            expr = str((job or {}).get("if", ""))
+            if "&& &&" in expr or "|| ||" in expr or "&& )" in expr or "( (" in expr:
+                print(f"  ✗ {name}  {job.get('name')} 的 if 表达式疑似断裂：{expr[:80]}")
+                bad += 1
+            elif expr.count("(") != expr.count(")"):
+                print(f"  ✗ {name}  {job.get('name')} 的 if 表达式括号不配对：{expr[:80]}")
+                bad += 1
+
         print(f"  ✓ {name:<22} name={doc.get('name')!r}  触发={t}")
 
     print()

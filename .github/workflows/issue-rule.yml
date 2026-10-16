@@ -36,7 +36,7 @@ jobs:
         !startsWith(github.event.issue.title, '取消') &&
         !startsWith(github.event.issue.title, '列表') &&
         !startsWith(github.event.issue.title, '清单') &&
-        !startsWith(github.event.issue.title, '我的番') && && &&)
+        !startsWith(github.event.issue.title, '我的番'))
     timeout-minutes: 10
 
     steps:
