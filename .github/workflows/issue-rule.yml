@@ -1,19 +1,19 @@
 name: 加番（发 Issue）
 
-# 手机最好用的入口：新建一个 Issue，标题写
-#     加番 咒术回战
-# 想删掉某部番就写
-#     删番 咒术回战
+# 手机上的入口：新建 Issue，标题写
+#     加番 咒术回战          → 机器人先列出「有哪些字幕组在做、各发过什么类型」
+#                              你在同一条 Issue 里回复序号或组名，它才真正加
+#     删番 咒术回战          → 删掉这部
+#     列表                   → 回一份当前追番清单
 #
-# 正文（可选）第一行可以填字幕组，多个用逗号分隔：
-#     绿茶字幕组,喵萌奶茶屋
-# 不填 = 自动选发布最多的前 2 个组。
-#
-# 跑完机器人会在 Issue 里回一条评论（含结果和磁力），飞书也会收到通知。
+# 一步到位也可以：标题写「加番 咒术回战」，正文第一行填字幕组（逗号分隔），
+# 这样就不再问，直接加。
 
 on:
   issues:
     types: [opened]
+  issue_comment:
+    types: [created]
 
 permissions:
   contents: write
@@ -27,10 +27,14 @@ jobs:
   handle:
     runs-on: ubuntu-latest
     if: >
-      startsWith(github.event.issue.title, '加番') ||
-      startsWith(github.event.issue.title, '删番') ||
-      startsWith(github.event.issue.title, '列表') ||
-      startsWith(github.event.issue.title, '我的番')
+      (github.event_name == 'issues' &&
+        (startsWith(github.event.issue.title, '加番') ||
+         startsWith(github.event.issue.title, '删番') ||
+         startsWith(github.event.issue.title, '列表') ||
+         startsWith(github.event.issue.title, '我的番'))) ||
+      (github.event_name == 'issue_comment' &&
+        startsWith(github.event.issue.title, '加番') &&
+        github.event.comment.user.type != 'Bot')
     timeout-minutes: 10
 
     steps:
@@ -43,62 +47,107 @@ jobs:
       - name: 解析并执行
         id: handle
         env:
-          TITLE: ${{ github.event.issue.title }}
-          BODY: ${{ github.event.issue.body }}
+          EVENT: ${{ github.event_name }}
+          I_TITLE: ${{ github.event.issue.title }}
+          I_BODY: ${{ github.event.issue.body }}
+          C_BODY: ${{ github.event.comment.body }}
           ACGNX_WEBHOOK_URL: ${{ secrets.ACGNX_WEBHOOK_URL }}
           ACGNX_DINGTALK_SECRET: ${{ secrets.ACGNX_DINGTALK_SECRET }}
           ACGNX_FEISHU_SECRET: ${{ secrets.ACGNX_FEISHU_SECRET }}
           PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
           SERVERCHAN_SENDKEY: ${{ secrets.SERVERCHAN_SENDKEY }}
         run: |
-          if [[ "$TITLE" == 加番* ]]; then
-            MODE=add; KW="${TITLE#加番}"
-          elif [[ "$TITLE" == 删番* ]]; then
-            MODE=del; KW="${TITLE#删番}"
-          elif [[ "$TITLE" == 列表* || "$TITLE" == 我的番* ]]; then
-            MODE=list; KW=""
-          else
-            echo "标题不是「加番」「删番」或「列表」开头，跳过。"
-            echo "RESULT=标题不是「加番」「删番」或「列表」开头，跳过。" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          KW="$(echo "$KW" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
-          echo "MODE=$MODE" >> "$GITHUB_OUTPUT"
+          trim() { printf '%s' "$1" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//'; }
 
-          # 正文第一行非空内容 = 字幕组（可选）
-          GRP="$(printf '%s\n' "$BODY" | grep -v '^[[:space:]]*$' | head -1 | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' || true)"
-          case "$GRP" in 字幕组*|"#"*|"- "*|*"填写"*) GRP="";; esac
+          # 没有交互终端，向导任何时候都不该卡在 input() 上
+          export PYTHONUNBUFFERED=1
 
-          echo "======================================"
-          echo "模式  : $MODE"
-          echo "关键词: $KW"
-          echo "字幕组: ${GRP:-（自动选前 2 个）}"
-          echo "======================================"
-
-          if [[ "$MODE" == list ]]; then
-            OUT="$(python add_rule.py --render --no-push 2>&1 || true)"
-          elif [[ -z "$KW" ]]; then
-            OUT="标题里没写番名。正确写法：加番 咒术回战"
-          elif [[ "$MODE" == del ]]; then
-            OUT="$(python add_rule.py --del-name "$KW" --no-push 2>&1 || true)"
-          else
-            ARGS=("$KW" --yes --no-push --notify --backfill all)
-            if [[ -n "$GRP" ]]; then
-              IFS=',' read -ra G <<< "$GRP"
-              for g in "${G[@]}"; do
-                g="$(echo "$g" | xargs)"
-                [[ -n "$g" ]] && ARGS+=(--group "$g")
-              done
-            else
-              ARGS+=(--auto-group)
+          # ---------------------------------------------------------------
+          # 先在正文里找「字幕组」，找不到就往下走
+          # ---------------------------------------------------------------
+          grab_group() {
+            local txt="$1"
+            local v
+            v="$(printf '%s\n' "$txt" | sed -n 's/^[[:space:]]*字幕组[[:space:]]*[：:][[:space:]]*//p' | head -1)"
+            if [ -z "$v" ]; then
+              v="$(printf '%s\n' "$txt" | grep -v '^[[:space:]]*$' | grep -v '^#' | grep -v '^<!--' | head -1)"
             fi
-            OUT="$(python add_rule.py "${ARGS[@]}" 2>&1 || true)"
-          fi
+            printf '%s' "$(trim "$v")"
+          }
 
+          STEP=done
+          OUT=""
+
+          case "$EVENT" in
+            issues)
+              case "$I_TITLE" in
+                加番*) MODE=add; KW="$(trim "${I_TITLE#加番}")" ;;
+                删番*) MODE=del; KW="$(trim "${I_TITLE#删番}")" ;;
+                列表*|我的番*) MODE=list; KW="" ;;
+                *) echo "不是认识的标题，跳过。"; exit 0 ;;
+              esac
+              GRP="$(grab_group "$I_BODY")"
+
+              echo "事件=新 Issue | 模式=$MODE | 关键词=$KW | 字幕组=${GRP:-（待选）}"
+
+              if [ "$MODE" = "add" ] && [ -z "$GRP" ]; then
+                # —— 第一步：只列清单，先不加 ——
+                STEP=survey
+                OUT="$(python add_rule.py --survey "$KW" 2>&1 || true)"
+                [ -z "$OUT" ] && OUT="没搜到「$KW」。试试日文原名、罗马音，或者只取其中 2~4 个字。"
+              elif [ "$MODE" = "list" ]; then
+                OUT="$(python add_rule.py --render --no-push 2>&1 || true)"
+              elif [ "$MODE" = "del" ]; then
+                OUT="$(python add_rule.py --del-name "$KW" --no-push 2>&1 || true)"
+              else
+                ARGS=("$KW" --yes --no-push --notify --backfill all)
+                IFS=',' read -ra G <<< "$GRP"
+                for g in "${G[@]}"; do
+                  g="$(trim "$g")"
+                  [ -n "$g" ] && ARGS+=(--group "$g")
+                done
+                [ ${#ARGS[@]} -le 6 ] && ARGS+=(--auto-group)
+                OUT="$(python add_rule.py "${ARGS[@]}" 2>&1 || true)"
+              fi
+              ;;
+
+            issue_comment)
+              # —— 第二步：用户在清单下面回复了 ——
+              KW="$(trim "${I_TITLE#加番}")"
+              PICK="$(printf '%s\n' "$C_BODY" | head -1 | tr -d '`' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+              echo "事件=回复 | 关键词=$KW | 回复=$PICK"
+
+              # 已经加过就别重复加
+              if python add_rule.py --exists "$KW" > /dev/null 2>&1; then
+                STEP=dup
+                OUT="「$KW」已经在追了，没有重复添加。想换字幕组的话，先发一个标题是「删番 $KW」的 Issue，然后再加一次。"
+              else
+                ARGS=("$KW" --yes --no-push --notify --backfill all)
+                if [[ "$PICK" == "任意" || "$PICK" == "any" || "$PICK" == "*" ]]; then
+                  ARGS+=(--any-group)
+                elif [[ "$PICK" =~ ^[0-9]+([,，、[:space:]]+[0-9]+)*$ ]]; then
+                  ARGS+=(--pick "$PICK")
+                elif [ -z "$PICK" ]; then
+                  ARGS+=(--auto-group)
+                else
+                  IFS=',' read -ra G <<< "$PICK"
+                  for g in "${G[@]}"; do
+                    g="$(trim "$g")"
+                    [ -n "$g" ] && ARGS+=(--group "$g")
+                  done
+                  [ ${#ARGS[@]} -le 6 ] && ARGS+=(--auto-group)
+                fi
+                OUT="$(python add_rule.py "${ARGS[@]}" 2>&1 || true)"
+              fi
+              ;;
+          esac
+
+          echo "----------------------------------------"
           echo "$OUT"
+          echo "STEP=$STEP" >> "$GITHUB_OUTPUT"
           {
             echo "RESULT<<ACGNX_EOF"
-            printf '%s\n' "$OUT" | tail -c 3000
+            printf '%s\n' "$OUT" | tail -c 2500
             echo "ACGNX_EOF"
           } >> "$GITHUB_OUTPUT"
 
@@ -112,39 +161,44 @@ jobs:
             git push
             echo "已提交并推送"
           else
-            echo "config.json / state.json / 我的番剧.md 没有变化"
+            echo "没有变化"
           fi
 
-      - name: 在 Issue 里回复结果
+      - name: 回复 Issue
         if: always()
         env:
           OUT: ${{ steps.handle.outputs.RESULT }}
+          STEP: ${{ steps.handle.outputs.STEP }}
           JOBSTATUS: ${{ job.status }}
-          HANDLEMODE: ${{ steps.handle.outputs.MODE }}
-          CMD: ${{ github.event.issue.title }}
         uses: actions/github-script@v7
         with:
           script: |
             const ok = process.env.JOBSTATUS === 'success';
-            const mode = process.env.HANDLEMODE || '';
-            const out = (process.env.OUT || '(没有输出)').slice(0, 3000);
+            const step = process.env.STEP || '';
+            const out = (process.env.OUT || '(没有输出)').slice(0, 2500);
+
             let tail;
-            if (mode === 'list') {
+            if (!ok) {
+              tail = '出错了。把 `Actions` 里这次运行的日志发我看看。';
+            } else if (step === 'survey') {
+              tail = '**看清楚后在下面回复序号或组名，我再真正加上。**';
+            } else if (step === 'dup') {
+              tail = '';
+            } else if (step === 'list') {
               tail = '上面就是你当前在追的全部番剧。';
-            } else if (ok) {
-              tail = '云端最多 5 分钟后就会开始盯这部番。新集一出来就会推到你手机。';
             } else {
-              tail = '把 `Actions` 里这次运行的日志发我看看。';
+              tail = '云端最多 5 分钟后就会开始盯这部番，新集一出来就推你手机。';
             }
+
             const body = [
               ok ? '✅ **处理完成**' : '❌ **处理失败**',
               '',
               '```',
               out,
               '```',
-              '',
               tail
-            ].join('\n');
+            ].filter(Boolean).join('\n');
+
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,

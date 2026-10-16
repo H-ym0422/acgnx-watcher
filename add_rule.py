@@ -120,9 +120,94 @@ def search(term: str) -> list[dict]:
     return aw.parse_feed(aw.http_get(base + path, timeout=15, retry=2) or "")
 
 
+RE_VARIANT = re.compile(r"简|繁|内封|内嵌|双语|CHS|CHT", re.I)
+# 这些词出现说明括号里是组名/来源，不是字幕类型
+RE_NOT_VARIANT = re.compile(r"字幕组|字幕社|漢化|汉化|發布|发布|壓制|压制|搬運|搬运|Raws|VCB|LoliHouse", re.I)
+
+
+def extract_variant(title: str) -> str:
+    """从标题里抽出这个版本的字幕类型，例如「简繁日内封」「简日双语」「繁日內嵌」。
+    这类信息基本都在标题最后一个方括号里，且不会含「字幕组」这类词。"""
+    for s in reversed(BRACKET.findall(title)):
+        s = s.strip()
+        if len(s) <= 24 and RE_VARIANT.search(s) and not RE_NOT_VARIANT.search(s):
+            return s
+    m = re.search(r"[\(（]([^)）]{1,24})[\)）]", title)
+    if m and RE_VARIANT.search(m.group(1)) and not RE_NOT_VARIANT.search(m.group(1)):
+        return m.group(1).strip()
+    return ""
+
+
+def rank_groups(items: list[dict]) -> list[dict]:
+    """把一批条目按字幕组归并排序，并统计每个组都发过哪些字幕类型。
+
+    这里**跳过「A&B」这种合作组名** —— 因为规则匹配是子串匹配，
+    只有「豌豆字幕组」也能命中 `[豌豆字幕组&风之圣殿]` 这种合作发布的标题，
+    所以列清单时没必要把合作组单列一行（会把列表撑得很乱）。"""
+    grp: dict[str, dict] = {}
+    for i in items:
+        for t in extract_group_tokens(i["title"], i["author"]):
+            if "&" in t or "＆" in t:
+                continue
+            key = aw.norm(t)
+            g = grp.setdefault(key, {"name": t, "n": 0, "last": None, "vs": {}})
+            if len(t) < len(g["name"]):
+                g["name"] = t
+            g["n"] += 1
+            v = extract_variant(i["title"])
+            if v:
+                g["vs"][v] = g["vs"].get(v, 0) + 1
+            d = i.get("pub_dt")
+            if d and (g["last"] is None or d > g["last"]):
+                g["last"] = d
+
+    order = sorted(grp.values(), key=lambda g: (-g["n"], g["name"]))
+    for g in order:
+        g["variants"] = [k for k, _ in sorted(g["vs"].items(), key=lambda kv: -kv[1])]
+    return order
+
+
+def survey_text(term: str, limit: int = 20) -> str | None:
+    """生成「谁在做、各是什么类型」的清单（Markdown），供 Issue 回复用。"""
+    items = search(term)
+    if not items:
+        return None
+    order = rank_groups(items)
+    if not order:
+        return None
+
+    out = [f"搜到 **{len(order)}** 个字幕组在做「{term}」。回复这条 Issue 告诉我要哪个：", ""]
+    for i, g in enumerate(order[:limit], 1):
+        last = f"{g['last']:%m-%d}" if g["last"] else "  -  "
+        vs = "、".join(g["variants"][:4]) if g["variants"] else "未标注字幕类型"
+        out.append(f"`{i:>2}`  **{g['name']}**  ·  {g['n']} 条，最近 {last}")
+        out.append(f"　　类型：{vs}")
+    if len(order) > limit:
+        out.append(f"　　　（还有 {len(order) - limit} 个，没列出来）")
+
+    out += ["", "**回复格式**", "",
+            "- 回复 `1` 或 `1,3` —— 用这几个字幕组",
+            "- 回复 `绿茶字幕组` —— 直接写组名也行",
+            "- 回复 `任意` —— 不挑组，谁先出就推谁"]
+    return "\n".join(out)
+
+
+def resolve_picks(term: str, picks: list[int]) -> list[str]:
+    """把用户在清单里选的序号换算回字幕组名。"""
+    items = search(term)
+    if not items:
+        return []
+    order = rank_groups(items)
+    names = []
+    for p in picks:
+        if 1 <= p <= len(order):
+            names.append(order[p - 1]["name"])
+    return list(dict.fromkeys(names))
+
+
 def pick(term: str, want_all_groups: bool, forced_groups: list[str],
          extra_aliases: list[str] | None = None,
-         auto_top: int = 0) -> dict | None:
+         auto_top: int = 0, pick_indexes: list[int] | None = None) -> dict | None:
     print(f"\n🔍 正在 ACGNX 搜索「{term}」...")
     items = search(term)
     if not items:
@@ -135,60 +220,67 @@ def pick(term: str, want_all_groups: bool, forced_groups: list[str],
     span = f"，跨度 {min(ds):%Y-%m-%d} ~ {max(ds):%Y-%m-%d}" if ds else ""
     print(f"✅ 命中 {len(items)} 条{span}")
 
-    # ---- 统计字幕组（按归一化去重，避免「字幕组/字幕組」算两家） ----
-    grp: dict[str, dict] = {}
-    for i in items:
-        for t in extract_group_tokens(i["title"], i["author"]):
-            key = aw.norm(t)
-            g = grp.setdefault(key, {"name": t, "n": 0, "last": None})
-            if len(t) < len(g["name"]):     # 存拼写更短的那个
-                g["name"] = t
-            g["n"] += 1
-            d = i.get("pub_dt")
-            if d and (g["last"] is None or d > g["last"]):
-                g["last"] = d
-
-    order = sorted(grp.values(), key=lambda g: (-g["n"], g["name"]))
+    order = rank_groups(items)
     if not order:
         print("⚠️  没识别出任何字幕组名，可能是条目太少。")
         return None
 
-    print("\n📺 在做这部番的字幕组：")
+    print("\n📺 在做这部番的字幕组（含各自发过的字幕类型）：")
     for idx, g in enumerate(order, 1):
         last = f"{g['last']:%m-%d}" if g["last"] else "  -  "
+        vs = "、".join(g["variants"][:4]) if g["variants"] else "未标注字幕类型"
         print(f"   [{idx:>2}] {g['name']:<26} {g['n']:>3} 条   最近 {last}")
+        print(f"        类型：{vs}")
 
     # ---- 选字幕组 ----
     selected: list[str] = []
-    if forced_groups:
-        for f in forced_groups:
-            matched = [g["name"] for g in order if aw.norm(f) in aw.norm(g["name"])]
-            if matched:
-                selected.extend(matched)
-            else:
-                selected.append(f)
-                print(f"   ⚠️  列表里没有「{f}」，仍按你写的原样加入规则")
-    elif want_all_groups:
-        selected = []            # 空数组 = 任意字幕组
-    elif auto_top > 0:
-        # 无人值守模式：直接取发布最多的前 N 个组（通常就是主力字幕组）
-        selected = [g["name"] for g in order[:auto_top]]
-        print(f"\n🤖 自动选组（前 {auto_top} 个发布最多的）：{'、'.join(selected)}")
-    else:
-        print("\n要盯哪几个字幕组？（多选用逗号，如 1,3）")
-        print("   回车 = 全选      输入 any = 任何字幕组都推")
-        raw = input("   你的选择: ").strip()
-        if raw.lower() in ("any", "*", "任意"):
-            selected = []
-        elif raw == "":
-            selected = [g["name"] for g in order]
+
+    if pick_indexes is not None:
+        # 序号来自 Issue 里的回复
+        for p in pick_indexes:
+            if 1 <= p <= len(order):
+                selected.append(order[p - 1]["name"])
+        if selected:
+            print(f"\n🤖 按你选的序号取到：{'、'.join(selected)}")
         else:
-            for part in re.split(r"[,，\s]+", raw):
-                if part.isdigit() and 1 <= int(part) <= len(order):
-                    selected.append(order[int(part) - 1]["name"])
-            if not selected:
-                print("   ⚠️  没识别到有效选择，按全选处理")
+            print("⚠️  没识别到有效序号，改成自动选发布最多的前 2 个")
+            auto_top = 2
+
+    if not selected:
+        if forced_groups:
+            for f in forced_groups:
+                matched = [g["name"] for g in order if aw.norm(f) in aw.norm(g["name"])]
+                if matched:
+                    selected.extend(matched)
+                else:
+                    selected.append(f)
+                    print(f"   ⚠️  列表里没有「{f}」，仍按你写的原样加入规则")
+        elif want_all_groups:
+            selected = []            # 空数组 = 任意字幕组
+        elif auto_top > 0:
+            # 无人值守模式：直接取发布最多的前 N 个组（通常就是主力字幕组）
+            selected = [g["name"] for g in order[:auto_top]]
+            print(f"\n🤖 自动选组（前 {auto_top} 个发布最多的）：{'、'.join(selected)}")
+        else:
+            print("\n要盯哪几个字幕组？（多选用逗号，如 1,3）")
+            print("   回车 = 全选      输入 any = 任何字幕组都推")
+            try:
+                raw = input("   你的选择: ").strip()
+            except EOFError:
+                # 没有交互终端（例如在 CI 里漏传了参数），退回自动选组
+                raw = ""
+                print("   （没有交互终端，按全选处理）")
+            if raw.lower() in ("any", "*", "任意"):
+                selected = []
+            elif raw == "":
                 selected = [g["name"] for g in order]
+            else:
+                for part in re.split(r"[,，\s]+", raw):
+                    if part.isdigit() and 1 <= int(part) <= len(order):
+                        selected.append(order[int(part) - 1]["name"])
+                if not selected:
+                    print("   ⚠️  没识别到有效选择，按全选处理")
+                    selected = [g["name"] for g in order]
 
     selected = list(dict.fromkeys(selected))
 
@@ -466,6 +558,10 @@ def main() -> None:
     ap.add_argument("--any-group", action="store_true", help="任意字幕组都推")
     ap.add_argument("--auto-group", action="store_true",
                     help="不问，自动选发布最多的前 2 个字幕组（无人值守用）")
+    ap.add_argument("--survey", action="store_true",
+                    help="只列出有哪些字幕组在做、各发过什么类型，不改配置（Issue 第一步用）")
+    ap.add_argument("--pick", metavar="序号",
+                    help="按 --survey 里的序号挑字幕组，例如 1,3")
     ap.add_argument("--notify", action="store_true",
                     help="把加番结果推到手机（云端用，含最新一集磁力）")
     ap.add_argument("--backfill", choices=["all", "latest", "none"], default="all",
@@ -474,12 +570,33 @@ def main() -> None:
     ap.add_argument("--list", action="store_true", help="列出已有规则")
     ap.add_argument("--render", action="store_true",
                     help=f"生成/刷新「{WATCHLIST_NAME}」并打印（手机上直接看这个文件）")
+    ap.add_argument("--exists", metavar="关键词",
+                    help="只检查这部番是不是已经在追了，在追就退出码 0、否则 1")
     ap.add_argument("--del", dest="delete", type=int, metavar="N", help="删除第 N 条规则")
     ap.add_argument("--del-name", metavar="关键词",
                     help="删除名字里包含该关键词的规则（手机上传个词就能删，不用记序号）")
     ap.add_argument("--yes", action="store_true", help="跳过确认直接写入")
     ap.add_argument("--no-push", action="store_true", help="就算在 git 仓库里也不自动推送")
     args = ap.parse_args()
+
+    if args.exists:
+        cfg = aw.load_config()
+        hit = [r.get("name") for r in cfg["rules"]
+               if args.exists in " ".join(r.get("keywords") or [])]
+        if hit:
+            print("已在追：" + "、".join(str(h) for h in hit))
+            raise SystemExit(0)
+        raise SystemExit(1)
+
+    if args.survey:
+        term = args.term or input("哪部番？（2~4 个最有辨识度的字）\n> ").strip()
+        if not term:
+            print("没输入番名。")
+            return
+        txt = survey_text(term)
+        print(txt if txt else
+              f"没搜到「{term}」。试试日文原名、罗马音，或者只取其中 2~4 个字。")
+        return
 
     if args.list:
         cfg = aw.load_config()
@@ -547,8 +664,13 @@ def main() -> None:
         print("没输入番名，退出。")
         return
 
+    pick_indexes = None
+    if args.pick:
+        pick_indexes = [int(x) for x in re.split(r"[,，\s]+", args.pick) if x.isdigit()]
+
     rule = pick(term, args.any_group, args.group, args.also,
-                auto_top=2 if args.auto_group else 0)
+                auto_top=2 if args.auto_group else 0,
+                pick_indexes=pick_indexes)
     if rule is None:
         if args.notify:
             s = aw.load_config()["settings"]
