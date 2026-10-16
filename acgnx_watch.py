@@ -340,6 +340,7 @@ EP_PATTERNS = [
     re.compile(r"\[(\d{1,3})\s*[-~～]\s*(\d{1,3})[^\]]{0,10}\]"),  # [01-26] [01-12合集] [01-12完]
     re.compile(r"[-–—]\s*(\d{1,3})(?:v\d)?\s*(?:[\[\(（]|$)"),  # - 03 [
     re.compile(r"\bS\d{1,2}E(\d{1,2})\b", re.I),             # S01E03
+    re.compile(r"第\s*(\d{1,3})\s*[话話集話]"),                 # 第12集 / 第12话
 ]
 # 合集的其它常见写法
 EP_RANGE_WORD = re.compile(r"(?:Vol\.?\s*)?(\d{1,3})\s*[-~～]\s*(\d{1,3})\s*[话話集]")
@@ -362,7 +363,7 @@ def extract_episode(title: str) -> str:
     if m:
         return f"01-{int(m.group(1)):02d}"
 
-    for pat in (EP_PATTERNS[0], EP_PATTERNS[2], EP_PATTERNS[3]):
+    for pat in (EP_PATTERNS[0], EP_PATTERNS[2], EP_PATTERNS[3], EP_PATTERNS[4]):
         m = pat.search(title)
         if m:
             return f"{int(m.group(1)):02d}"
@@ -449,9 +450,70 @@ RE_REVISION = re.compile(r"(?<![a-za-z])v(?:er\.?\s*)?(\d{1,2})(?![a-za-z0-9])",
 RE_REVISION_WORD = re.compile(r"修正版|改訂版|改订版|修正|repack|重新压制|重製|重制", re.I)
 
 
+# ---- 字幕组名识别 ----
+# 看起来像字幕组名的方括号内容
+GROUP_HINT = re.compile(r"字幕组|字幕社|字幕|漢化|汉化|壓制|压制|发布组|發布組|Raws|屋|組$", re.I)
+BRACKET = re.compile(r"[\[【]([^\]】]{2,60})[\]】]")
+# 明确不像字幕组的：画质/封装标签
+RE_JUNK_TOKEN = re.compile(
+    r"1080p|720p|2160p|4K|8K|HEVC|AVC|AAC|FLAC|WebRip|WEB-?DL|BDRip|BDrip|"
+    r"内封|内嵌|內封|內嵌|双语|雙語|简繁|繁简|簡繁|繁體|简体|簡體|"
+    r"合集|招募|无修|無修|生肉|熟肉|字幕$",
+    re.I)
+# 转发/镜像站，不是真正的字幕组
+RE_MIRROR_TOKEN = re.compile(r"镜像|鏡像|搬运|搬運|MioBT|ANiTorrent|動漫花園|动漫花园", re.I)
+CJK = re.compile(r"[\u4e00-\u9fff]")
+
+
+def is_group_like(tok: str) -> bool:
+    t = tok.strip()
+    if not (2 <= len(t) <= 30):
+        return False
+    if " / " in t or "/" in t:          # 这是"番名 / 番名 / 罗马音"，不是组名
+        return False
+    if RE_JUNK_TOKEN.search(t):
+        return False
+    if RE_MIRROR_TOKEN.search(t):
+        return False
+    if re.fullmatch(r"[0-9.\sMBKGT]+", t, re.I):
+        return False
+    return True
+
+
+def extract_group_tokens(title: str, author: str) -> set[str]:
+    """从标题里挑出像字幕组名的片段，再并上 RSS 的 author 字段。"""
+    toks: set[str] = set()
+    for x in BRACKET.findall(title):
+        if GROUP_HINT.search(x):
+            toks.add(x.strip())
+    m = re.match(r"^\s*[\[【]([^\]】]{2,60})[\]】]", title)   # 标题开头那个通常是发布组
+    if m:
+        toks.add(m.group(1).strip())
+    if author:
+        toks.add(author.strip())
+
+    out: set[str] = set()
+    for t in toks:
+        if is_group_like(t):
+            out.add(t)
+        for part in re.split(r"[&＆]", t):                    # "A&B" 拆开，方便只挑一个
+            part = part.strip()
+            if is_group_like(part):
+                out.add(part)
+    return out
+
+
+# 有些组不用方括号，而是用 ★ 分隔，或者干脆把「外掛繁體中文」直接写在标题里
+RE_VARIANT_INLINE = re.compile(
+    r"(?:外掛|外挂|内封|内嵌|內封|內嵌)?\s*"
+    r"(?:简体中文|簡體中文|繁體中文|繁体中文|简繁|簡繁|繁简|繁體|繁体|簡體|简体|"
+    r"简中|繁中|简日|繁日|簡日|雙語|双语|简繁双语|繁體字幕|简体字幕)"
+    r"(?:中文|字幕|双语|雙語)?", re.I)
+
+
 def extract_variant(title: str) -> str:
     """抽字幕形式，例如「简日双语」「简繁日内封」「简繁外挂字幕」。
-    这些信息基本都在标题最后一个方括号里。"""
+    多数在标题最后一个方括号里；也有组用 ★ 分隔或直接写在标题里，所以还有一道兜底。"""
     for s in reversed(RE_BRACKET.findall(title)):
         s = s.strip()
         if len(s) <= 24 and RE_VARIANT.search(s) and not RE_NOT_VARIANT.search(s):
@@ -459,6 +521,9 @@ def extract_variant(title: str) -> str:
     m = re.search(r"[\(（]([^)）]{1,24})[\)）]", title)
     if m and RE_VARIANT.search(m.group(1)) and not RE_NOT_VARIANT.search(m.group(1)):
         return m.group(1).strip()
+    m = RE_VARIANT_INLINE.search(title)
+    if m:
+        return m.group(0).strip()
     return ""
 
 
@@ -551,8 +616,12 @@ def build_push_content(item: dict, rule: dict, prefix: str,
     title = f"{prefix}{tag}{name}"[:120]
 
     lines = [f"标题：{item['title']}"]
-    if rule.get("group"):
-        lines.append(f"字幕组：{'/'.join(rule['group'])}")
+    want = " / ".join(rule.get("group") or []) or "任意字幕组"
+    lines.append(f"字幕组：{want}")
+    if item.get("_fallback"):
+        # 指定字幕组没做这一集（还没出、或者中途弃番了），这条是兜底抓来的
+        src = actual_group(item) or "其它字幕组"
+        lines.append(f"※ 这一集指定字幕组还没有，本条来自：{src}")
 
     # 字幕形式（简日双语 / 简繁日内封 …）。没标出来的就不写这一行。
     if item.get("_variant"):
@@ -833,6 +902,36 @@ def pick_base(cfg: dict) -> tuple[str | None, str | None]:
     return None, None
 
 
+def _compact(s: str) -> str:
+    """归一化 + 去掉空格和标点，用于宽松比较番名。"""
+    return re.sub(r"[\s\-_/·・,，、。()（）\[\]【】!！?？]+", "", norm(s or ""))
+
+
+def rule_anime_name(rule: dict) -> str:
+    """规则名里「（字幕组）」之前那部分就是番名。"""
+    return re.split(r"[（(]", rule.get("name") or "")[0].strip()
+
+
+def fallback_match(item: dict, rule: dict) -> bool:
+    """兜底匹配：其它条件照旧，只把「字幕组」这一条放开，
+    但**额外要求标题里出现完整的番名**。
+
+    没有这道保险就会出洋相：规则关键词只是「久留美」「暗部」这种两三个字，
+    一放宽字幕组，钢铁天使久留美、火影忍者卡卡西暗部篇全都会被当成命中。"""
+    relaxed = dict(rule)
+    relaxed["group"] = []
+    if not match_rule(item, relaxed):
+        return False
+
+    nt = _compact(item.get("title") or "")
+    name = rule_anime_name(rule)
+    if name and _compact(name) in nt:
+        return True
+    # 退一步：规则里那些够长的译名也算（够长 = 歧义小）
+    return any(len(a) >= 4 and _compact(a) in nt
+               for a in (rule.get("include_any") or []))
+
+
 def collect(cfg: dict) -> list[dict]:
     """跑一轮抓取，返回所有命中的条目（已标注规则）。"""
     s = cfg["settings"]
@@ -886,9 +985,19 @@ def collect(cfg: dict) -> list[dict]:
     matched: list[dict] = []
     for ri, rule in enumerate(rules):
         rid = rule_id(rule, ri)
+        primary = list(rule.get("group") or [])
+        # 兜底：指定字幕组没做这一集（或中途弃番）时，用别的组补上。
+        # 判定见 fallback_match() —— 必须标题里带完整番名，免得短关键词误伤别的番。
+        use_fallback = bool(primary) and rule.get("fallback_any_group", True)
+
         for it in all_items.values():
-            if not match_rule(it, rule):
+            if match_rule(it, rule):
+                fallback = False
+            elif use_fallback and fallback_match(it, rule):
+                fallback = True
+            else:
                 continue
+
             variant = extract_variant(it["title"])
             if skip_trad and is_traditional_only(variant):
                 continue                      # 只要繁体的版本直接丢掉
@@ -899,6 +1008,7 @@ def collect(cfg: dict) -> list[dict]:
             m["_variant"] = variant
             m["_rev"] = get_revision(it["title"])
             m["_seen"] = f"{m['_tier']}:{m['_rev']}"   # 存进 state 的格式
+            m["_fallback"] = fallback
             matched.append(m)
 
     # 同一条目可能被多条规则命中，去重
@@ -914,6 +1024,30 @@ def sort_key(m: dict):
     """越小越优先：先看字幕形式档位，再看得修订号高的（v2 优于 v1），最后看新的。"""
     return (m.get("_tier", 0), -m.get("_rev", 1),
             -(m["pub_dt"].timestamp() if m.get("pub_dt") else 0))
+
+
+def best_of(items: list[dict]) -> dict:
+    """同一集往往有几个版本。**优先用规则里指定字幕组的**，
+    只有当那个组没做这一集（或者不做了）时，才退回用兜底抓来的别的组。"""
+    primary = [i for i in items if not i.get("_fallback")]
+    pool = primary or items
+    pool.sort(key=sort_key)
+    return pool[0]
+
+
+def actual_group(item: dict) -> str:
+    """读出这一条实际是谁发的，用于兜底推送时说明来源。
+    优先取标题最前面那个【…】—— 那通常是发布组。"""
+    title = item.get("title") or ""
+    m = re.match(r"^\s*[\[【]([^\]】]{2,60})[\]】]", title)
+    if m and is_group_like(m.group(1)):
+        return m.group(1).strip()
+    author = (item.get("author") or "").strip()
+    if author and is_group_like(author):
+        return author
+    toks = [t for t in extract_group_tokens(title, author)
+            if "&" not in t and "＆" not in t]
+    return toks[0] if toks else ""
 
 
 # --------------------------------------------------------------------------
@@ -959,8 +1093,7 @@ def run_cycle(cfg: dict, state: dict, dry_run: bool = False) -> int:
             pushes = [(v[2], False) for v in per_rule.values()]
     else:
         for (rid, ep), items in groups.items():
-            items.sort(key=sort_key)
-            best = items[0]
+            best = best_of(items)
             prev = _seen_pair(state["episodes"].get(f"{rid}|{ep}"))
             # 两种情况值得打扰你：字幕形式更好了，或者这一集出了修正版（v2 及以后）
             if prev is not None and best["_tier"] >= prev[0] and best["_rev"] <= prev[1]:
@@ -990,8 +1123,7 @@ def run_cycle(cfg: dict, state: dict, dry_run: bool = False) -> int:
         # 记下「见过的最好档位:见过的最大修订号」，档位和修订号各自单调，不会因为
         # 后出的版本字幕形式更差就把记录冲低（否则会出现反复补推）
         for (rid, ep), items in groups.items():
-            items.sort(key=sort_key)
-            best = items[0]
+            best = best_of(items)
             key = f"{rid}|{ep}"
             prev = _seen_pair(state["episodes"].get(key))
             if prev is None:

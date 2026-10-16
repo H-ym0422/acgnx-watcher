@@ -41,7 +41,8 @@
         "简体",
         "简"
       ],
-      "note": ""
+      "note": "",
+      "fallback_any_group": true
     },
     {
       "id": "anbu-nekomoe",
@@ -64,7 +65,8 @@
         "简体",
         "简"
       ],
-      "note": ""
+      "note": "",
+      "fallback_any_group": true
     },
     {
       "id": "seitokai-nekomoe",
@@ -90,7 +92,8 @@
         "简体",
         "简"
       ],
-      "note": ""
+      "note": "",
+      "fallback_any_group": true
     },
     {
       "id": "r1792143744",
@@ -114,7 +117,8 @@
         "简体",
         "简"
       ],
-      "note": ""
+      "note": "",
+      "fallback_any_group": true
     },
     {
       "id": "r1792144749",
@@ -140,7 +144,8 @@
         "简体",
         "简"
       ],
-      "note": ""
+      "note": "",
+      "fallback_any_group": true
     }
   ]
 }

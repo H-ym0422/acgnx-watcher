@@ -37,58 +37,15 @@ import acgnx_watch as aw  # noqa: E402
 
 DEFAULT_PREFER = ["简日双语", "简繁日内封", "简日内嵌", "简体", "简"]
 
-# 看起来像字幕组名的方括号内容
-GROUP_HINT = re.compile(r"字幕组|字幕社|字幕|漢化|汉化|壓制|压制|发布组|發布組|Raws|屋|組$", re.I)
-BRACKET = re.compile(r"[\[【]([^\]】]{2,60})[\]】]")
-
-# 明确不像字幕组的：画质/封装标签
-RE_JUNK_TOKEN = re.compile(
-    r"1080p|720p|2160p|4K|8K|HEVC|AVC|AAC|FLAC|WebRip|WEB-?DL|BDRip|BDrip|"
-    r"内封|内嵌|內封|內嵌|双语|雙語|简繁|繁简|簡繁|繁體|简体|簡體|"
-    r"合集|招募|无修|無修|生肉|熟肉|字幕$",
-    re.I)
-# 转发/镜像站，不是真正的字幕组
-RE_MIRROR_TOKEN = re.compile(r"镜像|鏡像|搬运|搬運|MioBT|ANiTorrent|動漫花園|动漫花园", re.I)
-
-CJK = re.compile(r"[\u4e00-\u9fff]")
-
-
-def is_group_like(tok: str) -> bool:
-    t = tok.strip()
-    if not (2 <= len(t) <= 30):
-        return False
-    if " / " in t or "/" in t:          # 这是"番名 / 番名 / 罗马音"，不是组名
-        return False
-    if RE_JUNK_TOKEN.search(t):
-        return False
-    if RE_MIRROR_TOKEN.search(t):
-        return False
-    if re.fullmatch(r"[0-9.\sMBKGT]+", t, re.I):
-        return False
-    return True
-
-
-def extract_group_tokens(title: str, author: str) -> set[str]:
-    """从标题里挑出像字幕组名的片段，再并上 RSS 的 author 字段。"""
-    toks: set[str] = set()
-    for x in BRACKET.findall(title):
-        if GROUP_HINT.search(x):
-            toks.add(x.strip())
-    m = re.match(r"^\s*[\[【]([^\]】]{2,60})[\]】]", title)   # 标题开头那个通常是发布组
-    if m:
-        toks.add(m.group(1).strip())
-    if author:
-        toks.add(author.strip())
-
-    out: set[str] = set()
-    for t in toks:
-        if is_group_like(t):
-            out.add(t)
-        for part in re.split(r"[&＆]", t):                    # "A&B" 拆开，方便只挑一个
-            part = part.strip()
-            if is_group_like(part):
-                out.add(part)
-    return out
+# 字幕组名识别统一放在 acgnx_watch 里 —— 推送时要用它标注「本条实际来自哪个组」，
+# 两边各写一份容易改漏，这里只做转发。
+GROUP_HINT = aw.GROUP_HINT
+BRACKET = aw.BRACKET
+RE_JUNK_TOKEN = aw.RE_JUNK_TOKEN
+RE_MIRROR_TOKEN = aw.RE_MIRROR_TOKEN
+CJK = aw.CJK
+is_group_like = aw.is_group_like
+extract_group_tokens = aw.extract_group_tokens
 
 
 def extract_alias_names(title: str) -> list[str]:
@@ -194,7 +151,8 @@ def resolve_picks(term: str, picks: list[int]) -> list[str]:
 
 def pick(term: str, want_all_groups: bool, forced_groups: list[str],
          extra_aliases: list[str] | None = None,
-         auto_top: int = 0, pick_indexes: list[int] | None = None) -> dict | None:
+         auto_top: int = 0, pick_indexes: list[int] | None = None,
+         fallback: bool = True) -> dict | None:
     print(f"\n🔍 正在 ACGNX 搜索「{term}」...")
     items = search(term)
     if not items:
@@ -307,6 +265,9 @@ def pick(term: str, want_all_groups: bool, forced_groups: list[str],
         "exclude_any": [],
         "group": selected,
         "variant_prefer": list(DEFAULT_PREFER),
+        # 指定字幕组没做这一集（或中途弃番）时，允许用别的组补上。
+        # 不加这个的话，字幕组一停，后面就永远收不到了。
+        "fallback_any_group": bool(fallback),
         "note": "",
     }
 
@@ -358,12 +319,10 @@ def inspect_and_seed(rule: dict) -> list[tuple[str, dict]]:
         print("   （当前没有命中的条目 —— 正常，说明这部番最近没更新）")
         return []
 
-    # ---- ② 按集数从小到大排 ----
+    # ---- ② 按集数从小到大排；同一集优先用指定字幕组的 ----
     ordered: list[tuple[str, dict]] = []
     for ep in sorted(groups, key=ep_sort_key):
-        items = groups[ep]
-        items.sort(key=aw.sort_key)
-        ordered.append((ep, items[0]))
+        ordered.append((ep, aw.best_of(groups[ep])))
 
     print(f"   原始命中 {len(matched)} 条，归并成 {len(ordered)} 集（按集数从小到大）：")
     for ep, item in ordered:
@@ -588,6 +547,8 @@ def main() -> None:
     ap.add_argument("--list", action="store_true", help="列出已有规则")
     ap.add_argument("--render", action="store_true",
                     help=f"生成/刷新「{WATCHLIST_NAME}」并打印（手机上直接看这个文件）")
+    ap.add_argument("--no-fallback", action="store_true",
+                    help="只推指定字幕组；默认会用别的组补上他们没做的集数")
     ap.add_argument("--exists", metavar="关键词",
                     help="只检查这部番是不是已经在追了，在追就退出码 0、否则 1")
     ap.add_argument("--del", dest="delete", type=int, metavar="N", help="删除第 N 条规则")
@@ -688,7 +649,8 @@ def main() -> None:
 
     rule = pick(term, args.any_group, args.group, args.also,
                 auto_top=2 if args.auto_group else 0,
-                pick_indexes=pick_indexes)
+                pick_indexes=pick_indexes,
+                fallback=not args.no_fallback)
     if rule is None:
         if args.notify:
             s = aw.load_config()["settings"]
