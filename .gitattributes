@@ -1,0 +1,8 @@
+# 保持行尾可预测：脚本类用 LF，Windows 批处理用 CRLF
+* text=auto
+*.py   text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
+*.md   text eol=lf
+*.json text eol=lf
+*.bat  text eol=crlf

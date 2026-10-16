@@ -1,0 +1,70 @@
+name: ACGNX Watcher
+
+# 电脑关机也能跑：GitHub 的服务器每 5 分钟帮你检查一次 ACGNX。
+# 需要先在仓库 Settings -> Secrets and variables -> Actions 里加 Secret（填你用的那个就行）：
+#   PUSHPLUS_TOKEN       （推荐）推送到个人微信，免费 200 条/天
+#   SERVERCHAN_SENDKEY   （可选）推送到个人微信，免费 5 条/天
+#   ACGNX_WEBHOOK_URL    （可选）企业微信/钉钉/飞书 群机器人
+#   ACGNX_DINGTALK_SECRET（可选）钉钉「加签」密钥
+#   ACGNX_FEISHU_SECRET  （可选）飞书「签名校验」密钥
+# 然后把 state.json 提交进仓库 —— 它负责去重，别加到 .gitignore。
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+    inputs:
+      test:
+        description: "只发一条测试消息到手机（不检查新番）"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: acgnx-watcher
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 跑一轮检测
+        env:
+          PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
+          SERVERCHAN_SENDKEY: ${{ secrets.SERVERCHAN_SENDKEY }}
+          ACGNX_WEBHOOK_URL: ${{ secrets.ACGNX_WEBHOOK_URL }}
+          ACGNX_DINGTALK_SECRET: ${{ secrets.ACGNX_DINGTALK_SECRET }}
+          ACGNX_FEISHU_SECRET: ${{ secrets.ACGNX_FEISHU_SECRET }}
+        run: |
+          if [ "${{ inputs.test }}" = "true" ]; then
+            echo "== 手动测试模式：只发一条测试消息 =="
+            python acgnx_watch.py --test
+          else
+            python acgnx_watch.py --once
+          fi
+
+      - name: 回写去重状态
+        run: |
+          # 顺便刷新「我的番剧.md」，手机上直接打开就能看自己在追什么
+          python add_rule.py --render --no-push > /dev/null 2>&1 || true
+
+          git config user.name  "acgnx-bot"
+          git config user.email "acgnx-bot@users.noreply.github.com"
+          if [ -n "$(git status --porcelain state.json "我的番剧.md")" ]; then
+            git add state.json "我的番剧.md"
+            git commit -m "更新进度 [skip ci]"
+            git push
+            echo "state.json updated"
+          else
+            echo "state.json unchanged, nothing to commit"
+          fi

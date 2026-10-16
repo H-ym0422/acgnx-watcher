@@ -1,0 +1,583 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+加新番向导 —— 不用手改 config.json
+=========================================================================
+它会去 ACGNX 上搜你想看的番，把**实际在做这部番的字幕组**列给你选，
+再自动从标题里认出这部番的**所有译名**（中日罗马音），
+然后生成一条规则写进 config.json（原文件会备份成 config.json.bak）。
+
+用法：
+    python add_rule.py                      交互式
+    python add_rule.py 咒术回战              直接给番名
+    python add_rule.py 咒术回战 --any-group    任意字幕组都推
+    python add_rule.py 咒术回战 --group 喵萌奶茶屋
+    python add_rule.py 咒术回战 --also 咒术廻戦 --also Jujutsu  手动补译名
+    python add_rule.py --list               看现在配了哪些规则
+    python add_rule.py --del 3              删掉第 3 条规则
+=========================================================================
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import logging
+import os
+import re
+import shutil
+import subprocess
+import sys
+import time
+import urllib.parse
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+import acgnx_watch as aw  # noqa: E402
+
+DEFAULT_PREFER = ["简日双语", "简繁日内封", "简日内嵌", "简体", "简"]
+
+# 看起来像字幕组名的方括号内容
+GROUP_HINT = re.compile(r"字幕组|字幕社|字幕|漢化|汉化|壓制|压制|发布组|發布組|Raws|屋|組$", re.I)
+BRACKET = re.compile(r"[\[【]([^\]】]{2,60})[\]】]")
+
+# 明确不像字幕组的：画质/封装标签
+RE_JUNK_TOKEN = re.compile(
+    r"1080p|720p|2160p|4K|8K|HEVC|AVC|AAC|FLAC|WebRip|WEB-?DL|BDRip|BDrip|"
+    r"内封|内嵌|內封|內嵌|双语|雙語|简繁|繁简|簡繁|繁體|简体|簡體|"
+    r"合集|招募|无修|無修|生肉|熟肉|字幕$",
+    re.I)
+# 转发/镜像站，不是真正的字幕组
+RE_MIRROR_TOKEN = re.compile(r"镜像|鏡像|搬运|搬運|MioBT|ANiTorrent|動漫花園|动漫花园", re.I)
+
+CJK = re.compile(r"[\u4e00-\u9fff]")
+
+
+def is_group_like(tok: str) -> bool:
+    t = tok.strip()
+    if not (2 <= len(t) <= 30):
+        return False
+    if " / " in t or "/" in t:          # 这是"番名 / 番名 / 罗马音"，不是组名
+        return False
+    if RE_JUNK_TOKEN.search(t):
+        return False
+    if RE_MIRROR_TOKEN.search(t):
+        return False
+    if re.fullmatch(r"[0-9.\sMBKGT]+", t, re.I):
+        return False
+    return True
+
+
+def extract_group_tokens(title: str, author: str) -> set[str]:
+    """从标题里挑出像字幕组名的片段，再并上 RSS 的 author 字段。"""
+    toks: set[str] = set()
+    for x in BRACKET.findall(title):
+        if GROUP_HINT.search(x):
+            toks.add(x.strip())
+    m = re.match(r"^\s*[\[【]([^\]】]{2,60})[\]】]", title)   # 标题开头那个通常是发布组
+    if m:
+        toks.add(m.group(1).strip())
+    if author:
+        toks.add(author.strip())
+
+    out: set[str] = set()
+    for t in toks:
+        if is_group_like(t):
+            out.add(t)
+        for part in re.split(r"[&＆]", t):                    # "A&B" 拆开，方便只挑一个
+            part = part.strip()
+            if is_group_like(part):
+                out.add(part)
+    return out
+
+
+def extract_alias_names(title: str) -> list[str]:
+    """从标题里抽出这部番的各个译名，例如
+    '[喵萌奶茶屋] 药师少女的独语 / 药屋少女的呢喃 / Kusuriya no Hitorigoto - 50 [WebRip...'
+      -> ['药师少女的独语', '药屋少女的呢喃', 'Kusuriya no Hitorigoto']"""
+    t = title
+    t = re.sub(r"^\s*(?:[\[【][^\]】]*[\]】]\s*)+", "", t)   # 去掉开头的发布组标记
+    t = re.sub(r"★[^★]*★", " ", t)                         # 去掉 ★10月新番★
+    t = re.split(r"[\[\(（【]", t)[0]                        # 切到第一个集数/画质标记之前
+    t = re.sub(r"\s*[-–—]\s*\d{1,3}.*$", "", t)             # 去掉 "- 50"
+    t = re.sub(r"\s+", " ", t)
+
+    out: list[str] = []
+    for p in t.split("/"):
+        p = p.strip(" -–—·")
+        if 3 <= len(p) <= 60 and (CJK.search(p) or re.search(r"[A-Za-z]{4,}", p)):
+            out.append(p)
+    return out
+
+
+def search(term: str) -> list[dict]:
+    cfg = {"settings": {"request_timeout": 15, "retry": 2, "proxy": ""}, "rules": []}
+    base, _ = aw.pick_base(cfg)
+    if base is None:
+        print("❌ 所有镜像都连不上，检查一下网络。")
+        return []
+    path = "/topics/rss/rss.xml?keyword=" + urllib.parse.quote(term)
+    return aw.parse_feed(aw.http_get(base + path, timeout=15, retry=2) or "")
+
+
+def pick(term: str, want_all_groups: bool, forced_groups: list[str],
+         extra_aliases: list[str] | None = None,
+         auto_top: int = 0) -> dict | None:
+    print(f"\n🔍 正在 ACGNX 搜索「{term}」...")
+    items = search(term)
+    if not items:
+        print("⚠️  没搜到任何结果。可能是：")
+        print("    · 番名写法和站上不一致（试试日文原名、罗马音，或只取其中 2~4 个字）")
+        print("    · 站点这一轮恰好返回空（偶发，等一会儿重试）")
+        return None
+
+    ds = [i["pub_dt"] for i in items if i.get("pub_dt")]
+    span = f"，跨度 {min(ds):%Y-%m-%d} ~ {max(ds):%Y-%m-%d}" if ds else ""
+    print(f"✅ 命中 {len(items)} 条{span}")
+
+    # ---- 统计字幕组（按归一化去重，避免「字幕组/字幕組」算两家） ----
+    grp: dict[str, dict] = {}
+    for i in items:
+        for t in extract_group_tokens(i["title"], i["author"]):
+            key = aw.norm(t)
+            g = grp.setdefault(key, {"name": t, "n": 0, "last": None})
+            if len(t) < len(g["name"]):     # 存拼写更短的那个
+                g["name"] = t
+            g["n"] += 1
+            d = i.get("pub_dt")
+            if d and (g["last"] is None or d > g["last"]):
+                g["last"] = d
+
+    order = sorted(grp.values(), key=lambda g: (-g["n"], g["name"]))
+    if not order:
+        print("⚠️  没识别出任何字幕组名，可能是条目太少。")
+        return None
+
+    print("\n📺 在做这部番的字幕组：")
+    for idx, g in enumerate(order, 1):
+        last = f"{g['last']:%m-%d}" if g["last"] else "  -  "
+        print(f"   [{idx:>2}] {g['name']:<26} {g['n']:>3} 条   最近 {last}")
+
+    # ---- 选字幕组 ----
+    selected: list[str] = []
+    if forced_groups:
+        for f in forced_groups:
+            matched = [g["name"] for g in order if aw.norm(f) in aw.norm(g["name"])]
+            if matched:
+                selected.extend(matched)
+            else:
+                selected.append(f)
+                print(f"   ⚠️  列表里没有「{f}」，仍按你写的原样加入规则")
+    elif want_all_groups:
+        selected = []            # 空数组 = 任意字幕组
+    elif auto_top > 0:
+        # 无人值守模式：直接取发布最多的前 N 个组（通常就是主力字幕组）
+        selected = [g["name"] for g in order[:auto_top]]
+        print(f"\n🤖 自动选组（前 {auto_top} 个发布最多的）：{'、'.join(selected)}")
+    else:
+        print("\n要盯哪几个字幕组？（多选用逗号，如 1,3）")
+        print("   回车 = 全选      输入 any = 任何字幕组都推")
+        raw = input("   你的选择: ").strip()
+        if raw.lower() in ("any", "*", "任意"):
+            selected = []
+        elif raw == "":
+            selected = [g["name"] for g in order]
+        else:
+            for part in re.split(r"[,，\s]+", raw):
+                if part.isdigit() and 1 <= int(part) <= len(order):
+                    selected.append(order[int(part) - 1]["name"])
+            if not selected:
+                print("   ⚠️  没识别到有效选择，按全选处理")
+                selected = [g["name"] for g in order]
+
+    selected = list(dict.fromkeys(selected))
+
+    # ---- 自动认译名：只取"被选中字幕组"发的那些条目来统计 ----
+    pool = [i for i in items
+            if not selected or any(aw.norm(s) in aw.norm(i["title"]) or aw.norm(s) in aw.norm(i["author"])
+                                   for s in selected)]
+    if not pool:
+        pool = items
+
+    alias_count: dict[str, dict] = {}
+    for i in pool:
+        for a in extract_alias_names(i["title"]):
+            key = aw.norm(a)
+            e = alias_count.setdefault(key, {"name": a, "n": 0})
+            e["n"] += 1
+            if len(a) < len(e["name"]):
+                e["name"] = a
+
+    threshold = max(2, int(len(pool) * 0.3))
+    aliases = [e["name"] for e in alias_count.values() if e["n"] >= threshold]
+    aliases.sort(key=lambda a: -alias_count[aw.norm(a)]["n"])
+    aliases = list(dict.fromkeys([term] + (extra_aliases or []) + aliases))[:8]
+
+    nt = aw.norm(term)
+    hit = sum(1 for i in pool if any(aw.norm(a) in aw.norm(i["title"]) for a in aliases))
+    print(f"\n🏷️  自动认出的译名（共 {len(aliases)} 个，覆盖选中组 {hit}/{len(pool)} 条标题）：")
+    for a in aliases:
+        print(f"     · {a}")
+
+    return {
+        "id": f"r{int(time.time())}",
+        "name": f"{term}（{'任意字幕组' if not selected else '/'.join(selected[:2]) + ('等' if len(selected) > 2 else '')}）",
+        "enabled": True,
+        "keywords": [term],
+        "include_any": aliases,
+        "exclude_any": [],
+        "group": selected,
+        "variant_prefer": list(DEFAULT_PREFER),
+        "note": "",
+    }
+
+
+def append_rule(rule: dict) -> None:
+    with open(aw.CONFIG_PATH, "r", encoding="utf-8") as f:
+        cfg = json.load(f)
+    shutil.copyfile(aw.CONFIG_PATH, aw.CONFIG_PATH + ".bak")
+    cfg.setdefault("rules", []).append(rule)
+    with open(aw.CONFIG_PATH, "w", encoding="utf-8") as f:
+        json.dump(cfg, f, ensure_ascii=False, indent=2)
+    print(f"\n💾 已写入 {os.path.basename(aw.CONFIG_PATH)}（原文件备份为 config.json.bak）")
+
+
+def ep_sort_key(ep: str):
+    """把集数键排成「第1集 → 最新集」的自然顺序。
+    '01' -> (1,1)；'01-12' -> (1,12)；没有集数的排最后。"""
+    m = re.match(r"^(\d+)(?:-(\d+))?", ep or "")
+    if m:
+        a = int(m.group(1))
+        return (a, int(m.group(2) or a))
+    return (10 ** 6, 0)
+
+
+def inspect_and_seed(rule: dict) -> list[tuple[str, dict]]:
+    """抓一遍，做两件事：
+       ① 把这条规则当前命中的集数记进 state 当「已读」基线 ——
+          这样**之后只有新发布的集数才会提醒**；
+       ② 返回按「第1集 → 最新集」排好的 [(集数, 最优版本条目), ...]，
+          交给 notify_result 一次性推给用户。"""
+    print("\n🧪 抓取一遍，看看这条规则现在能命中什么 ...")
+    cfg = aw.load_config()
+    probe = dict(cfg)
+    probe["rules"] = [rule]
+    matched = aw.collect(probe)
+
+    # ---- ① 记基线 ----
+    groups: dict[str, list] = {}
+    for m in matched:
+        groups.setdefault(m.get("episode") or m["btih"], []).append(m)
+    st = aw.load_state()
+    for ep, items in groups.items():
+        items.sort(key=aw.sort_key)
+        st["episodes"].setdefault(f"{rule['id']}|{ep}", items[0]["_tier"])
+    st["initialized"] = True
+    aw.save_state(st)
+
+    if not matched:
+        print("   （当前没有命中的条目 —— 正常，说明这部番最近没更新）")
+        return []
+
+    # ---- ② 按集数从小到大排 ----
+    ordered: list[tuple[str, dict]] = []
+    for ep in sorted(groups, key=ep_sort_key):
+        items = groups[ep]
+        items.sort(key=aw.sort_key)
+        ordered.append((ep, items[0]))
+
+    print(f"   原始命中 {len(matched)} 条，归并成 {len(ordered)} 集（按集数从小到大）：")
+    for ep, item in ordered:
+        d = f"{item['pub_dt']:%m-%d}" if item.get("pub_dt") else "??"
+        title = (item["title"][:56] + "…") if len(item["title"]) > 56 else item["title"]
+        print(f"   [{ep:>8}] {d}  {title}")
+        print(f"              {item.get('magnet') or '（无磁力，见详情页）'}")
+
+    print(f"\n📌 这 {len(ordered)} 个集数已记为「已读」基线 ——")
+    print("   之后只有新发布的集数才会提醒。")
+    return ordered
+
+
+def notify_result(rule: dict, episodes: list[tuple[str, dict]],
+                  mode: str = "all") -> None:
+    """把加番结果推到手机。
+    mode: all = 把第1集到最新集的磁力全部列出（默认）
+          latest = 只推最新一集
+          none = 都不推，只记基线"""
+    cfg = aw.load_config()
+    s = cfg["settings"]
+    prefix = s.get("title_prefix") or "【新番速递】"
+    title = f"{prefix}已加入监听：{rule['name']}"[:120]
+
+    lines = [f"字幕组：{' / '.join(rule['group']) if rule['group'] else '任意字幕组'}"]
+    if rule.get("include_any"):
+        lines.append(f"标题需含：{'、'.join(rule['include_any'])}")
+
+    if not episodes:
+        lines.append("")
+        lines.append("现在还没搜到已发布的集数，之后出新集会提醒你。")
+        aw.send_notification(title, "\n".join(lines), s)
+        return
+
+    nums = [ep for ep, _ in episodes if ep and ep != "-"]
+
+    if mode == "none":
+        lines += ["", f"已经发布的共 {len(episodes)} 集（按设置不推送），之后出新集会提醒。"]
+
+    elif mode == "latest":
+        ep, item = episodes[-1]
+        lines += ["", f"最新一集（第 {ep} 集）：", item.get("magnet") or "（无磁力，见详情页）",
+                  "", f"（这部分共 {len(episodes)} 集，其余按设置未推送）"]
+
+    else:  # all
+        rng = f"第 {nums[0]} ~ {nums[-1]} 集" if nums else f"{len(episodes)} 集"
+        lines += ["", f"📺 {rng}的磁力（共 {len(episodes)} 条，按集数从小到大）：", ""]
+        for ep, item in episodes:
+            lines.append(f"[{ep}] {item.get('magnet') or '（无磁力，见详情页）'}")
+        lines += ["", "以后只推新发布的集数，不会再重复推这些。"]
+
+    aw.send_notification(title, "\n".join(lines), s)
+
+
+WATCHLIST_NAME = "我的番剧.md"
+
+
+def render_watchlist() -> str:
+    """把当前在追的番渲染成一份 Markdown 清单。返回正文。"""
+    cfg = aw.load_config()
+    st = aw.load_state()
+    rules = [r for r in cfg["rules"] if r.get("enabled", True)]
+    eps_map = st.get("episodes", {})
+
+    out = [
+        "# 我的追番列表",
+        "",
+        f"当前在追 {len(rules)} 部。这个文件有新集时自动刷新，不用手动改。",
+        "",
+        "| 番剧 | 字幕组 | 已记录到 |",
+        "| --- | --- | --- |",
+    ]
+    for r in rules:
+        rid = r.get("id") or ""
+        eps = sorted((k.split("|", 1)[1] for k in eps_map
+                      if k.startswith(rid + "|")), key=ep_sort_key)
+        latest = f"第 {eps[-1]} 集" if eps else "暂时没有"
+        grp = " / ".join(r.get("group") or []) or "任意字幕组"
+        # 规则名里已经带了字幕组，表格里只留番名部分
+        name = (r.get("name") or "?").split("（")[0]
+        out.append(f"| {name} | {grp} | {latest} |")
+
+    out += [
+        "",
+        "「已记录到」表示已经推送到第几集。之后每出一集新集都会提醒你。",
+        "",
+        "## 加番和删番",
+        "",
+        "在 Issues 里新开一个，标题写：",
+        "",
+        "```",
+        "加番 咒术回战",
+        "```",
+        "",
+        "正文可以填字幕组，比如 `绿茶字幕组`，多个用逗号隔开。不填就自动选最活跃的组。",
+        "不想要了就写 `删番 咒术回战`。提交后约 20 秒，机器人会在 Issue 里回复结果。",
+        "",
+        "## 再看一遍这份列表",
+        "",
+        "直接刷新本页；或者发一个标题为 `列表` 的 Issue。",
+    ]
+    return "\n".join(out) + "\n"
+
+
+def write_watchlist() -> str:
+    """写出「我的番剧.md」，返回文件路径。内容没变就不重写。"""
+    text = render_watchlist()
+    path = os.path.join(os.path.dirname(os.path.abspath(aw.CONFIG_PATH)), WATCHLIST_NAME)
+    old = ""
+    if os.path.exists(path):
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                old = f.read()
+        except Exception:  # noqa: BLE001
+            old = ""
+    if old != text:
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(text)
+        return path
+    return path
+
+
+# --------------------------------------------------------------------------
+# 如果当前目录是个带 remote 的 git 仓库（云端版），顺手提交并推送
+# --------------------------------------------------------------------------
+def _git(root: str, *args: str):
+    return subprocess.run(["git", "-C", root, *args], capture_output=True, text=True)
+
+
+def maybe_push(term: str, do_push: bool) -> None:
+    root = os.path.dirname(os.path.abspath(__file__))
+    if not do_push:
+        return
+    if _git(root, "rev-parse", "--show-toplevel").returncode != 0:
+        return                                    # 不是 git 仓库，跳过，静默
+    if not _git(root, "remote").stdout.strip():
+        print("\nℹ️  这个目录是个 git 仓库但还没配远程地址，")
+        print("    等 `push_to_github.bat` 推过一次之后，以后加番就会自动同步了。")
+        return
+
+    changed = [f for f in ("config.json", "state.json", WATCHLIST_NAME)
+               if _git(root, "status", "--porcelain", "--", f).stdout.strip()]
+    if not changed:
+        print("\nℹ️  配置没有变化，不需要推送。")
+        return
+
+    if input("\n🚀 顺便提交并推送到 GitHub，让云端 5 分钟内生效？(Y/n) ").strip().lower() in ("n", "no"):
+        print("   已跳过。记得自己 git push，否则云端不会更新。")
+        return
+
+    r = _git(root, "add", *changed)
+    if r.returncode != 0:
+        print(f"   ✗ git add 失败：{(r.stderr or r.stdout).strip()[:200]}")
+        return
+    r = _git(root, "commit", "-m", f"add rule: {term}")
+    if r.returncode != 0:
+        print(f"   ✗ git commit 失败：{(r.stderr or r.stdout).strip()[:200]}")
+        return
+    r = _git(root, "push")
+    if r.returncode == 0:
+        print("   ✅ 已推送，云端下一次运行（最长 5 分钟）就会开始盯这部番。")
+    else:
+        err = (r.stderr or r.stdout).strip()
+        print(f"   ✗ git push 失败：{err[:300]}")
+        print("     常见原因：还没登录 GitHub / 没建远程仓库。")
+        print("     修好后在目录里手动执行：git push")
+
+
+def main() -> None:
+    aw.setup_stdout()
+    # 让 acgnx_watch 里的推送日志（成功/失败）能显示出来，否则出问题看不见
+    logging.basicConfig(level=logging.INFO,
+                        format="[%(levelname)s] %(message)s")
+
+    ap = argparse.ArgumentParser(description="ACGNX 监听器 —— 加新番向导")
+    ap.add_argument("term", nargs="?", help="番名（越有辨识度越好）")
+    ap.add_argument("--group", action="append", default=[], help="限定字幕组，可重复")
+    ap.add_argument("--also", action="append", default=[], help="手动补充番名的其它写法")
+    ap.add_argument("--any-group", action="store_true", help="任意字幕组都推")
+    ap.add_argument("--auto-group", action="store_true",
+                    help="不问，自动选发布最多的前 2 个字幕组（无人值守用）")
+    ap.add_argument("--notify", action="store_true",
+                    help="把加番结果推到手机（云端用，含最新一集磁力）")
+    ap.add_argument("--backfill", choices=["all", "latest", "none"], default="all",
+                    help="加番时把已发布的集数推到什么程度："
+                         "all=第1集到最新集全部给你（默认）；latest=只给最新一集；none=都不推")
+    ap.add_argument("--list", action="store_true", help="列出已有规则")
+    ap.add_argument("--render", action="store_true",
+                    help=f"生成/刷新「{WATCHLIST_NAME}」并打印（手机上直接看这个文件）")
+    ap.add_argument("--del", dest="delete", type=int, metavar="N", help="删除第 N 条规则")
+    ap.add_argument("--del-name", metavar="关键词",
+                    help="删除名字里包含该关键词的规则（手机上传个词就能删，不用记序号）")
+    ap.add_argument("--yes", action="store_true", help="跳过确认直接写入")
+    ap.add_argument("--no-push", action="store_true", help="就算在 git 仓库里也不自动推送")
+    args = ap.parse_args()
+
+    if args.list:
+        cfg = aw.load_config()
+        st = aw.load_state()
+        rules = [r for r in cfg["rules"] if r.get("enabled", True)]
+        print(f"\n当前在追 {len(rules)} 部：\n" + "-" * 70)
+        for i, r in enumerate(rules, 1):
+            rid = r.get("id") or ""
+            eps = sorted((k.split("|", 1)[1] for k in st.get("episodes", {})
+                          if k.startswith(rid + "|")), key=ep_sort_key)
+            done = f"已记录到第 {eps[-1]} 集（共 {len(eps)} 集）" if eps else "还没记录"
+            print(f"[{i}] {r.get('name', '?')}")
+            print(f"    字幕组={r.get('group') or '任意'}  关键词={r.get('keywords')}  {done}")
+        print("-" * 70)
+        print(f"（完整清单：跑 --render，或看仓库里的「{WATCHLIST_NAME}」）")
+        return
+
+    if args.render:
+        text = render_watchlist()
+        path = write_watchlist()
+        print(text, end="")          # stdout 只放纯 Markdown，方便被别的脚本直接引用
+        log.info("清单已写入 %s", path)
+        maybe_push("watchlist", not args.no_push)
+        return
+
+    if args.del_name:
+        with open(aw.CONFIG_PATH, "r", encoding="utf-8") as f:
+            cfg = json.load(f)
+        rules = cfg.get("rules", [])
+        hit = [i for i, r in enumerate(rules) if args.del_name in (r.get("name") or "")]
+        if not hit:
+            print(f"没找到名字包含「{args.del_name}」的规则。当前规则：")
+            for i, r in enumerate(rules, 1):
+                print(f"  [{i}] {r.get('name')}")
+            return
+        shutil.copyfile(aw.CONFIG_PATH, aw.CONFIG_PATH + ".bak")
+        for i in reversed(hit):
+            print("已删除：", rules[i].get("name"))
+            rules.pop(i)
+        with open(aw.CONFIG_PATH, "w", encoding="utf-8") as f:
+            json.dump(cfg, f, ensure_ascii=False, indent=2)
+        write_watchlist()
+        maybe_push(args.del_name, not args.no_push)
+        print(f"\n✅ 删掉 {len(hit)} 条规则。")
+        return
+
+    if args.delete:
+        with open(aw.CONFIG_PATH, "r", encoding="utf-8") as f:
+            cfg = json.load(f)
+        rules = cfg.get("rules", [])
+        if not (1 <= args.delete <= len(rules)):
+            print("序号超出范围。")
+            return
+        gone = rules.pop(args.delete - 1)
+        shutil.copyfile(aw.CONFIG_PATH, aw.CONFIG_PATH + ".bak")
+        with open(aw.CONFIG_PATH, "w", encoding="utf-8") as f:
+            json.dump(cfg, f, ensure_ascii=False, indent=2)
+        print(f"已删除规则：{gone.get('name')}")
+        write_watchlist()
+        maybe_push(gone.get("name") or "rule", not args.no_push)
+        return
+
+    term = args.term or input("想看哪部番？（输番名里最有辨识度的 2~4 个字）\n> ").strip()
+    if not term:
+        print("没输入番名，退出。")
+        return
+
+    rule = pick(term, args.any_group, args.group, args.also,
+                auto_top=2 if args.auto_group else 0)
+    if rule is None:
+        if args.notify:
+            s = aw.load_config()["settings"]
+            aw.send_notification(
+                f"{s.get('title_prefix') or '【新番速递】'}加番失败：{term}"[:120],
+                "没在 ACGNX 搜到这部番。\n\n"
+                "可能的原因：\n"
+                "· 番名写法跟站上不一致 —— 试试日文原名、罗马音，或只取其中 2~4 个字\n"
+                "· 站点这一轮恰好返回空结果（偶发，过几分钟重跑一次即可）",
+                s)
+        return
+
+    print("\n即将加入的规则：")
+    print(json.dumps(rule, ensure_ascii=False, indent=2))
+
+    if not args.yes:
+        if input("\n确认写入 config.json？(y/N) ").strip().lower() not in ("y", "yes"):
+            print("已取消。")
+            return
+
+    append_rule(rule)
+    episodes = inspect_and_seed(rule)
+    write_watchlist()
+    if args.notify:
+        notify_result(rule, episodes, args.backfill)
+    maybe_push(term, not args.no_push)
+
+    print("\n🎉 完成。想微调就编辑 config.json 里这条规则（字段含义见 README.md）。")
+
+
+if __name__ == "__main__":
+    main()

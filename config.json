@@ -1,0 +1,95 @@
+{
+  "settings": {
+    "interval_minutes": 5,
+    "push_channel": "webhook",
+    "pushplus_token": "",
+    "serverchan_sendkey": "",
+    "webhook_url": "",
+    "dingtalk_secret": "",
+    "dingtalk_keyword": "新番",
+    "feishu_secret": "",
+    "title_prefix": "【新番速递】",
+    "first_run_mode": "latest",
+    "push_min_interval_seconds": 13,
+    "request_timeout": 15,
+    "retry": 2,
+    "proxy": "",
+    "poll_jitter_seconds": 20,
+    "watch_global_feed": true
+  },
+  "rules": [
+    {
+      "id": "kurumi-lvcha",
+      "name": "FX战士久留美（绿茶字幕组）",
+      "enabled": true,
+      "keywords": [
+        "久留美"
+      ],
+      "include_any": [
+        "久留美"
+      ],
+      "exclude_any": [],
+      "group": [
+        "绿茶字幕组",
+        "绿茶发布机"
+      ],
+      "variant_prefer": [
+        "简繁日内封",
+        "简日内嵌",
+        "简日双语",
+        "简体",
+        "简"
+      ],
+      "note": ""
+    },
+    {
+      "id": "anbu-nekomoe",
+      "name": "某暗部的少女共栖（喵萌奶茶屋）",
+      "enabled": true,
+      "keywords": [
+        "暗部"
+      ],
+      "include_any": [
+        "暗部"
+      ],
+      "exclude_any": [],
+      "group": [
+        "喵萌奶茶屋",
+        "nekomoekissaten"
+      ],
+      "variant_prefer": [
+        "简日双语",
+        "简繁日内封",
+        "简体",
+        "简"
+      ],
+      "note": ""
+    },
+    {
+      "id": "seitokai-nekomoe",
+      "name": "学生会有洞（喵萌奶茶屋）",
+      "enabled": true,
+      "keywords": [
+        "Seitokai",
+        "学生会"
+      ],
+      "include_any": [
+        "学生会有洞",
+        "也有洞",
+        "seitokainimoana"
+      ],
+      "exclude_any": [],
+      "group": [
+        "喵萌奶茶屋",
+        "nekomoekissaten"
+      ],
+      "variant_prefer": [
+        "简日双语",
+        "简繁日内封",
+        "简体",
+        "简"
+      ],
+      "note": ""
+    }
+  ]
+}
