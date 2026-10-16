@@ -165,6 +165,7 @@ jobs:
               else
                 ARGS=("$KW" --yes --no-push --notify --backfill all)
                 [ -n "$SEA" ] && ARGS+=(--season "$SEA")
+                NG=0
                 if [[ "$PICK" == "任意" || "$PICK" == "any" || "$PICK" == "*" ]]; then
                   ARGS+=(--any-group)
                 elif [[ "$PICK" =~ ^[0-9]+([,，、[:space:]]+[0-9]+)*$ ]]; then
@@ -172,14 +173,26 @@ jobs:
                 elif [ -z "$PICK" ]; then
                   ARGS+=(--auto-group)
                 else
-                  IFS=',' read -ra G <<< "$PICK"
-                  for g in "${G[@]}"; do
-                    g="$(trim "$g")"
-                    [ -n "$g" ] && ARGS+=(--group "$g")
-                  done
-                  [ ${#ARGS[@]} -le 6 ] && ARGS+=(--auto-group)
+                  # 当组名处理。但先拿清单核一遍 —— 不然随便回一句话就会被当成
+                  # 字幕组过滤条件写进规则，最后什么都推不出来。
+                  SURVEY="$(python add_rule.py --survey "$KW" 2>&1 || true)"
+                  if printf '%s\n' "$SURVEY" | grep -qF -- "$PICK"; then
+                    IFS=',' read -ra G <<< "$PICK"
+                    for g in "${G[@]}"; do
+                      g="$(trim "$g")"
+                      if [ -n "$g" ]; then ARGS+=(--group "$g"); NG=$((NG+1)); fi
+                    done
+                  else
+                    STEP=badpick
+                    OUT="没认出「$PICK」是哪个字幕组，所以**没有加**。当前清单：
+$SURVEY"
+                  fi
                 fi
-                OUT="$(python add_rule.py "${ARGS[@]}" 2>&1 || true)"
+                if [ "${STEP}" = "done" ]; then
+                  [ "$NG" -eq 0 ] && [[ "$PICK" != "任意" && "$PICK" != "any" && "$PICK" != "*" && -n "$PICK" ]] \
+                    && ARGS+=(--auto-group)
+                  OUT="$(python add_rule.py "${ARGS[@]}" 2>&1 || true)"
+                fi
               fi
               ;;
           esac
@@ -230,6 +243,8 @@ jobs:
               tail = '**看清楚后在下面回复序号或组名，我再真正加上。**';
             } else if (step === 'dup') {
               tail = '';
+            } else if (step === 'badpick') {
+              tail = '**回复序号（如 `2` 或 `1,3`）或者清单里出现过的组名，我才加。**';
             } else if (step === 'list') {
               tail = '上面就是你当前在追的全部番剧。';
             } else {

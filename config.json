@@ -121,19 +121,18 @@
       "fallback_any_group": true
     },
     {
-      "id": "r1792149348",
-      "name": "尼古喵喵（**清单更新了一版 —— 现在每个字幕组都标了覆盖到第几集，方便你判断完不完整。**）",
+      "id": "r1792150224",
+      "name": "尼古喵喵（LoliHouse）",
       "enabled": true,
       "keywords": [
         "尼古喵喵"
       ],
       "include_any": [
-        "尼古喵喵",
-        "Yanineko"
+        "尼古喵喵"
       ],
       "exclude_any": [],
       "group": [
-        "**清单更新了一版 —— 现在每个字幕组都标了覆盖到第几集，方便你判断完不完整。**"
+        "LoliHouse"
       ],
       "variant_prefer": [
         "简日双语",

@@ -35,6 +35,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import acgnx_watch as aw  # noqa: E402
 
+log = logging.getLogger("add_rule")
+
 DEFAULT_PREFER = ["简日双语", "简繁日内封", "简日内嵌", "简体", "简"]
 
 # 字幕组名识别统一放在 acgnx_watch 里 —— 推送时要用它标注「本条实际来自哪个组」，

@@ -341,6 +341,7 @@ EP_PATTERNS = [
     re.compile(r"[-–—]\s*(\d{1,3})(?:v\d)?\s*(?:[\[\(（]|$)"),  # - 03 [
     re.compile(r"\bS\d{1,2}E(\d{1,2})\b", re.I),             # S01E03
     re.compile(r"第\s*(\d{1,3})\s*[话話集話]"),                 # 第12集 / 第12话
+    re.compile(r"(?<![a-z])ep?\.?\s*(\d{1,3})(?![0-9])", re.I),  # EP10 / E10
 ]
 # 合集的其它常见写法
 EP_RANGE_WORD = re.compile(r"(?:Vol\.?\s*)?(\d{1,3})\s*[-~～]\s*(\d{1,3})\s*[话話集]")
@@ -363,7 +364,8 @@ def extract_episode(title: str) -> str:
     if m:
         return f"01-{int(m.group(1)):02d}"
 
-    for pat in (EP_PATTERNS[0], EP_PATTERNS[2], EP_PATTERNS[3], EP_PATTERNS[4]):
+    for pat in (EP_PATTERNS[0], EP_PATTERNS[2], EP_PATTERNS[3],
+                EP_PATTERNS[4], EP_PATTERNS[5]):
         m = pat.search(title)
         if m:
             return f"{int(m.group(1)):02d}"
