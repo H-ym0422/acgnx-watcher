@@ -362,7 +362,7 @@ def ep_sort_key(ep: str):
 
 def inspect_and_seed(rule: dict) -> list[tuple[str, dict]]:
     """抓一遍，做两件事：
-       ① 把这条规则当前命中的集数记进 state 当「已读」基线 ——
+       ① 把这条规则当前命中的集数记进 state 当「已记录」基线 ——
           这样**之后只有新发布的集数才会提醒**；
        ② 返回按「第1集 → 最新集」排好的 [(集数, 最优版本条目), ...]，
           交给 notify_result 一次性推给用户。"""
@@ -400,7 +400,7 @@ def inspect_and_seed(rule: dict) -> list[tuple[str, dict]]:
         print(f"   [{ep:>8}] {d}  {title}")
         print(f"              {item.get('magnet') or '（无磁力，见详情页）'}")
 
-    print(f"\n📌 这 {len(ordered)} 个集数已记为「已读」基线 ——")
+    print(f"\n📌 这 {len(ordered)} 个集数已记为基线 ——")
     print("   之后只有新发布的集数才会提醒。")
     return ordered
 
