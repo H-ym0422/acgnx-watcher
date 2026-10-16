@@ -1,23 +1,28 @@
 name: 加番
 
-# 手机也能用：GitHub App / 手机浏览器 -> 仓库 Actions -> 加番 -> Run workflow
-# 输入番名 -> 云端自动搜索、认译名、选字幕组、写规则、推代码
-# -> 然后飞书收到「已加入监听 XXX」+ 最新一集的磁力
+# 电脑上用的入口：仓库 -> Actions -> 加番 -> Run workflow
+#
+# 两种走法：
+#   1. 填了「字幕组」或勾了「任意字幕组」-> 直接加，一步到位
+#   2. 什么都没填 -> 不替你瞎选，而是自动开一个标题为「加番 XXX」的 Issue，
+#      在那条 Issue 里列出所有在做这部番的字幕组和各自的字幕形式，
+#      你在 Issue 里回复序号（或组名）才真正加。
+#      （跟「发 Issue 加番」是同一条流程）
 
 on:
   workflow_dispatch:
     inputs:
       anime:
-        description: "番名（填 2~4 个最有辨识度的字，例如：咒术回战）"
+        description: "番名（2~4 个最有辨识度的字，例如：咒术回战）"
         required: true
         type: string
       group:
-        description: "字幕组（多个用逗号分隔；留空 = 自动选发布最多的前 2 个）"
+        description: "字幕组（多个用逗号分隔）。留空 = 不替你选，改成开 Issue 让你挑"
         required: false
         type: string
         default: ""
       any_group:
-        description: "任意字幕组都推（勾上就忽略上面的字幕组）"
+        description: "任意字幕组都推（勾上就忽略上面的字幕组，直接加）"
         required: false
         type: boolean
         default: false
@@ -33,6 +38,7 @@ on:
 
 permissions:
   contents: write
+  issues: write
 
 concurrency:
   group: acgnx-add-rule
@@ -50,45 +56,53 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: 加规则
+      - name: 判断走哪条路
+        id: decide
         env:
+          ANIME: ${{ inputs.anime }}
+          GROUP: ${{ inputs.group }}
+          ANYGROUP: ${{ inputs.any_group }}
+        run: |
+          GRP_CLEAN="$(printf '%s' "$GROUP" | tr -d '[:space:]')"
+          echo "番名      : $ANIME"
+          echo "字幕组    : ${GRP_CLEAN:-（留空）}"
+          echo "任意字幕组: $ANYGROUP"
+          if [ "$ANYGROUP" = "true" ] || [ -n "$GRP_CLEAN" ]; then
+            echo "path=direct" >> "$GITHUB_OUTPUT"
+            echo "-- 已指定字幕组，直接加"
+          else
+            echo "path=ask" >> "$GITHUB_OUTPUT"
+            echo "-- 没指定字幕组，改成开一条 Issue 让你挑"
+          fi
+
+      - name: 加规则并推送
+        if: steps.decide.outputs.path == 'direct'
+        env:
+          ANIME: ${{ inputs.anime }}
+          GROUP: ${{ inputs.group }}
+          ANYGROUP: ${{ inputs.any_group }}
+          BACKFILL: ${{ inputs.backfill }}
           ACGNX_WEBHOOK_URL: ${{ secrets.ACGNX_WEBHOOK_URL }}
           ACGNX_DINGTALK_SECRET: ${{ secrets.ACGNX_DINGTALK_SECRET }}
           ACGNX_FEISHU_SECRET: ${{ secrets.ACGNX_FEISHU_SECRET }}
           PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
           SERVERCHAN_SENDKEY: ${{ secrets.SERVERCHAN_SENDKEY }}
-          ANIME: ${{ inputs.anime }}
-          GROUP: ${{ inputs.group }}
-          ANYGROUP: ${{ inputs.any_group }}
-          BACKFILL: ${{ inputs.backfill }}
         run: |
           set -e
-          echo "番名  : $ANIME"
-          echo "字幕组: ${GROUP:-（自动选）}"
-          echo "任意组: $ANYGROUP"
           echo "推送范围: ${BACKFILL:-all}"
           echo "----------------------------------------"
-
           ARGS=("$ANIME" --yes --no-push --notify --backfill "${BACKFILL:-all}")
-
           if [ "$ANYGROUP" = "true" ]; then
             ARGS+=(--any-group)
-          elif [ -n "$GROUP" ]; then
+          else
             IFS=',' read -ra G <<< "$GROUP"
             for g in "${G[@]}"; do
-              g="$(echo "$g" | xargs)"          # 去掉两端空格
+              g="$(printf '%s' "$g" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
               [ -n "$g" ] && ARGS+=(--group "$g")
             done
-          else
-            ARGS+=(--auto-group)
           fi
-
           python add_rule.py "${ARGS[@]}"
 
-      - name: 提交并推送
-        env:
-          ANIME: ${{ inputs.anime }}
-        run: |
           git config user.name  "acgnx-bot"
           git config user.email "acgnx-bot@users.noreply.github.com"
           if [ -n "$(git status --porcelain config.json state.json "我的番剧.md")" ]; then
@@ -99,3 +113,34 @@ jobs:
           else
             echo "没有变化（这部番可能没搜到）"
           fi
+
+      - name: 开一条 Issue 让用户挑字幕组
+        if: steps.decide.outputs.path == 'ask'
+        env:
+          ANIME: ${{ inputs.anime }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const anime = (process.env.ANIME || '').trim();
+            const { data: issue } = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `加番 ${anime}`,
+              body: [
+                '这条 Issue 是 Actions 页面的「加番」入口自动开的 ——',
+                '因为那里没有填字幕组。',
+                '',
+                '马上会有机器人回复一份「有哪些字幕组在做、各自是什么字幕形式」的清单，',
+                '在下面回复序号或者组名就加上了。'
+              ].join('\n')
+            });
+            console.log(`已创建 Issue #${issue.number} -> ${issue.html_url}`);
+            await core.summary
+              .addHeading('已交给你挑字幕组', 3)
+              .addRaw('没有指定字幕组，所以没有替你瞎选。')
+              .addEOL()
+              .addRaw(`已开 Issue **#${issue.number}**：${issue.html_url}`)
+              .addEOL()
+              .addRaw('打开它就能看到清单，回复序号即可。')
+              .write();
+            core.notice(`已创建 Issue #${issue.number}：${issue.html_url}`);
