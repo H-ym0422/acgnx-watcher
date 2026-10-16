@@ -166,7 +166,7 @@ GitHub Actions 对公开仓库不限分钟数，所以这个方案是零成本�
 | `config.json` | 监控规则。密钥字段是空的，走仓库 Secrets |
 | `state.json` | 去重记录，**必须提交进仓库**，删掉会导致历史集数重推 |
 | `我的番剧.md` | 自动生成的追番清单 |
-| `.github/workflows/acgnx.yml` | 每 5 分钟的定时检查 |
+|  `.github/workflows/watch.yml` | 每 5 分钟的定时检查 |
 | `.github/workflows/add-rule.yml` | Actions 页面手动加番 |
 | `.github/workflows/issue-rule.yml` | 发 Issue 加番 / 删番 / 查列表 |
 
