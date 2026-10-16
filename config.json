@@ -119,33 +119,6 @@
       ],
       "note": "",
       "fallback_any_group": true
-    },
-    {
-      "id": "r1792144749",
-      "name": "碧蓝之海（绿茶发布机/绿茶字幕组）",
-      "enabled": true,
-      "keywords": [
-        "碧蓝之海"
-      ],
-      "include_any": [
-        "碧蓝之海",
-        "碧蓝之海 第三季",
-        "Grand Blue S3"
-      ],
-      "exclude_any": [],
-      "group": [
-        "绿茶发布机",
-        "绿茶字幕组"
-      ],
-      "variant_prefer": [
-        "简日双语",
-        "简繁日内封",
-        "简日内嵌",
-        "简体",
-        "简"
-      ],
-      "note": "",
-      "fallback_any_group": true
     }
   ]
 }
