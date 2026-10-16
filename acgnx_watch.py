@@ -1441,11 +1441,26 @@ def main() -> None:
     if args.test:
         s = cfg["settings"]
         chans = available_channels(s)
-        title = f"{s.get('title_prefix') or '【新番速递】'}这是一条测试消息"
-        body = ("如果你在微信上看到它，说明推送通路已经打通 ✅\n"
-                f"已配置的渠道：{'、'.join(CHANNEL_LABEL[c] for c in chans) if chans else '（一个都没配）'}\n"
-                f"强制指定：{s.get('push_channel')}\n"
-                f"时间：{datetime.now(TZ8):%Y-%m-%d %H:%M:%S}")
+        title = f"{s.get('title_prefix') or '【新番速递】'}推送通路正常（这是一条演示）"
+        # 直接用真实推送的排版函数拼一条样例，这样看到的就是将来真正收到的样子
+        demo = {
+            "title": "[喵萌奶茶屋] 学生会也有洞！ [03][WebRip 1080p HEVC AAC][简日内嵌]",
+            "author": "喵萌奶茶屋", "_variant": "简日内嵌", "_rev": 1,
+            "episode": "03", "size": "1.21 GB", "magnet": "magnet:?xt=urn:btih:888df506fbd9db6b32e5d332718b561759ab01a1",
+            "link": "https://share.acgnx.cc/announce/888df506fbd9db6b32e5d332718b561759ab01a1",
+            "_fallback": False,
+        }
+        _, demo_body = build_push_content(demo, {
+            "name": "学生会有洞（喵萌奶茶屋）",
+            "group": ["喵萌奶茶屋", "nekomoekissaten"],
+        }, "")
+        body = ("👇 下面就是将来真正推送时的样子（磁力是假的，别下）：\n\n"
+                + demo_body
+                + "\n\n────────────────────\n"
+                + f"已配置的渠道：{'、'.join(CHANNEL_LABEL[c] for c in chans) if chans else '（一个都没配）'}\n"
+                + f"强制指定：{s.get('push_channel')}\n"
+                + "以后有新集，会用一模一样的格式推给你。\n"
+                + "（看完后发个标题是「已读」的 Issue，就不会重复提醒。）")
         ok = send_notification(title, body, s)
         print("测试消息发送" + ("成功 ✅" if ok else "失败 ❌（检查 config.json 里的 token / SendKey）"))
         return
