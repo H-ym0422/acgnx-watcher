@@ -26,6 +26,11 @@ on:
         required: false
         type: boolean
         default: false
+      season:
+        description: "第几季（多季番只想看某一季时填数字，比如 1）。留空 = 不限季"
+        required: false
+        type: string
+        default: ""
       backfill:
         description: "加完后推哪些 → all=第1集到最新集全给（默认）；latest=只给最新一集；none=都不推"
         required: false
@@ -62,11 +67,15 @@ jobs:
           ANIME: ${{ inputs.anime }}
           GROUP: ${{ inputs.group }}
           ANYGROUP: ${{ inputs.any_group }}
+          SEA: ${{ inputs.season }}
         run: |
           GRP_CLEAN="$(printf '%s' "$GROUP" | tr -d '[:space:]')"
+          SEA_CLEAN="$(printf '%s' "$SEA" | tr -d '[:space:]')"
+          case "$SEA_CLEAN" in ''|*[!0-9]*) SEA_CLEAN="" ;; esac
           echo "番名      : $ANIME"
           echo "字幕组    : ${GRP_CLEAN:-（留空）}"
           echo "任意字幕组: $ANYGROUP"
+          echo "第几季    : ${SEA_CLEAN:-（不限）}"
           if [ "$ANYGROUP" = "true" ] || [ -n "$GRP_CLEAN" ]; then
             echo "path=direct" >> "$GITHUB_OUTPUT"
             echo "-- 已指定字幕组，直接加"
@@ -74,6 +83,7 @@ jobs:
             echo "path=ask" >> "$GITHUB_OUTPUT"
             echo "-- 没指定字幕组，改成开一条 Issue 让你挑"
           fi
+          echo "sea=$SEA_CLEAN" >> "$GITHUB_OUTPUT"
 
       - name: 加规则并推送
         if: steps.decide.outputs.path == 'direct'
@@ -82,6 +92,7 @@ jobs:
           GROUP: ${{ inputs.group }}
           ANYGROUP: ${{ inputs.any_group }}
           BACKFILL: ${{ inputs.backfill }}
+          SEA: ${{ steps.decide.outputs.sea }}
           ACGNX_WEBHOOK_URL: ${{ secrets.ACGNX_WEBHOOK_URL }}
           ACGNX_DINGTALK_SECRET: ${{ secrets.ACGNX_DINGTALK_SECRET }}
           ACGNX_FEISHU_SECRET: ${{ secrets.ACGNX_FEISHU_SECRET }}
@@ -92,6 +103,7 @@ jobs:
           echo "推送范围: ${BACKFILL:-all}"
           echo "----------------------------------------"
           ARGS=("$ANIME" --yes --no-push --notify --backfill "${BACKFILL:-all}")
+          [ -n "$SEA" ] && ARGS+=(--season "$SEA")
           if [ "$ANYGROUP" = "true" ]; then
             ARGS+=(--any-group)
           else
@@ -119,13 +131,18 @@ jobs:
         if: steps.decide.outputs.path == 'ask'
         env:
           ANIME: ${{ inputs.anime }}
+          SEA: ${{ steps.decide.outputs.sea }}
         run: |
-          OUT="$(python add_rule.py --survey "$ANIME" 2>&1 || true)"
+          if [ -n "$SEA" ]; then
+            OUT="$(python add_rule.py --survey "$ANIME" --season "$SEA" 2>&1 || true)"
+          else
+            OUT="$(python add_rule.py --survey "$ANIME" 2>&1 || true)"
+          fi
           [ -z "$OUT" ] && OUT="没搜到「$ANIME」。试试日文原名、罗马音，或者只取其中 2~4 个字。"
           echo "$OUT"
           {
             echo "SURVEY<<ACGNX_EOF"
-            printf '%s\n' "$OUT" | tail -c 2500
+            printf '%s\n' "$OUT" | tail -c 8000
             echo "ACGNX_EOF"
           } >> "$GITHUB_OUTPUT"
 
@@ -138,7 +155,7 @@ jobs:
         with:
           script: |
             const anime = (process.env.ANIME || '').trim();
-            const survey = (process.env.SURVEY || '(没有输出)').slice(0, 2500);
+            const survey = (process.env.SURVEY || '(没有输出)').slice(0, 8000);
 
             const { data: issue } = await github.rest.issues.create({
               owner: context.repo.owner,
