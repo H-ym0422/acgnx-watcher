@@ -16,7 +16,10 @@
     "proxy": "",
     "poll_jitter_seconds": 20,
     "watch_global_feed": true,
-    "skip_traditional_only": true
+    "skip_traditional_only": true,
+    "unread_remind_after_minutes": 360,
+    "unread_remind_every_minutes": 720,
+    "unread_max_nudges": 4
   },
   "rules": [
     {
