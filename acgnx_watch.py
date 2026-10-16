@@ -280,134 +280,11 @@ def load_state() -> dict:
                 st = json.load(f)
             st.setdefault("episodes", {})
             st.setdefault("initialized", False)
-            # 未读清单：key 跟 episodes 一样是「规则id|集数」，
-            # value = {"at": 推送时刻, "anime": 番名, "title": 标题, "nudge": 已催过几次}
-            st.setdefault("unread", {})
             st.pop("seen", None)      # 老版本留下的冗余字段，清掉（没被任何逻辑使用）
             return st
         except Exception as e:
             log.warning("状态文件损坏，已重建：%s", e)
-    return {"episodes": {}, "initialized": False, "unread": {}}
-
-
-def _now_iso() -> str:
-    return datetime.now(TZ8).isoformat(timespec="seconds")
-
-
-def _parse_iso(s: str) -> datetime | None:
-    try:
-        return datetime.fromisoformat(s)
-    except Exception:  # noqa: BLE001
-        return None
-
-
-def mark_unread(state: dict, item: dict, mid: str = "") -> None:
-    """推送成功后记进「未读」。key 与 episodes 一致，方便按番/按集清理。
-
-    mid 是飞书返回的 message_id —— 已读回执只会带 message_id，
-    Worker 收到回执后靠它反查这里、删掉对应项。别的渠道没有这个值，留空即可。"""
-    key = f"{item['_rid']}|{item.get('episode') or item['btih']}"
-    state.setdefault("unread", {})[key] = {
-        "at": _now_iso(),
-        "anime": (item.get("_rule") or {}).get("name", "?"),
-        "title": item.get("title", "")[:120],
-        "mid": mid or "",
-        "nudge": 0,
-        "last_nudge": "",
-    }
-
-
-def unread_list(state: dict) -> list[tuple[str, dict]]:
-    """按番名分组返回未读项：[(番名, [未读条目…]), …]"""
-    groups: dict[str, list] = {}
-    for key, v in (state.get("unread") or {}).items():
-        groups.setdefault(v.get("anime", "?"), []).append((key, v))
-
-    def ep_of(k: str) -> int:
-        m = re.match(r"^\d+", k.split("|", 1)[1] if "|" in k else k)
-        return int(m.group(0)) if m else 0
-
-    out = []
-    for anime, items in sorted(groups.items()):
-        items.sort(key=lambda kv: ep_of(kv[0]))
-        out.append((anime, items))
-    return out
-
-
-def mark_read(state: dict, keyword: str = "") -> int:
-    """把未读标成已读。给了 keyword 就只清匹配的那几部番。返回清掉的条数。"""
-    unread = state.get("unread") or {}
-    if keyword:
-        kw = norm(keyword)
-        hit = [k for k, v in unread.items() if kw in norm(v.get("anime", ""))]
-    else:
-        hit = list(unread.keys())
-    for k in hit:
-        unread.pop(k, None)
-    return len(hit)
-
-
-def build_unread_digest(state: dict) -> tuple[str, str] | None:
-    """未读催办消息。注意这里的语义：**不是「番还没看完」，是「这条推送你还没确认看到」**。
-    用来兜住「手机关流量 / 飞书被杀 / 消息静默失败」这些「发出去但人没看到」的情况。"""
-    groups = unread_list(state)
-    if not groups:
-        return None
-    total = sum(len(items) for _, items in groups)
-    oldest = min((_parse_iso(v.get("at", "")) for _, items in groups for _, v in items
-                  if _parse_iso(v.get("at", ""))), default=None)
-    lines = [f"有 {total} 条推送你还没确认看到：", ""]
-    for anime, items in groups[:12]:
-        eps = "、".join(k.split("|", 1)[1] if "|" in k else k for k, _ in items[:20])
-        more = f"…共 {len(items)} 条" if len(items) > 20 else ""
-        lines.append(f"· {anime}")
-        lines.append(f"  第 {eps} 集{'，' + more if more else ''}")
-    if len(groups) > 12:
-        lines.append(f"…还有 {len(groups) - 12} 部")
-    if oldest:
-        lines += ["", f"最早一条是 {human_time(oldest.isoformat(timespec='seconds'))} 推的。"]
-    lines += ["", "看到过了就发一个标题是「已读」的 Issue，以后就不提醒了。"]
-    return "【新番速递】有几条推送你还没看到", "\n".join(lines)
-
-
-def human_time(iso: str) -> str:
-    """ISO 时间 -> 「10月16日 21:04」，用于推送里给人看。"""
-    d = _parse_iso(iso)
-    if d is None:
-        return "时间未知"
-    return f"{d.month}月{d.day}日 {d:%H:%M}"
-
-
-def due_for_nudge(state: dict, settings: dict) -> bool:
-    """判断现在该不该催：只看最老的那条。"""
-    unread = state.get("unread") or {}
-    if not unread:
-        return False
-    after = int(settings.get("unread_remind_after_minutes", 360))     # 推了多久才催
-    every = int(settings.get("unread_remind_every_minutes", 720))     # 隔多久催一次
-    maxn = int(settings.get("unread_max_nudges", 4))                  # 最多催几次就放弃
-    now = datetime.now(TZ8)
-    for v in unread.values():
-        if int(v.get("nudge", 0)) >= maxn:
-            continue
-        at = _parse_iso(v.get("at", ""))
-        if at is None or (now - at).total_seconds() < after * 60:
-            continue
-        ln = _parse_iso(v.get("last_nudge", ""))
-        if ln is not None and (now - ln).total_seconds() < every * 60:
-            continue
-        return True
-    return False
-
-
-def apply_nudge(state: dict) -> None:
-    """催过一次就把 nudge 计数 +1、记下催的时间，避免每 5 分钟刷你一次。"""
-    now = datetime.now(TZ8)
-    for v in (state.get("unread") or {}).values():
-        ln = _parse_iso(v.get("last_nudge", ""))
-        if ln is None or (now - ln).total_seconds() >= 720 * 60:
-            v["nudge"] = int(v.get("nudge", 0)) + 1
-            v["last_nudge"] = now.isoformat(timespec="seconds")
+    return {"episodes": {}, "initialized": False}
 
 
 def save_state(st: dict) -> None:
@@ -418,7 +295,6 @@ def save_state(st: dict) -> None:
     os.replace(tmp, STATE_PATH)
 
 
-# --------------------------------------------------------------------------
 # HTTP
 # --------------------------------------------------------------------------
 def http_get(url: str, timeout: int = 20, retry: int = 3, proxy: str = "") -> str | None:
@@ -1421,7 +1297,6 @@ def run_cycle(cfg: dict, state: dict, dry_run: bool = False) -> int:
 
     sent = 0
     failed: set[tuple[str, str]] = set()   # 推送失败的 (规则id, 集数)，这些不记为已看
-    pushed: list[tuple[dict, str]] = []   # (条目, message_id)，推送成功的会进「未读」清单
     gap = max(0, int(settings.get("push_min_interval_seconds", 13)))
     for idx, (best, is_upgrade) in enumerate(pushes):
         rule = best["_rule"]
@@ -1436,27 +1311,13 @@ def run_cycle(cfg: dict, state: dict, dry_run: bool = False) -> int:
                 # PushPlus 消息接口限「1 分钟最多 5 次」，集中补推时把请求摊开
                 log.info("等待 %d 秒再发下一条（避开平台频率限制）…", gap)
                 time.sleep(gap)
-            ok, mid = send_notification(title, body, settings)
-            if ok:
-                pushed.append((best, mid))   # 记下 message_id，已读回执靠它匹配
-            else:
+            ok, _mid = send_notification(title, body, settings)
+            if not ok:
                 # 没推出去就别记成「已看」，下一轮还会推，否则这集就永久漏了
                 # （2026-10-16 修：原来返回值被丢掉，推送失败照样标记已看）
                 failed.add((best["_rid"], best.get("episode") or best["btih"]))
                 log.warning("这条没推成功，本轮不标记为已看，下一轮会重推")
         sent += 1
-
-    # 推成功的记进「未读」清单，等你确认
-    for it in pushed:
-        mark_unread(state, it)
-
-    # 未读催办：推送失败后有东西没看到时，隔一段时间提醒一次（有节流，不会刷屏）
-    if not dry_run and pushed and due_for_nudge(state, settings):
-        digest = build_unread_digest(state)
-        if digest:
-            log.info("催办未读：%s", digest[0])
-            send_notification(digest[0], digest[1], settings)
-            apply_nudge(state)
 
     if not dry_run:
         # 记下「见过的最好档位:见过的最大修订号」，档位和修订号各自单调，不会因为
