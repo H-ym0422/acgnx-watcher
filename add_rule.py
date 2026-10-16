@@ -623,9 +623,9 @@ def main() -> None:
     ap.add_argument("--exists", metavar="关键词",
                     help="只检查这部番是不是已经在追了，在追就退出码 0、否则 1")
     ap.add_argument("--unread", action="store_true",
-                    help="列出还没标记已读的集数")
+                    help="列出「推送了但还没确认看到」的消息")
     ap.add_argument("--read", nargs="?", const="", default=None, metavar="关键词",
-                    help="标记已读；不带关键词就是全部清空，带关键词只清那部番")
+                    help="确认已看到；不带关键词就是全清空，带关键词只清那部番")
     ap.add_argument("--del", dest="delete", type=int, metavar="N", help="删除第 N 条规则")
     ap.add_argument("--del-name", metavar="关键词",
                     help="删除名字里包含该关键词的规则（手机上传个词就能删，不用记序号）")
@@ -637,16 +637,17 @@ def main() -> None:
         st = aw.load_state()
         groups = aw.unread_list(st)
         if not groups:
-            print("全部已读 ✅ 没有待看的集数")
+            print("都确认过了 ✅ 没有「推送了但你还没看到」的消息")
             return
         total = sum(len(x) for _, x in groups)
-        print(f"还有 {total} 集没标记已读（共 {len(groups)} 部番）：\n")
+        print(f"有 {total} 条推送你还没确认看到（共 {len(groups)} 部番）：\n")
         for anime, items in groups:
             eps = "、".join(k.split("|", 1)[1] if "|" in k else k for k, _ in items)
             at = items[0][1].get("at", "")
             print(f"  · {anime}")
             print(f"    第 {eps} 集")
             print(f"    最早推送于 {aw.human_time(at)}")
+        print("\n看到过了就发一个标题是「已读」的 Issue。")
         return
 
     if args.read is not None:
@@ -654,10 +655,10 @@ def main() -> None:
         n = aw.mark_read(st, args.read)
         aw.save_state(st)
         if n == 0:
-            print(f"没有未读项{('包含「' + args.read + '」的') if args.read else ''}，本来就全已读 ✅")
+            print(f"没有待确认的推送{('包含「' + args.read + '」的') if args.read else ''}，本来就都看到了 ✅")
         else:
             scope = f"「{args.read}」相关的" if args.read else ""
-            print(f"已把 {scope} {n} 集标记为已读 ✅")
+            print(f"已确认看到 {scope} {n} 条推送 ✅ 以后不再提醒")
         return
 
     if args.exists:

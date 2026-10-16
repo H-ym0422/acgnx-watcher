@@ -340,21 +340,26 @@ def mark_read(state: dict, keyword: str = "") -> int:
 
 
 def build_unread_digest(state: dict) -> tuple[str, str] | None:
-    """未读催办消息。返回 (标题, 正文)，没有可催的返回 None。"""
+    """未读催办消息。注意这里的语义：**不是「番还没看完」，是「这条推送你还没确认看到」**。
+    用来兜住「手机关流量 / 飞书被杀 / 消息静默失败」这些「发出去但人没看到」的情况。"""
     groups = unread_list(state)
     if not groups:
         return None
     total = sum(len(items) for _, items in groups)
-    lines = [f"你还有 {total} 集没标记已读：", ""]
+    oldest = min((_parse_iso(v.get("at", "")) for _, items in groups for _, v in items
+                  if _parse_iso(v.get("at", ""))), default=None)
+    lines = [f"有 {total} 条推送你还没确认看到：", ""]
     for anime, items in groups[:12]:
         eps = "、".join(k.split("|", 1)[1] if "|" in k else k for k, _ in items[:20])
-        more = f"…共 {len(items)} 集" if len(items) > 20 else ""
+        more = f"…共 {len(items)} 条" if len(items) > 20 else ""
         lines.append(f"· {anime}")
         lines.append(f"  第 {eps} 集{'，' + more if more else ''}")
     if len(groups) > 12:
         lines.append(f"…还有 {len(groups) - 12} 部")
-    lines += ["", "看完后发一个标题是「已读」的 Issue 就清空了。"]
-    return "【新番速递】还有没看完的集数", "\n".join(lines)
+    if oldest:
+        lines += ["", f"最早一条是 {human_time(oldest.isoformat(timespec='seconds'))} 推的。"]
+    lines += ["", "看到过了就发一个标题是「已读」的 Issue，以后就不提醒了。"]
+    return "【新番速递】有几条推送你还没看到", "\n".join(lines)
 
 
 def human_time(iso: str) -> str:

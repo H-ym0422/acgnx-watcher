@@ -127,7 +127,7 @@ jobs:
                 done
               fi
               if [ -z "$MODE" ]; then
-                for p in 已读 看完了; do
+                for p in 已读 看到了 看到了推送; do
                   case "$I_TITLE" in "$p"*) MODE=read; KW="$(trim "${I_TITLE#"$p"}")"; break;; esac
                 done
               fi
@@ -146,11 +146,11 @@ jobs:
                 else
                   OUT="$(python add_rule.py --read 2>&1 || true)"
                 fi
-                OUT="$OUT"$'\n\n'"以后收到新番推送、看完再发一个「已读」就能继续追踪。"
+                OUT="$OUT"$'\n\n'"以后收到新番推送、你看到了就发一个「已读」，就不会再提醒。"
               elif [ "$MODE" = "unread" ]; then
                 STEP=unread
                 OUT="$(python add_rule.py --unread 2>&1 || true)"
-                OUT="$OUT"$'\n\n'"看完发一个标题是「已读」的 Issue 就清空了。"
+                OUT="$OUT"$'\n\n'"看到过了发一个标题是「已读」的 Issue，以后就不提醒了。"
               elif [ "$MODE" = "add" ] && [ -z "$GRP" ]; then
                 # —— 第一步：只列清单，先不加 ——
                 STEP=survey
