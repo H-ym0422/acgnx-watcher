@@ -46,6 +46,9 @@ jobs:
           ACGNX_WEBHOOK_URL: ${{ secrets.ACGNX_WEBHOOK_URL }}
           ACGNX_DINGTALK_SECRET: ${{ secrets.ACGNX_DINGTALK_SECRET }}
           ACGNX_FEISHU_SECRET: ${{ secrets.ACGNX_FEISHU_SECRET }}
+          ACGNX_FEISHU_APP_ID: ${{ secrets.ACGNX_FEISHU_APP_ID }}
+          ACGNX_FEISHU_APP_SECRET: ${{ secrets.ACGNX_FEISHU_APP_SECRET }}
+          ACGNX_FEISHU_CHAT_ID: ${{ secrets.ACGNX_FEISHU_CHAT_ID }}
         run: |
           if [ "${{ inputs.test }}" = "true" ]; then
             echo "== 手动测试模式：只发一条测试消息 =="

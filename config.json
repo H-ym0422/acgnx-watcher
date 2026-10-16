@@ -19,7 +19,10 @@
     "skip_traditional_only": true,
     "unread_remind_after_minutes": 60,
     "unread_remind_every_minutes": 240,
-    "unread_max_nudges": 6
+    "unread_max_nudges": 6,
+    "feishu_app_id": "",
+    "feishu_app_secret": "",
+    "feishu_chat_id": ""
   },
   "rules": [
     {

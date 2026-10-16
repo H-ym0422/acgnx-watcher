@@ -259,6 +259,10 @@ def load_config() -> dict:
         "feishu_secret": ("ACGNX_FEISHU_SECRET",),
         "pushplus_token": ("ACGNX_PUSHPLUS_TOKEN", "PUSHPLUS_TOKEN"),
         "serverchan_sendkey": ("ACGNX_SERVERCHAN_SENDKEY", "SERVERCHAN_SENDKEY"),
+        # 飞书自建应用（能拿到已读回执）。三个都齐了才会启用这个渠道。
+        "feishu_app_id": ("ACGNX_FEISHU_APP_ID",),
+        "feishu_app_secret": ("ACGNX_FEISHU_APP_SECRET",),
+        "feishu_chat_id": ("ACGNX_FEISHU_CHAT_ID",),
     }
     for field, names in env_map.items():
         for n in names:
@@ -297,13 +301,17 @@ def _parse_iso(s: str) -> datetime | None:
         return None
 
 
-def mark_unread(state: dict, item: dict) -> None:
-    """推送成功后记进「未读」。key 与 episodes 一致，方便按番/按集清理。"""
+def mark_unread(state: dict, item: dict, mid: str = "") -> None:
+    """推送成功后记进「未读」。key 与 episodes 一致，方便按番/按集清理。
+
+    mid 是飞书返回的 message_id —— 已读回执只会带 message_id，
+    Worker 收到回执后靠它反查这里、删掉对应项。别的渠道没有这个值，留空即可。"""
     key = f"{item['_rid']}|{item.get('episode') or item['btih']}"
     state.setdefault("unread", {})[key] = {
         "at": _now_iso(),
         "anime": (item.get("_rule") or {}).get("name", "?"),
         "title": item.get("title", "")[:120],
+        "mid": mid or "",
         "nudge": 0,
         "last_nudge": "",
     }
@@ -881,13 +889,14 @@ def build_push_content(item: dict, rule: dict, prefix: str,
 # --------------------------------------------------------------------------
 # 底层 POST（返回原始响应文本，由各渠道自己判断成功与否）
 # --------------------------------------------------------------------------
-def _post_json(url: str, payload: dict, timeout: int = 15) -> str:
+def _post_json(url: str, payload: dict, timeout: int = 15,
+               headers: dict | None = None) -> str:
     try:
         data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-        req = urllib.request.Request(url, data=data, headers={
-            "Content-Type": "application/json; charset=utf-8",
-            "User-Agent": UA,
-        })
+        h = {"Content-Type": "application/json; charset=utf-8", "User-Agent": UA}
+        if headers:
+            h.update(headers)
+        req = urllib.request.Request(url, data=data, headers=h)
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             return resp.read().decode("utf-8", "replace")
     except urllib.error.HTTPError as e:
@@ -1068,30 +1077,101 @@ def _send_webhook(title: str, body: str, s: dict) -> bool:
     return ok
 
 
+# tenant_access_token 有效期约 2 小时，缓存起来别每次都换
+_FEISHU_TOK: dict = {"token": "", "exp": 0.0}
+
+
+def _feishu_tenant_token(s: dict) -> str:
+    now = time.time()
+    if _FEISHU_TOK["token"] and now < _FEISHU_TOK["exp"] - 120:
+        return _FEISHU_TOK["token"]
+    app_id = (s.get("feishu_app_id") or "").strip()
+    app_secret = (s.get("feishu_app_secret") or "").strip()
+    if not app_id or not app_secret:
+        return ""
+    resp = _post_json(
+        "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal",
+        {"app_id": app_id, "app_secret": app_secret})
+    try:
+        j = json.loads(resp)
+    except Exception:  # noqa: BLE001
+        j = {}
+    tok = j.get("tenant_access_token") or ""
+    if not tok:
+        log.error("取 tenant_access_token 失败 | %s", resp[:200])
+        return ""
+    _FEISHU_TOK["token"] = tok
+    _FEISHU_TOK["exp"] = now + int(j.get("expire", 7200))
+    return tok
+
+
+def _send_feishu_app(title: str, body: str, s: dict) -> tuple[bool, str]:
+    """用飞书应用给用户发**私聊**消息。
+
+    为什么必须是私聊：`im.message.message_read_v1`（已读回执）只在单聊时触发，
+    群消息飞书不会告诉任何人「这条被读了」。
+
+    返回 (是否成功, message_id)。message_id 是已读回执关联到具体哪一集的钥匙，
+    Worker 收到回执后靠它去 state.json 里找并删除对应项。
+    """
+    chat_id = (s.get("feishu_chat_id") or "").strip()
+    if not chat_id:
+        log.error("没配 feishu_chat_id，跳过飞书应用推送")
+        return False, ""
+    tok = _feishu_tenant_token(s)
+    if not tok:
+        return False, ""
+
+    text = truncate_utf8(f"{title}\n{body}", 18000)
+    resp = _post_json(
+        "https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=chat_id",
+        {"receive_id": chat_id, "msg_type": "text",
+         "content": json.dumps({"text": text}, ensure_ascii=False)},
+        headers={"Authorization": f"Bearer {tok}"})
+    try:
+        j = json.loads(resp)
+    except Exception:  # noqa: BLE001
+        j = {}
+    if j.get("code") == 0:
+        mid = ((j.get("data") or {}).get("message_id")) or ""
+        log.info("飞书应用私聊推送成功 message_id=%s", mid)
+        return True, mid
+    log.error("飞书应用推送失败 code=%s msg=%s | %s",
+              j.get("code"), j.get("msg"), resp[:180])
+    return False, ""
+
+
 CHANNEL_FIELDS = {
     "pushplus": "pushplus_token",
     "serverchan": "serverchan_sendkey",
     "webhook": "webhook_url",
+    "feishu_app": "feishu_chat_id",
 }
 CHANNEL_LABEL = {
     "pushplus": "PushPlus（微信）",
     "serverchan": "Server酱（微信）",
     "webhook": "群机器人（企业微信/钉钉/飞书）",
+    "feishu_app": "飞书应用私聊（能拿到已读回执）",
 }
-CHANNEL_ORDER = ["pushplus", "serverchan", "webhook"]
+# feishu_app 放最前：配了就优先用它，因为只有它能自动判定已读
+CHANNEL_ORDER = ["feishu_app", "pushplus", "serverchan", "webhook"]
 CHANNEL_SENDER = {
     "pushplus": _send_pushplus,
     "serverchan": _send_serverchan,
     "webhook": _send_webhook,
+    "feishu_app": _send_feishu_app,
 }
-
 
 def available_channels(s: dict) -> list[str]:
     return [ch for ch in CHANNEL_ORDER if (s.get(CHANNEL_FIELDS[ch]) or "").strip()]
 
 
-def send_notification(title: str, body: str, s: dict) -> bool:
-    """按 push_channel 推送。auto = 按 PushPlus → Server酱 → 群机器人 挑第一个配好的。"""
+def send_notification(title: str, body: str, s: dict) -> tuple[bool, str]:
+    """按 push_channel 推送。auto = 按顺序挑第一个配好的渠道。
+
+    返回 (是否成功, message_id)。message_id 只有飞书应用渠道会有，
+    用来把「已读回执」关联到具体哪一集（其它渠道返回空串）。
+    """
     channel = (s.get("push_channel") or "auto").lower()
     order = CHANNEL_ORDER if channel == "auto" else [channel]
 
@@ -1099,13 +1179,18 @@ def send_notification(title: str, body: str, s: dict) -> bool:
     if not targets:
         log.warning("没有配置任何推送渠道，本条消息只打印到控制台：\n%s\n%s\n%s",
                     title, body, "-" * 60)
-        return False
+        return False, ""
 
     for ch in targets:
-        if CHANNEL_SENDER[ch](title, body, s):
-            return True
+        r = CHANNEL_SENDER[ch](title, body, s)
+        if isinstance(r, tuple):        # 新渠道返回 (ok, message_id)
+            ok, mid = r
+        else:                            # 老渠道返回 bool
+            ok, mid = bool(r), ""
+        if ok:
+            return True, mid
         log.warning("渠道「%s」没成功，尝试下一个…", CHANNEL_LABEL.get(ch, ch))
-    return False
+    return False, ""
 
 
 # --------------------------------------------------------------------------
@@ -1336,7 +1421,7 @@ def run_cycle(cfg: dict, state: dict, dry_run: bool = False) -> int:
 
     sent = 0
     failed: set[tuple[str, str]] = set()   # 推送失败的 (规则id, 集数)，这些不记为已看
-    pushed: list[dict] = []                # 推送成功的，会进「未读」清单
+    pushed: list[tuple[dict, str]] = []   # (条目, message_id)，推送成功的会进「未读」清单
     gap = max(0, int(settings.get("push_min_interval_seconds", 13)))
     for idx, (best, is_upgrade) in enumerate(pushes):
         rule = best["_rule"]
@@ -1351,8 +1436,9 @@ def run_cycle(cfg: dict, state: dict, dry_run: bool = False) -> int:
                 # PushPlus 消息接口限「1 分钟最多 5 次」，集中补推时把请求摊开
                 log.info("等待 %d 秒再发下一条（避开平台频率限制）…", gap)
                 time.sleep(gap)
-            if send_notification(title, body, settings):
-                pushed.append(best)
+            ok, mid = send_notification(title, body, settings)
+            if ok:
+                pushed.append((best, mid))   # 记下 message_id，已读回执靠它匹配
             else:
                 # 没推出去就别记成「已看」，下一轮还会推，否则这集就永久漏了
                 # （2026-10-16 修：原来返回值被丢掉，推送失败照样标记已看）
@@ -1464,7 +1550,7 @@ def main() -> None:
                 + f"强制指定：{s.get('push_channel')}\n"
                 + "以后有新集，会用一模一样的格式推给你。\n"
                 + "（看完后发个标题是「已读」的 Issue，就不会重复提醒。）")
-        ok = send_notification(title, body, s)
+        ok, _mid = send_notification(title, body, s)
         print("测试消息发送" + ("成功 ✅" if ok else "失败 ❌（检查 config.json 里的 token / SendKey）"))
         return
 
