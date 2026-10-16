@@ -1,7 +1,7 @@
 {
   "settings": {
     "interval_minutes": 5,
-    "push_channel": "webhook",
+    "push_channel": "auto",
     "pushplus_token": "",
     "serverchan_sendkey": "",
     "webhook_url": "",
