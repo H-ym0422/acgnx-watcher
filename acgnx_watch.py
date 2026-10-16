@@ -620,6 +620,43 @@ def extract_season(title: str) -> int | None:
     return None
 
 
+def _pref_key(item: dict) -> tuple[int, int]:
+    """条目的「该不该留下」权重，越小越优先：
+    先看是不是用户指定字幕组发的（指定 > 兜底），再看字幕形式档位。"""
+    return (1 if item.get("_fallback") else 0, item.get("_tier", 0))
+
+
+def collapse_overlaps(ordered: list[tuple[str, dict]]) -> list[tuple[str, dict]]:
+    """同一部番里，如果已经有「01-12 全集」，就把落在它区间内的单集丢掉。
+
+    不然推给你的消息会又给一个完整合集、又给一堆 05~12 的单集，看着莫名其妙
+    （用户 2026-10-16 实测反馈的问题）。
+
+    两种例外，单集比合集更该留下的就保留：
+      · 单集来自你指定的字幕组，合集是兜底抓来的（你想看的是你选的组）
+      · 字幕形式明显更好（比如合集是繁中，单集是简日双语）"""
+    spans: list[tuple[int, int, tuple[int, int]]] = []      # (起, 止, 权重)
+    for ep, it in ordered:
+        m = re.match(r"^(\d{1,4})-(\d{1,4})$", (ep or "").strip())
+        if m:
+            a, b = int(m.group(1)), int(m.group(2))
+            if b > a:
+                spans.append((a, b, _pref_key(it)))
+    if not spans:
+        return ordered
+
+    out: list[tuple[str, dict]] = []
+    for ep, it in ordered:
+        m = re.match(r"^(\d{1,4})$", (ep or "").strip())
+        if m:
+            n = int(m.group(1))
+            k = _pref_key(it)
+            if any(a <= n <= b and k >= sk for a, b, sk in spans):
+                continue                                # 已被合集涵盖，且合集不比它差
+        out.append((ep, it))
+    return out
+
+
 def season_ok(title: str, want: int) -> bool:
     """标题是不是「第 want 季」。没标季号的当第一季 —— 大多数字幕组做第一季时
     压根不写「第一季」，而第二季一定会标出来。"""
@@ -1149,6 +1186,9 @@ def run_cycle(cfg: dict, state: dict, dry_run: bool = False) -> int:
         if mode != "silent":
             pushes = [(v[2], False) for v in per_rule.values()]
     else:
+        # 按规则分组收集候选，顺便折叠：本轮如果同时在推「01-12 全集」，
+        # 就别再把它涵盖的 05~12 单集也推一遍（同一个番收两条消息很莫名其妙）
+        cand_by_rid: dict[str, list[tuple[str, dict, bool]]] = {}
         for (rid, ep), items in groups.items():
             best = best_of(items)
             prev = _seen_pair(state["episodes"].get(f"{rid}|{ep}"))
@@ -1156,7 +1196,13 @@ def run_cycle(cfg: dict, state: dict, dry_run: bool = False) -> int:
             if prev is not None and best["_tier"] >= prev[0] and best["_rev"] <= prev[1]:
                 continue
             # prev 存在 = 是"更优版本/修正版"；不存在 = 这是第一次见到这一集
-            pushes.append((best, prev is not None))
+            cand_by_rid.setdefault(rid, []).append((ep, best, prev is not None))
+
+        for cand in cand_by_rid.values():
+            keep = {id(b) for _, b in collapse_overlaps([(e, b) for e, b, _ in cand])}
+            for ep, best, is_up in cand:
+                if id(best) in keep:
+                    pushes.append((best, is_up))
 
     sent = 0
     gap = max(0, int(settings.get("push_min_interval_seconds", 13)))

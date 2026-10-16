@@ -391,6 +391,7 @@ def inspect_and_seed(rule: dict) -> list[tuple[str, dict]]:
     ordered: list[tuple[str, dict]] = []
     for ep in sorted(groups, key=ep_sort_key):
         ordered.append((ep, aw.best_of(groups[ep])))
+    ordered = aw.collapse_overlaps(ordered)      # 有全集就别再列它涵盖的单集
 
     print(f"   原始命中 {len(matched)} 条，归并成 {len(ordered)} 集（按集数从小到大）：")
     for ep, item in ordered:
