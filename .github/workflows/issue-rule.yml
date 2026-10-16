@@ -36,7 +36,10 @@ jobs:
         !startsWith(github.event.issue.title, '取消') &&
         !startsWith(github.event.issue.title, '列表') &&
         !startsWith(github.event.issue.title, '清单') &&
-        !startsWith(github.event.issue.title, '我的番'))
+        !startsWith(github.event.issue.title, '我的番') &&
+        !startsWith(github.event.issue.title, '已读') &&
+        !startsWith(github.event.issue.title, '未读') &&
+        !startsWith(github.event.issue.title, '待看'))
     timeout-minutes: 10
 
     steps:
@@ -114,8 +117,13 @@ jobs:
                 done
               fi
               if [ -z "$MODE" ]; then
-                for p in 列表 清单 我的番; do
+                for p in 列表 清单 我的番 未读 待看; do
                   case "$I_TITLE" in "$p"*) MODE=list; KW=""; break;; esac
+                done
+              fi
+              if [ -z "$MODE" ]; then
+                for p in 已读 看完了; do
+                  case "$I_TITLE" in "$p"*) MODE=read; KW="$(trim "${I_TITLE#"$p"}")"; break;; esac
                 done
               fi
               # 忘了写前缀（很常见）—— 就按「加番 整个标题」处理，别让人白等
@@ -125,7 +133,16 @@ jobs:
 
               echo "事件=新 Issue | 模式=$MODE | 关键词=$KW | 字幕组=${GRP:-（待选）} | 季=${SEA:-不限} | 忘了写前缀=$NOPREFIX"
 
-              if [ "$MODE" = "add" ] && [ -z "$GRP" ]; then
+              if [ "$MODE" = "read" ]; then
+                # 标记已读：带番名就只清那部，不带就全清
+                if [ -n "$KW" ]; then
+                  OUT="$(python add_rule.py --read "$KW" 2>&1 || true)"
+                else
+                  OUT="$(python add_rule.py --read 2>&1 || true)"
+                fi
+              elif [ "$MODE" = "unread" ]; then
+                OUT="$(python add_rule.py --unread 2>&1 || true)"
+              elif [ "$MODE" = "add" ] && [ -z "$GRP" ]; then
                 # —— 第一步：只列清单，先不加 ——
                 STEP=survey
                 if [ -n "$SEA" ]; then
