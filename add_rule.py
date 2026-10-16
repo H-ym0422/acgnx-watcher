@@ -506,6 +506,29 @@ def _git(root: str, *args: str):
     return subprocess.run(["git", "-C", root, *args], capture_output=True, text=True)
 
 
+DEFAULT_PROXY = "http://127.0.0.1:7890"
+
+
+def _git_push(root: str) -> tuple[bool, str]:
+    """推送。先走本地代理再试直连 ——
+    国内直连 github.com 经常握手到一半被掐断（send-pack: unexpected disconnect），
+    而代理没开的时候连接会被立刻拒绝，所以「代理优先」两种情况下都不会白等。"""
+    proxy = (os.environ.get("ACGNX_PROXY") or DEFAULT_PROXY).strip()
+    attempts = [
+        (f"走代理 {proxy}", ["-c", f"http.proxy={proxy}",
+                             "-c", f"https.proxy={proxy}", "push"]),
+        ("直连", ["push"]),
+    ]
+    last = ""
+    for label, extra in attempts:
+        r = _git(root, *extra)
+        if r.returncode == 0:
+            return True, label
+        last = (r.stderr or r.stdout).strip()
+        print(f"   · {label}失败：{last.splitlines()[-1][:120] if last else '未知原因'}")
+    return False, last
+
+
 def maybe_push(term: str, do_push: bool) -> None:
     root = os.path.dirname(os.path.abspath(__file__))
     if not do_push:
@@ -531,18 +554,20 @@ def maybe_push(term: str, do_push: bool) -> None:
     if r.returncode != 0:
         print(f"   ✗ git add 失败：{(r.stderr or r.stdout).strip()[:200]}")
         return
-    r = _git(root, "commit", "-m", f"add rule: {term}")
+    r = _git(root, "commit", "-m", f"{term} [skip ci]")
     if r.returncode != 0:
         print(f"   ✗ git commit 失败：{(r.stderr or r.stdout).strip()[:200]}")
         return
-    r = _git(root, "push")
-    if r.returncode == 0:
-        print("   ✅ 已推送，云端下一次运行（最长 5 分钟）就会开始盯这部番。")
+
+    ok, info = _git_push(root)
+    if ok:
+        print(f"   ✅ 已推送（{info}），云端下一次运行就会生效。")
     else:
-        err = (r.stderr or r.stdout).strip()
-        print(f"   ✗ git push 失败：{err[:300]}")
-        print("     常见原因：还没登录 GitHub / 没建远程仓库。")
-        print("     修好后在目录里手动执行：git push")
+        print("   ✗ 两种方式都没推上去。常见原因：")
+        print("     · 代理没开，而且直连也连不上 GitHub")
+        print("     · 代理端口不是 7890 —— 可以设环境变量 ACGNX_PROXY 指定，例如")
+        print("         set ACGNX_PROXY=http://127.0.0.1:7897")
+        print("     修好在目录里手动执行一次 `git push` 即可。")
 
 
 def main() -> None:
