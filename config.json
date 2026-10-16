@@ -172,6 +172,30 @@
       ],
       "fallback_any_group": true,
       "note": ""
+    },
+    {
+      "id": "r1792165392",
+      "name": "蓝色监狱（LoliHouse）",
+      "enabled": true,
+      "keywords": [
+        "蓝色监狱"
+      ],
+      "include_any": [
+        "蓝色监狱"
+      ],
+      "exclude_any": [],
+      "group": [
+        "LoliHouse"
+      ],
+      "variant_prefer": [
+        "简日双语",
+        "简繁日内封",
+        "简日内嵌",
+        "简体",
+        "简"
+      ],
+      "fallback_any_group": true,
+      "note": ""
     }
   ]
 }
