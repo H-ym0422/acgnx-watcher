@@ -27,14 +27,12 @@ jobs:
   handle:
     runs-on: ubuntu-latest
     if: >
-      (github.event_name == 'issues' &&
-        (startsWith(github.event.issue.title, '加番') ||
-         startsWith(github.event.issue.title, '删番') ||
-         startsWith(github.event.issue.title, '列表') ||
-         startsWith(github.event.issue.title, '我的番'))) ||
+      github.event_name == 'issues' ||
       (github.event_name == 'issue_comment' &&
-        startsWith(github.event.issue.title, '加番') &&
-        github.event.comment.user.type != 'Bot')
+        github.event.comment.user.type != 'Bot' &&
+        !startsWith(github.event.issue.title, '删番') &&
+        !startsWith(github.event.issue.title, '列表') &&
+        !startsWith(github.event.issue.title, '我的番'))
     timeout-minutes: 10
 
     steps:
@@ -80,15 +78,17 @@ jobs:
 
           case "$EVENT" in
             issues)
+              NOPREFIX=0
               case "$I_TITLE" in
                 加番*) MODE=add; KW="$(trim "${I_TITLE#加番}")" ;;
                 删番*) MODE=del; KW="$(trim "${I_TITLE#删番}")" ;;
                 列表*|我的番*) MODE=list; KW="" ;;
-                *) echo "不是认识的标题，跳过。"; exit 0 ;;
+                # 忘了写前缀（很常见）—— 就按「加番 整个标题」处理，别让人白等
+                *) MODE=add; KW="$(trim "$I_TITLE")"; NOPREFIX=1 ;;
               esac
               GRP="$(grab_group "$I_BODY")"
 
-              echo "事件=新 Issue | 模式=$MODE | 关键词=$KW | 字幕组=${GRP:-（待选）}"
+              echo "事件=新 Issue | 模式=$MODE | 关键词=$KW | 字幕组=${GRP:-（待选）} | 忘了写前缀=$NOPREFIX"
 
               if [ "$MODE" = "add" ] && [ -z "$GRP" ]; then
                 # —— 第一步：只列清单，先不加 ——
@@ -141,6 +141,10 @@ jobs:
               fi
               ;;
           esac
+
+          if [ "${NOPREFIX:-0}" = "1" ]; then
+            OUT="$(printf '（小提示：标题写成「加番 %s」我更认得出，这次先按加番处理。）\n\n%s' "$KW" "$OUT")"
+          fi
 
           echo "----------------------------------------"
           echo "$OUT"

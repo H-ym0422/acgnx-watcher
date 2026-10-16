@@ -1,0 +1,19 @@
+name: 加番
+description: 想追一部新的番，加进监听列表
+title: "加番 "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        标题里「加番」后面**补上番名**就行，比如 `加番 尼古喵喵`。
+
+        不填下面的字幕组也可以 —— 机器人会先列出有哪些字幕组在做、各自什么形式，
+        你在评论里回复序号再选。
+  - type: input
+    id: group
+    attributes:
+      label: 字幕组（可选）
+      description: 想直接指定就填，多个用逗号隔开。留空 = 先列出来让你挑
+      placeholder: 绿茶字幕组
+    validations:
+      required: false

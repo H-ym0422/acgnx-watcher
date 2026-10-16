@@ -1,0 +1,11 @@
+name: 列表
+description: 看看现在在追哪些番
+title: "列表"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        标题已经是「列表」了，直接点右下角提交就行。
+
+        机器人会把当前在追的全部番剧回在评论里。
+        （也可以直接看仓库根目录的 [我的番剧.md](../../blob/main/我的番剧.md)）

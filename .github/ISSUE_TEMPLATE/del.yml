@@ -1,0 +1,10 @@
+name: 删番
+description: 不想看了，从监听列表里删掉
+title: "删番 "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        标题里「删番」后面**补上番名**就行，比如 `删番 碧蓝之海`。
+
+        正文不用填。提交后机器人会把删掉的规则回给你。
