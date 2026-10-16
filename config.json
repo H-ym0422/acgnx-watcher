@@ -90,6 +90,30 @@
         "简"
       ],
       "note": ""
+    },
+    {
+      "id": "r1792143437",
+      "name": "咒术回战（绿茶字幕组）",
+      "enabled": true,
+      "keywords": [
+        "咒术回战"
+      ],
+      "include_any": [
+        "咒术回战",
+        "Jujutsu Kaisen"
+      ],
+      "exclude_any": [],
+      "group": [
+        "绿茶字幕组"
+      ],
+      "variant_prefer": [
+        "简日双语",
+        "简繁日内封",
+        "简日内嵌",
+        "简体",
+        "简"
+      ],
+      "note": ""
     }
   ]
 }
