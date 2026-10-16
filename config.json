@@ -119,6 +119,31 @@
       ],
       "note": "",
       "fallback_any_group": true
+    },
+    {
+      "id": "r1792149348",
+      "name": "尼古喵喵（**清单更新了一版 —— 现在每个字幕组都标了覆盖到第几集，方便你判断完不完整。**）",
+      "enabled": true,
+      "keywords": [
+        "尼古喵喵"
+      ],
+      "include_any": [
+        "尼古喵喵",
+        "Yanineko"
+      ],
+      "exclude_any": [],
+      "group": [
+        "**清单更新了一版 —— 现在每个字幕组都标了覆盖到第几集，方便你判断完不完整。**"
+      ],
+      "variant_prefer": [
+        "简日双语",
+        "简繁日内封",
+        "简日内嵌",
+        "简体",
+        "简"
+      ],
+      "fallback_any_group": true,
+      "note": ""
     }
   ]
 }
