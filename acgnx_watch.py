@@ -1232,7 +1232,44 @@ def collect(cfg: dict) -> list[dict]:
         key = (m["_rid"], m["btih"])
         if key not in uniq:
             uniq[key] = m
+    note_unparsed([m for m in uniq.values() if not m["episode"] and not RE_BATCH_HINT.search(m["title"])])
     return list(uniq.values())
+
+
+# --------------------------------------------------------------------------
+# 解析失败自查
+# --------------------------------------------------------------------------
+# 为什么要有这个：标题格式是字幕组自己定的，今天能认出来的写法明天可能就冒出新花样。
+# 之前是「等用户看到推送里出现一串哈希，才发现又漏了一种」—— 反馈太慢。
+# 现在系统自己记下来，跑 `add_rule.py --parse-report` 就能看到有哪些写法没覆盖，
+# 补一条正则就能解决，不用靠人眼扫推送。
+UNPARSE_CAP = 60          # 最多记多少条（避免 state 无限膨胀）
+
+
+def note_unparsed(items: list[dict]) -> None:
+    """把「看起来是正经单集、但集数解析不出来」的标题记进 state。"""
+    if not items:
+        return
+    st = load_state()
+    box = st.get("unparsed")
+    if not isinstance(box, dict):
+        box = {}
+    for it in items:
+        key = it["btih"]
+        e = box.get(key)
+        if e:
+            e["n"] = int(e.get("n", 1)) + 1
+            e["last"] = datetime.now(TZ8).strftime("%m-%d %H:%M")
+        else:
+            box[key] = {"title": it["title"][:140],
+                        "group": actual_group(it)[:30],
+                        "n": 1,
+                        "first": datetime.now(TZ8).strftime("%m-%d %H:%M"),
+                        "last": datetime.now(TZ8).strftime("%m-%d %H:%M")}
+    # 只留最近出现的那些
+    items_sorted = sorted(box.items(), key=lambda kv: kv[1].get("last", ""), reverse=True)
+    st["unparsed"] = dict(items_sorted[:UNPARSE_CAP])
+    save_state(st)
 
 
 def sort_key(m: dict):

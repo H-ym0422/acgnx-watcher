@@ -641,6 +641,8 @@ def main() -> None:
                     help="只推指定字幕组；默认会用别的组补上他们没做的集数")
     ap.add_argument("--season", type=int, default=0, metavar="N",
                     help="多季番只想看第 N 季时用，例如 --season 1")
+    ap.add_argument("--parse-report", action="store_true",
+                    help="看看有哪些标题的集数还没认出来（补正则用）")
     ap.add_argument("--exists", metavar="关键词",
                     help="只检查这部番是不是已经在追了，在追就退出码 0、否则 1")
     ap.add_argument("--del", dest="delete", type=int, metavar="N", help="删除第 N 条规则")
@@ -691,6 +693,21 @@ def main() -> None:
         print(text, end="")          # stdout 只放纯 Markdown，方便被别的脚本直接引用
         log.info("清单已写入 %s", path)
         maybe_push("watchlist", not args.no_push)
+        return
+
+    if args.parse_report:
+        st = aw.load_state()
+        box = st.get("unparsed") or {}
+        if not box:
+            print("最近没有解析不出集数的标题 —— 当前规则覆盖得不错 ✅")
+            return
+        rows = sorted(box.items(), key=lambda kv: kv[1].get("last", ""), reverse=True)
+        print(f"有 {len(rows)} 个条目的集数还没认出来（最新在前）：\n")
+        for btih, e in rows:
+            print(f"  出现 {e.get('n', 1):>3} 次  最近 {e.get('last', '?')}  [{e.get('group', '?')}]")
+            print(f"      {e.get('title', '')}")
+        print("\n这些条目的磁力还是能正常用，只是推送里会写「整季打包，没有单一集数」。")
+        print("看到新写法就告诉我，补一条正则就能认出来。")
         return
 
     if args.del_name:
