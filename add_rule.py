@@ -157,7 +157,9 @@ def survey_text(term: str, limit: int = 20, season: int = 0) -> str | None:
     if season and int(season) > 0:
         items = [i for i in items if aw.season_ok(i["title"], int(season))]
         if not items:
-            return f"没搜到「{term}」第 {season} 季的条目。试试去掉季数，或者换个写法。"
+            return (f"没搜到「{term}」第 {season} 季的条目。\n\n"
+                    f"搜索只覆盖最近发布的，老季一般得靠后来重发的 BD / 合集。"
+                    f"试着把标题改成 `加番 {term} BD` 或者 `加番 {term} 合集` 再看看。")
     order = rank_groups(items)
     if not order:
         return None
@@ -214,7 +216,10 @@ def pick(term: str, want_all_groups: bool, forced_groups: list[str],
         items = [i for i in items if aw.season_ok(i["title"], int(season))]
         print(f"🎬 只要第 {season} 季：{before} 条 -> {len(items)} 条")
         if not items:
-            print(f"⚠️  没搜到第 {season} 季的条目。试试不加 --season，看看各季都怎么标的。")
+            print(f"⚠️  没搜到第 {season} 季的条目。")
+            print("    搜索只覆盖最近发布，老季通常要靠后来重发的 BD / 合集。试试换个词：")
+            print(f"      python add_rule.py --survey \"{term} BD\"")
+            print(f"      python add_rule.py --survey \"{term} 合集\"")
             return None
 
     ds = [i["pub_dt"] for i in items if i.get("pub_dt")]

@@ -584,6 +584,9 @@ CN_DIGITS = {"一": 1, "二": 2, "三": 3, "四": 4, "五": 5,
 RE_SEASON_CN = re.compile(r"第\s*([一二三四五六七八九十\d]{1,2})\s*[季期部]")
 RE_SEASON_EN = re.compile(r"(?:^|[\s\[【_\-])(?:s|season)\s*0?(\d{1,2})(?![0-9pPiI])", re.I)
 RE_SEASON_ORD = re.compile(r"\b(\d{1,2})\s*(?:st|nd|rd|th)\s*season\b", re.I)
+# 罗马数字只在「独立成词」时才认（前后是空格/括号/结尾），否则太容易误伤
+ROMAN = {"Ⅱ": 2, "Ⅲ": 3, "Ⅳ": 4, "Ⅴ": 5, "Ⅵ": 6, "Ⅶ": 7, "Ⅷ": 8, "Ⅸ": 9}
+RE_SEASON_ROMAN = re.compile(r"(?:^|[\s\[【\-–—~～])([ⅡⅢⅣⅤⅥⅦⅧⅨ])(?=$|[\s\]】\-–—~～])")
 
 
 def extract_season(title: str) -> int | None:
@@ -604,6 +607,9 @@ def extract_season(title: str) -> int | None:
     m = RE_SEASON_ORD.search(title)
     if m:
         return int(m.group(1))
+    m = RE_SEASON_ROMAN.search(title)
+    if m:
+        return ROMAN.get(m.group(1))
     m = RE_SEASON_EN.search(title)
     if m:
         n = int(m.group(1))
