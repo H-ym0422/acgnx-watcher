@@ -830,7 +830,10 @@ def build_push_content(item: dict, rule: dict, prefix: str,
 
     # 推送时间放在最前面，像微信聊天记录那样一眼看到是几点收到的
     # （2026-10-16 用户要求：年月日都要）
-    lines = [f"推送时间：{datetime.now():%Y年%m月%d日 %H:%M}", ""]
+    # ⚠️ 必须显式用 TZ8，不能写 datetime.now()：
+    #    GitHub Actions 的 runner 是 UTC，裸的 now() 会比北京时间晚 8 小时
+    #    （2026-10-16 用户在飞书里看到 13:16 而实际是 21:16，提出来的）
+    lines = [f"推送时间：{datetime.now(TZ8):%Y年%m月%d日 %H:%M}（北京时间）", ""]
     lines.append(f"标题：{item['title']}")
 
     # 字幕组：显示的是**实际发布这个文件的组**。
