@@ -1027,9 +1027,13 @@ CHANNEL_LABEL = {
     "pushplus": "PushPlus（微信）",
     "serverchan": "Server酱（微信）",
     "webhook": "群机器人（企业微信/钉钉/飞书）",
-    "feishu_app": "飞书应用私聊（能拿到已读回执）",
+    "feishu_app": "飞书应用私聊",
 }
-# feishu_app 放最前：配了就优先用它，因为只有它能自动判定已读
+# feishu_app 放最前：配了就优先用它（需要企业账号，见下面那段注释）
+# ⚠️ 2026-10-16：这条渠道需要**企业/组织账号**。个人「豆包账号」调
+#    tenant_access_token 会返回 21001 Access denied by access control policy，
+#    所以 config.json 里 push_channel 保持 "webhook"（群机器人），不会用到它。
+#    将来换成企业账号，只要把 ACGNX_FEISHU_APP_* 三个 Secret 填上就自动生效。
 CHANNEL_ORDER = ["feishu_app", "pushplus", "serverchan", "webhook"]
 CHANNEL_SENDER = {
     "pushplus": _send_pushplus,
@@ -1409,8 +1413,7 @@ def main() -> None:
                 + "\n\n────────────────────\n"
                 + f"已配置的渠道：{'、'.join(CHANNEL_LABEL[c] for c in chans) if chans else '（一个都没配）'}\n"
                 + f"强制指定：{s.get('push_channel')}\n"
-                + "以后有新集，会用一模一样的格式推给你。\n"
-                + "（看完后发个标题是「已读」的 Issue，就不会重复提醒。）")
+                + "以后有新集，会用一模一样的格式推给你。")
         ok, _mid = send_notification(title, body, s)
         print("测试消息发送" + ("成功 ✅" if ok else "失败 ❌（检查 config.json 里的 token / SendKey）"))
         return
