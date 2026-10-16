@@ -146,31 +146,6 @@
       ],
       "fallback_any_group": true,
       "note": ""
-    },
-    {
-      "id": "r1792165573",
-      "name": "蓝色监狱（TrySail）",
-      "enabled": true,
-      "keywords": [
-        "蓝色监狱"
-      ],
-      "include_any": [
-        "蓝色监狱",
-        "藍色監獄 VS. U"
-      ],
-      "exclude_any": [],
-      "group": [
-        "TrySail"
-      ],
-      "variant_prefer": [
-        "简日双语",
-        "简繁日内封",
-        "简日内嵌",
-        "简体",
-        "简"
-      ],
-      "fallback_any_group": true,
-      "note": ""
     }
   ]
 }
