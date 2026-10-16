@@ -114,33 +114,65 @@ jobs:
             echo "没有变化（这部番可能没搜到）"
           fi
 
-      - name: 开一条 Issue 让用户挑字幕组
+      - name: 抓一份字幕组清单
+        id: survey
         if: steps.decide.outputs.path == 'ask'
         env:
           ANIME: ${{ inputs.anime }}
+        run: |
+          OUT="$(python add_rule.py --survey "$ANIME" 2>&1 || true)"
+          [ -z "$OUT" ] && OUT="没搜到「$ANIME」。试试日文原名、罗马音，或者只取其中 2~4 个字。"
+          echo "$OUT"
+          {
+            echo "SURVEY<<ACGNX_EOF"
+            printf '%s\n' "$OUT" | tail -c 2500
+            echo "ACGNX_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: 开一条 Issue 并贴上清单
+        if: steps.decide.outputs.path == 'ask'
+        env:
+          ANIME: ${{ inputs.anime }}
+          SURVEY: ${{ steps.survey.outputs.SURVEY }}
         uses: actions/github-script@v7
         with:
           script: |
             const anime = (process.env.ANIME || '').trim();
+            const survey = (process.env.SURVEY || '(没有输出)').slice(0, 2500);
+
             const { data: issue } = await github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
               title: `加番 ${anime}`,
               body: [
                 '这条 Issue 是 Actions 页面的「加番」入口自动开的 ——',
-                '因为那里没有填字幕组。',
+                '因为那里没有填字幕组，所以没有替你瞎选。',
                 '',
-                '马上会有机器人回复一份「有哪些字幕组在做、各自是什么字幕形式」的清单，',
-                '在下面回复序号或者组名就加上了。'
+                '清单见下面第一条评论。'
               ].join('\n')
             });
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              body: [
+                '```',
+                survey,
+                '```',
+                '',
+                '**看清楚后在下面回复序号（如 `2` 或 `1,3`）或者直接写组名，我就加上。**',
+                '回复 `任意` 就是不挑组。'
+              ].join('\n')
+            });
+
             console.log(`已创建 Issue #${issue.number} -> ${issue.html_url}`);
             await core.summary
-              .addHeading('已交给你挑字幕组', 3)
-              .addRaw('没有指定字幕组，所以没有替你瞎选。')
+              .addHeading('没填字幕组，已开一条 Issue 让你挑', 3)
+              .addRaw(`Issue **#${issue.number}**：${issue.html_url}`)
               .addEOL()
-              .addRaw(`已开 Issue **#${issue.number}**：${issue.html_url}`)
+              .addRaw('打开它能看到完整的字幕组清单，回复序号即可。')
               .addEOL()
-              .addRaw('打开它就能看到清单，回复序号即可。')
+              .addRaw('（规则**还没有**加，等你回复。）')
               .write();
-            core.notice(`已创建 Issue #${issue.number}：${issue.html_url}`);
+            core.notice(`Issue #${issue.number} 已创建：${issue.html_url}`);
