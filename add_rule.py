@@ -591,6 +591,27 @@ def maybe_push(term: str, do_push: bool) -> None:
         print("     修好在目录里手动执行一次 `git push` 即可。")
 
 
+def purge_baseline(rule_ids: list[str]) -> int:
+    """删规则时顺手清掉它在 state.json 里的去重基线。
+
+    不清的话有个隐蔽的坑：删掉某部番、过几天重新加回来，
+    因为「以前推过」的记录还在，加番时**不会推送回溯**，
+    用户会以为加番坏了。（2026-10-16 全面体检时发现：state 从 40 集涨到 80 集，
+    全是已删规则的残留基线。）"""
+    ids = {i for i in rule_ids if i}
+    if not ids:
+        return 0
+    st = aw.load_state()
+    eps = st.get("episodes") or {}
+    gone = [k for k in eps if k.split("|", 1)[0] in ids]
+    if not gone:
+        return 0
+    for k in gone:
+        eps.pop(k, None)
+    aw.save_state(st)
+    return len(gone)
+
+
 def main() -> None:
     aw.setup_stdout()
     # 让 acgnx_watch 里的推送日志（成功/失败）能显示出来，否则出问题看不见
@@ -683,11 +704,16 @@ def main() -> None:
                 print(f"  [{i}] {r.get('name')}")
             return
         shutil.copyfile(aw.CONFIG_PATH, aw.CONFIG_PATH + ".bak")
+        removed_ids = []
         for i in reversed(hit):
             print("已删除：", rules[i].get("name"))
+            removed_ids.append(rules[i].get("id") or "")
             rules.pop(i)
         with open(aw.CONFIG_PATH, "w", encoding="utf-8") as f:
             json.dump(cfg, f, ensure_ascii=False, indent=2)
+        n = purge_baseline(removed_ids)
+        if n:
+            print(f"   （顺带清掉 {n} 条去重基线，不然重新加回来不会推送回溯）")
         write_watchlist()
         maybe_push(args.del_name, not args.no_push)
         print(f"\n✅ 删掉 {len(hit)} 条规则。")
@@ -705,6 +731,9 @@ def main() -> None:
         with open(aw.CONFIG_PATH, "w", encoding="utf-8") as f:
             json.dump(cfg, f, ensure_ascii=False, indent=2)
         print(f"已删除规则：{gone.get('name')}")
+        n = purge_baseline([gone.get("id") or ""])
+        if n:
+            print(f"   （顺带清掉 {n} 条去重基线）")
         write_watchlist()
         maybe_push(gone.get("name") or "rule", not args.no_push)
         return
