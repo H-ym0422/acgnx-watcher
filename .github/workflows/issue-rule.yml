@@ -31,7 +31,11 @@ jobs:
       (github.event_name == 'issue_comment' &&
         github.event.comment.user.type != 'Bot' &&
         !startsWith(github.event.issue.title, '删番') &&
+        !startsWith(github.event.issue.title, '删除') &&
+        !startsWith(github.event.issue.title, '移除') &&
+        !startsWith(github.event.issue.title, '取消') &&
         !startsWith(github.event.issue.title, '列表') &&
+        !startsWith(github.event.issue.title, '清单') &&
         !startsWith(github.event.issue.title, '我的番'))
     timeout-minutes: 10
 
@@ -98,13 +102,24 @@ jobs:
           case "$EVENT" in
             issues)
               NOPREFIX=0
-              case "$I_TITLE" in
-                加番*) MODE=add; KW="$(trim "${I_TITLE#加番}")" ;;
-                删番*) MODE=del; KW="$(trim "${I_TITLE#删番}")" ;;
-                列表*|我的番*) MODE=list; KW="" ;;
-                # 忘了写前缀（很常见）—— 就按「加番 整个标题」处理，别让人白等
-                *) MODE=add; KW="$(trim "$I_TITLE")"; NOPREFIX=1 ;;
-              esac
+              MODE=""
+              # 命令词容错：「删番 / 删除 / 移除 / 取消」都算删；「加番 / 添加 / 新增」都算加。
+              # 只认「删番」的话，写成「删除 XXX」会被当成番名去搜，什么都搜不到。
+              for p in 加番 添加 新增 追番; do
+                case "$I_TITLE" in "$p"*) MODE=add; KW="$(trim "${I_TITLE#"$p"}")"; break;; esac
+              done
+              if [ -z "$MODE" ]; then
+                for p in 删番 删除 移除 取消; do
+                  case "$I_TITLE" in "$p"*) MODE=del; KW="$(trim "${I_TITLE#"$p"}")"; break;; esac
+                done
+              fi
+              if [ -z "$MODE" ]; then
+                for p in 列表 清单 我的番; do
+                  case "$I_TITLE" in "$p"*) MODE=list; KW=""; break;; esac
+                done
+              fi
+              # 忘了写前缀（很常见）—— 就按「加番 整个标题」处理，别让人白等
+              if [ -z "$MODE" ]; then MODE=add; KW="$(trim "$I_TITLE")"; NOPREFIX=1; fi
               GRP="$(grab_group "$I_BODY")"
               SEA="$(grab_season "$I_BODY")"
 
