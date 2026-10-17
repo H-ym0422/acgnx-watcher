@@ -125,34 +125,6 @@
       "fallback_any_group": true,
       "note": "",
       "season": 3
-    },
-    {
-      "id": "r1792222878",
-      "name": "药屋少女的呢喃 第三季（喵萌奶茶屋）",
-      "enabled": true,
-      "keywords": [
-        "药屋少女的呢喃 第三季"
-      ],
-      "include_any": [
-        "药屋少女的呢喃 第三季",
-        "药师少女的独语",
-        "药屋少女的呢喃",
-        "Kusuriya no Hitorigoto"
-      ],
-      "exclude_any": [],
-      "group": [
-        "喵萌奶茶屋"
-      ],
-      "variant_prefer": [
-        "简日双语",
-        "简繁日内封",
-        "简日内嵌",
-        "简体",
-        "简"
-      ],
-      "fallback_any_group": true,
-      "note": "",
-      "season": 3
     }
   ]
 }
