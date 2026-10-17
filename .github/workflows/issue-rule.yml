@@ -80,26 +80,53 @@ jobs:
             local txt="$1" v raw
             v="$(grab_field "$txt" "字幕组")"
             if [ -z "$v" ]; then
-              raw="$(printf '%s\n' "$txt" | grep -v '^[[:space:]]*$' | grep -v '^#' | grep -v '^<!--' | head -1)"
+              # ⚠️ 先把纯数字行剔掉，再取第一行 ——
+              #    否则「49\n喵萌奶茶屋」这种顺序会先抓到 49
+              raw="$(printf '%s\n' "$txt" | grep -v '^[[:space:]]*$' | grep -v '^#' | grep -v '^<!--' \
+                     | grep -vE '^[[:space:]]*[0-9]+[[:space:]]*$' | head -1)"
               raw="$(trim "$raw")"
-              # 纯数字多半是「第几季」被填在了自由正文里，不能当字幕组
               case "$raw" in ''|*[!0-9]*) v="$raw" ;; *) v="" ;; esac
             fi
             printf '%s' "$v"
           }
 
-          # 第几季：只认纯数字
+          # 纯文本正文（没用 Issue 模板）时的兜底：正文形如
+          #     喵萌奶茶屋
+          #     49
+          # 这时要能从非空行里认出那个纯数字。
+          # ⚠️ 必须**按行**处理：用 `tr -d '[:space:]'` 会把换行也删掉，
+          #    多行正文会粘成一行，就认不出来了（2026-10-17 踩过）
+          plain_number() {
+            printf '%s\n' "$1" | grep -v '^[[:space:]]*$' | grep -v '^#' | grep -v '^<!--' \
+              | sed 's/[[:space:]]//g' | grep -E '^[0-9]+$' | head -1
+          }
+
+          # 第几季：只认纯数字。模板里没有但正文里有裸数字时（1~9）也认
           grab_season() {
             local v
             v="$(trim "$(grab_field "$1" "季")")"
-            case "$v" in ''|*[!0-9]*) printf '' ;; *) printf '%s' "$v" ;; esac
+            case "$v" in ''|*[!0-9]*) v="" ;; esac
+            if [ -z "$v" ]; then
+              v="$(plain_number "$1")"
+              case "$v" in ''|*[!0-9]*) v="" ;; esac
+              if [ -n "$v" ] && [ "$v" -ge 10 ]; then v=""; fi   # 10 以上当集数，不是季号
+            fi
+            printf '%s' "$v"
           }
+
           # 「只要第几集之后」—— 必须抽「只要第几集之后」这几个字，
           # 不能抽「季」，否则会撞上「第几季」那个输入框（实测会抽错）
+          # 模板里没填时退回认正文里的裸数字（>=10 才算，第 1~9 集的集数没意义）
           grab_from_ep() {
             local v
             v="$(trim "$(grab_field "$1" "只要第几集之后")")"
-            case "$v" in ''|*[!0-9]*) printf '' ;; *) printf '%s' "$v" ;; esac
+            case "$v" in ''|*[!0-9]*) v="" ;; esac
+            if [ -z "$v" ]; then
+              v="$(plain_number "$1")"
+              case "$v" in ''|*[!0-9]*) v="" ;; esac
+              if [ -n "$v" ] && [ "$v" -lt 10 ]; then v="" ; fi
+            fi
+            printf '%s' "$v"
           }
 
           STEP=done
