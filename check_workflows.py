@@ -16,6 +16,8 @@ import glob
 import os
 import re
 import sys
+import shutil
+import subprocess
 
 try:
     import yaml
@@ -38,6 +40,10 @@ def main() -> int:
         return 2
 
     bad = 0
+    bash = shutil.which("bash")
+    if not bash and "--require-bash" in sys.argv:
+        print("bash is required for workflow script validation")
+        return 2
     for p in files:
         name = os.path.basename(p)
         try:
@@ -93,6 +99,15 @@ def main() -> int:
         # 踩过的坑：用正则删条件时留下「&& && &&)」，YAML 照样合法，
         # 但 GitHub 解析表达式失败 → 整个 job 静默不跑，只有 job 列表是空的。
         for job in (doc.get("jobs") or {}).values():
+            for step in (job or {}).get("steps", []):
+                script = step.get("run")
+                if script and bash and step.get("shell", "bash").startswith("bash"):
+                    script = re.sub(r"\$\{\{.*?\}\}", "VALIDATION_VALUE", script, flags=re.S)
+                    result = subprocess.run([bash, "-n"], input=script, text=True,
+                                            encoding="utf-8", capture_output=True)
+                    if result.returncode:
+                        bad += 1
+                        print(f"  ERROR {name}: {step.get('name', 'run')}: {result.stderr.strip()}")
             expr = str((job or {}).get("if", ""))
             if "&& &&" in expr or "|| ||" in expr or "&& )" in expr or "( (" in expr:
                 print(f"  ✗ {name}  {job.get('name')} 的 if 表达式疑似断裂：{expr[:80]}")
@@ -113,3 +128,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
+

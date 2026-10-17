@@ -1,0 +1,9 @@
+name = "acgnx-watcher-cron"
+main = "worker.js"
+compatibility_date = "2026-10-17"
+
+[triggers]
+crons = ["*/5 * * * *"]
+
+[vars]
+REPO = "YOUR_GITHUB_USERNAME/acgnx-watcher"

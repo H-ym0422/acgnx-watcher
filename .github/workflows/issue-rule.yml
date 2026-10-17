@@ -20,14 +20,16 @@ permissions:
   issues: write
 
 concurrency:
-  group: acgnx-issue-rule
+  group: acgnx-state-writer
   cancel-in-progress: false
 
 jobs:
   handle:
     runs-on: ubuntu-latest
     if: >
-      github.event_name == 'issues' ||
+      github.actor == github.repository_owner &&
+      !github.event.issue.pull_request &&
+      (github.event_name == 'issues' ||
       (github.event_name == 'issue_comment' &&
         github.event.comment.user.type != 'Bot' &&
         !startsWith(github.event.issue.title, '删番') &&
@@ -36,11 +38,14 @@ jobs:
         !startsWith(github.event.issue.title, '取消') &&
         !startsWith(github.event.issue.title, '列表') &&
         !startsWith(github.event.issue.title, '清单') &&
-        !startsWith(github.event.issue.title, '我的番'))
+        !startsWith(github.event.issue.title, '我的番')))
     timeout-minutes: 10
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
@@ -190,7 +195,11 @@ jobs:
 
             issue_comment)
               # —— 第二步：用户在清单下面回复了 ——
-              KW="$(trim "${I_TITLE#加番}")"
+              KW="$I_TITLE"
+              for p in 加番 添加 新增 追番; do
+                case "$KW" in "$p"*) KW="${KW#"$p"}"; break;; esac
+              done
+              KW="$(trim "$KW")"
               PICK="$(printf '%s\n' "$C_BODY" | head -1 | tr -d '`' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
               SEA="$(grab_season "$I_BODY")"
               FROM_EP="$(grab_from_ep "$I_BODY")"
@@ -252,12 +261,15 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: 提交并推送
+        id: persist
+        env:
+          I_TITLE: ${{ github.event.issue.title }}
         run: |
           git config user.name  "acgnx-bot"
           git config user.email "acgnx-bot@users.noreply.github.com"
           if [ -n "$(git status --porcelain config.json state.json "我的番剧.md")" ]; then
             git add config.json state.json "我的番剧.md"
-            git commit -m "${{ github.event.issue.title }} [skip ci]"
+            git commit -m "$I_TITLE [skip ci]"
             # ⚠️ 必须 rebase 后再推：每 5 分钟的 watcher 也会往 main 提交「更新进度」，
             #    直接 push 会 non-fast-forward 失败 —— 而失败意味着**规则没存进仓库**，
             #    但飞书通知已经发出去了，看着像成功了（2026-10-17 实测踩到）
@@ -285,7 +297,7 @@ jobs:
           # ⚠️ 不要再用 `job.status` 判断成败：这一步是在 job **运行中**执行的，
           #    job.status 这时永远是 in_progress，判出来必然是「失败」。
           #    改成看「实际工作有没有跑完」+「有没有推上去」。
-          WORKOK: ${{ steps.handle.outcome == 'success' }}
+          WORKOK: ${{ steps.handle.outcome == 'success' && steps.persist.outcome == 'success' }}
           PUSHFAILED: ${{ env.PUSH_FAILED }}
         uses: actions/github-script@v7
         with:
@@ -332,3 +344,4 @@ jobs:
               issue_number: context.issue.number,
               body
             });
+

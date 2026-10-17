@@ -1025,6 +1025,8 @@ def main() -> None:
             print("已取消。")
             return
 
+    if args.from_episode > 0:
+        rule["from_episode"] = args.from_episode
     append_rule(rule)
     episodes = inspect_and_seed(rule, from_ep=args.from_episode)
     write_watchlist()
@@ -1037,3 +1039,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

@@ -1314,6 +1314,8 @@ def collect(cfg: dict) -> list[dict]:
         use_fallback = bool(primary) and rule.get("fallback_any_group", True)
 
         for it in all_items.values():
+            if not episode_allowed(it.get("episode") or "", int(rule.get("from_episode") or 0)):
+                continue
             if match_rule(it, rule):
                 fallback = False
             elif use_fallback and fallback_match(it, rule):
@@ -1425,6 +1427,12 @@ def actual_group(item: dict) -> str:
 # --------------------------------------------------------------------------
 # 一轮处理
 # --------------------------------------------------------------------------
+def episode_allowed(ep: str, minimum: int) -> bool:
+    """Apply the persistent episode floor; retain unknown episode formats."""
+    match = re.fullmatch(r"(\d{1,4})(?:-(\d{1,4}))?", ep.strip())
+    return minimum <= 0 or match is None or int(match.group(2) or match.group(1)) >= minimum
+
+
 def run_cycle(cfg: dict, state: dict, dry_run: bool = False) -> int:
     settings = cfg["settings"]
     prefix = settings.get("title_prefix") or "【新番速递】"
@@ -1454,7 +1462,7 @@ def run_cycle(cfg: dict, state: dict, dry_run: bool = False) -> int:
         mm = re.match(r"^(\d+)", ep or "")
         return int(mm.group(1)) if mm else 0
 
-    pushes: list[tuple[dict, bool]] = []   # (条目, 是否"更优版本"补推)
+    pushes: list[tuple[dict, bool, str]] = []   # (条目, 是否"更优版本"补推)
 
     if first_run and mode != "all":
         # 首次运行：每条规则只推"最新一集里最好的那个版本"，用来验证通路；
@@ -1469,8 +1477,12 @@ def run_cycle(cfg: dict, state: dict, dry_run: bool = False) -> int:
             if cur is None or key > (cur[0], cur[1]):
                 per_rule[rid] = (key[0], key[1], best)
         if mode != "silent":
-            for (rid, ep, gk), v in per_rule.items():
-                pushes.append((v[2], False, f"{rid}|{ep}|{gk}" if gk else f"{rid}|{ep}"))
+            for rid, v in per_rule.items():
+                best = v[2]
+                ep = best.get("episode") or best["btih"]
+                wanted = [g for g in (best["_rule"].get("group") or []) if not g.endswith("*")]
+                gk = group_key(best, wanted)
+                pushes.append((best, False, f"{rid}|{ep}|{gk}" if gk else f"{rid}|{ep}"))
     else:
         # 按规则分组收集候选，顺便折叠：本轮如果同时在推「01-12 全集」，
         # 就别再把它涵盖的 05~12 单集也推一遍（同一个番收两条消息很莫名其妙）
@@ -1510,7 +1522,7 @@ def run_cycle(cfg: dict, state: dict, dry_run: bool = False) -> int:
                     pushes.append((best, is_up, sk))
 
     sent = 0
-    failed: set[tuple[str, str]] = set()   # 推送失败的 (规则id, 集数)，这些不记为已看
+    failed: set[str] = set()   # 推送失败的 (规则id, 集数)，这些不记为已看
     gap = max(0, int(settings.get("push_min_interval_seconds", 13)))
     for idx, (best, is_upgrade, sk) in enumerate(pushes):
         rule = best["_rule"]
@@ -1667,3 +1679,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
