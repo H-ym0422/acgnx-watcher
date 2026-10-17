@@ -406,33 +406,12 @@ _want_groups: list[str] = []      # 当前规则里用户显式指定的字幕�
 
 
 def _group_of(it: dict) -> str:
-    """这条到底算哪个字幕组的**用于分组**的名字。
-
-    ⭐ 标题里的组名和 RSS 的 author 字段**经常不一致**（2026-10-17 用户实测）：
-    绿茶发布机发的条目，标题开头写的是 `[绿茶字幕组]`，author 才是 `绿茶发布机`。
-    只认标题的话，你在规则里选的「绿茶发布机」就一条都匹配不上，
-    最后全被兜底组顶掉 —— 表现就是「我明明要了两个组，只拿到一个」。
-
-    所以：**你指定的组名只要能对上标题或 author 任意一个，就算命中**，
-    并且分组时用「你认识的那个名字」，保证同一组不会被拆成两个。"""
-    title_g = (aw.actual_group(it) or "").strip()
-    author = (it.get("author") or "").strip()
-    for w in _want_groups:
-        if w and (_same_group(title_g, w) or _same_group(author, w)):
-            return w
-    return title_g or author
+    """这条算哪个组 —— 统一走 acgnx_watch.group_key（两边口径必须一致）。"""
+    return aw.group_key(it, _want_groups)
 
 
 def _same_group(a: str, b: str) -> bool:
-    """两个字幕组名算不算同一个（「绿茶字幕组」vs「綠茶字幕組」要能对上）。"""
-    na = aw.norm(a or "")
-    nb = aw.norm(b or "")
-    if not na or not nb:
-        return False
-    if na == nb:
-        return True
-    # 一方是另一方的前缀/子串即可（组名后面常带「字幕组」「字幕組」等后缀）
-    return na in nb or nb in na
+    return aw.group_eq(a, b)
 
 
 def inspect_and_seed(rule: dict) -> list[tuple[str, dict]]:
@@ -448,13 +427,22 @@ def inspect_and_seed(rule: dict) -> list[tuple[str, dict]]:
     matched = aw.collect(probe)
 
     # ---- ① 记基线 ----
-    groups: dict[str, list] = {}
+    # ⚠️ 键的格式必须跟 run_cycle 完全一致（2026-10-17 体检发现）：
+    # 这里原来写 2 段、run_cycle 读 3 段（多组规则带组名），会导致
+    # 「加完番后的第一次定时检查」把全部历史又推一遍。
+    want_g = [g for g in (rule.get("group") or []) if not g.endswith("*")]
+    global _want_groups
+    _want_groups = want_g
+    buckets: dict[tuple, list] = {}
     for m in matched:
-        groups.setdefault(m.get("episode") or m["btih"], []).append(m)
+        ep = m.get("episode") or m["btih"]
+        gk = aw.group_key(m, want_g)
+        buckets.setdefault((ep, gk), []).append(m)
     st = aw.load_state()
-    for ep, items in groups.items():
+    for (ep, gk), items in buckets.items():
         items.sort(key=aw.sort_key)
-        st["episodes"].setdefault(f"{rule['id']}|{ep}", items[0]["_seen"])
+        key = f"{rule['id']}|{ep}|{gk}" if gk else f"{rule['id']}|{ep}"
+        st["episodes"].setdefault(key, items[0]["_seen"])
     st["initialized"] = True
     aw.save_state(st)
 
@@ -468,7 +456,6 @@ def inspect_and_seed(rule: dict) -> list[tuple[str, dict]]:
     # 结果北宇治那一份被绿茶挤掉了 —— 选两个组却只拿到一个组的资源。
     # 现在：指定组之间互不覆盖；只有「兜底组」跟指定组抢时才让位。
     want_groups = [g for g in (rule.get("group") or []) if not g.endswith("*")]
-    global _want_groups
     _want_groups = want_groups
     ordered: list[tuple[str, dict]] = []
     if len(want_groups) > 1:

@@ -646,6 +646,37 @@ def _pref_key(item: dict) -> tuple[int, int]:
     return (1 if item.get("_fallback") else 0, item.get("_tier", 0))
 
 
+def group_eq(a: str, b: str) -> bool:
+    """两个字幕组名算不算同一个（「绿茶字幕组」vs「綠茶字幕組」要能对上）。"""
+    na = norm(a or "")
+    nb = norm(b or "")
+    if not na or not nb:
+        return False
+    if na == nb:
+        return True
+    return na in nb or nb in na
+
+
+def group_key(item: dict, want_groups: list[str] | None = None) -> str:
+    """这条算哪个字幕组的**分组键**。
+
+    ⭐ 标题里的组名和 RSS 的 author 字段**经常不一致**（2026-10-17 用户实测）：
+    绿茶发布机发的条目，标题开头写的是 `[绿茶字幕组]`，author 才是 `绿茶发布机`。
+    只认标题的话，用户在规则里选的组名一条都匹配不上，
+    最后全被兜底组顶掉 —— 表现就是「我明明要了两个组，只拿到一个」。
+
+    所以：**规则里选过的组名，能对上标题或 author 任意一个就算命中**，
+    并且分组时统一用「用户认识的那个名字」，保证同一组不会被拆成两个。"""
+    names = [(actual_group(item) or "").strip(), (item.get("author") or "").strip()]
+    for w in (want_groups or []):
+        if not w:
+            continue
+        for n in names:
+            if group_eq(n, w):
+                return w
+    return next((n for n in names if n), "")
+
+
 def collapse_overlaps(ordered: list[tuple[str, dict]], _group_key=None) -> list[tuple[str, dict]]:
     """同一「字幕组」里，如果已经有「01-12 全集」，就把落在它区间内的单集丢掉。
 
@@ -1301,9 +1332,13 @@ def note_unparsed(items: list[dict]) -> None:
     for it in items:
         key = it["btih"]
         e = box.get(key)
+        today = datetime.now(TZ8).strftime("%m-%d")
         if e:
             e["n"] = int(e.get("n", 1)) + 1
-            e["last"] = datetime.now(TZ8).strftime("%m-%d %H:%M")
+            # ⚠️ 每轮都刷新 last 会让 state 每 5 分钟变一次 → 一次提交，
+            #    一天 288 次无意义提交。只在跨天时更新。
+            if e.get("last", "")[:5] != today:
+                e["last"] = datetime.now(TZ8).strftime("%m-%d %H:%M")
         else:
             box[key] = {"title": it["title"][:140],
                         "group": actual_group(it)[:30],
@@ -1358,11 +1393,18 @@ def run_cycle(cfg: dict, state: dict, dry_run: bool = False) -> int:
     matched = collect(cfg)
     log.info("本轮共命中 %d 条（去重后）", len(matched))
 
-    # 按 (规则, 集数) 分组，同一集的不同字幕版本归到一组
+    # 按 (规则, 集数, 字幕组) 分组
+    # ⭐ **加了「字幕组」这一维**（2026-10-17）：规则里显式选了多个组时，
+    #   同一集要**每个组各推一份**，否则用户选了 N 个组只能拿到 1 个组的数据
+    #   （加番回溯那边已经这么改了，定时检查这边漏了）。
+    #   组名用 group_key 归一 —— 标题写[绿茶字幕组]、author 是「绿茶发布机」的情况
+    #   不归一就会算成两个不同的组。
     groups: dict[tuple, list[dict]] = {}
     for m in matched:
         ep = m.get("episode") or m["btih"]
-        groups.setdefault((m["_rid"], ep), []).append(m)
+        rule_groups = [g for g in (m["_rule"].get("group") or []) if not g.endswith("*")]
+        gk = group_key(m, rule_groups)
+        groups.setdefault((m["_rid"], ep, gk), []).append(m)
 
     def date_key(m: dict) -> float:
         return -(m["pub_dt"].timestamp() if m.get("pub_dt") else 0)
@@ -1377,7 +1419,7 @@ def run_cycle(cfg: dict, state: dict, dry_run: bool = False) -> int:
         # 首次运行：每条规则只推"最新一集里最好的那个版本"，用来验证通路；
         # 其余全部记为已读，避免开机狂刷历史消息
         per_rule: dict[str, tuple[int, float, dict]] = {}
-        for (rid, ep), items in groups.items():
+        for (rid, ep, _gk), items in groups.items():
             items.sort(key=sort_key)
             best = items[0]
             newest_ts = max((i["pub_dt"].timestamp() if i.get("pub_dt") else 0) for i in items)
@@ -1386,30 +1428,50 @@ def run_cycle(cfg: dict, state: dict, dry_run: bool = False) -> int:
             if cur is None or key > (cur[0], cur[1]):
                 per_rule[rid] = (key[0], key[1], best)
         if mode != "silent":
-            pushes = [(v[2], False) for v in per_rule.values()]
+            for (rid, ep, gk), v in per_rule.items():
+                pushes.append((v[2], False, f"{rid}|{ep}|{gk}" if gk else f"{rid}|{ep}"))
     else:
         # 按规则分组收集候选，顺便折叠：本轮如果同时在推「01-12 全集」，
         # 就别再把它涵盖的 05~12 单集也推一遍（同一个番收两条消息很莫名其妙）
         cand_by_rid: dict[str, list[tuple[str, dict, bool]]] = {}
-        for (rid, ep), items in groups.items():
+        for (rid, ep, gk), items in groups.items():
             best = best_of(items)
-            prev = _seen_pair(state["episodes"].get(f"{rid}|{ep}"))
+            # 多组规则要按「集数+组」分别记，否则 A 组记过一次，
+            # B 组这一集再出就会被当成「见过且没变好」而永远不推。
+            sk = f"{rid}|{ep}|{gk}" if gk else f"{rid}|{ep}"
+            prev = _seen_pair(state["episodes"].get(sk))
             # 两种情况值得打扰你：字幕形式更好了，或者这一集出了修正版（v2 及以后）
             if prev is not None and best["_tier"] >= prev[0] and best["_rev"] <= prev[1]:
                 continue
             # prev 存在 = 是"更优版本/修正版"；不存在 = 这是第一次见到这一集
-            cand_by_rid.setdefault(rid, []).append((ep, best, prev is not None))
+            cand_by_rid.setdefault(rid, []).append((ep, best, prev is not None, sk, gk))
 
         for cand in cand_by_rid.values():
-            keep = {id(b) for _, b in collapse_overlaps([(e, b) for e, b, _ in cand])}
-            for ep, best, is_up in cand:
+            # ⭐ **兜底组的资源，只有在这一集没有任何指定组版本时才推**
+            #    否则组A 已出了 14 集、兜底的组C 也出了 14 集，
+            #    你会收到两条同一集的消息 —— 那条组C 的纯属噪音。
+            has_primary = {ep for ep, b, *_ in cand if not b.get("_fallback")}
+            cand = [c for c in cand
+                    if not c[1].get("_fallback") or c[0] not in has_primary]
+            if not cand:
+                continue
+            # 折叠时按「这一条自己的组」分组 —— cand 里本来就带着 gk，
+            # 所以直接按 gk 分桶各自折叠，不要用标题里解析出来的组名
+            #（绿茶发布机标题写的是 [绿茶字幕组]，会跟绿茶字幕组混在一起）
+            keep: set[int] = set()
+            by_g: dict[str, list] = {}
+            for ep, b, _up, _sk, gk in cand:
+                by_g.setdefault(gk, []).append((ep, b))
+            for gk, items_g in by_g.items():
+                keep |= {id(x) for _, x in collapse_overlaps(items_g, lambda _it: gk)}
+            for ep, best, is_up, sk, gk in cand:
                 if id(best) in keep:
-                    pushes.append((best, is_up))
+                    pushes.append((best, is_up, sk))
 
     sent = 0
     failed: set[tuple[str, str]] = set()   # 推送失败的 (规则id, 集数)，这些不记为已看
     gap = max(0, int(settings.get("push_min_interval_seconds", 13)))
-    for idx, (best, is_upgrade) in enumerate(pushes):
+    for idx, (best, is_upgrade, sk) in enumerate(pushes):
         rule = best["_rule"]
         title, body = build_push_content(best, rule, prefix, is_upgrade)
         log.info("%s -> %s", "补推" if is_upgrade else "命中", best["title"])
@@ -1426,23 +1488,23 @@ def run_cycle(cfg: dict, state: dict, dry_run: bool = False) -> int:
             if not ok:
                 # 没推出去就别记成「已看」，下一轮还会推，否则这集就永久漏了
                 # （2026-10-16 修：原来返回值被丢掉，推送失败照样标记已看）
-                failed.add((best["_rid"], best.get("episode") or best["btih"]))
+                failed.add(sk)          # 用带组的键，跟下面写 state 的键保持一致
                 log.warning("这条没推成功，本轮不标记为已看，下一轮会重推")
         sent += 1
 
     if not dry_run:
         # 记下「见过的最好档位:见过的最大修订号」，档位和修订号各自单调，不会因为
         # 后出的版本字幕形式更差就把记录冲低（否则会出现反复补推）
-        for (rid, ep), items in groups.items():
-            if (rid, ep) in failed:
+        for (rid, ep, gk), items in groups.items():
+            sk = f"{rid}|{ep}|{gk}" if gk else f"{rid}|{ep}"
+            if sk in failed:
                 continue          # 上一条没推成功，别记成已看，下一轮还会推
             best = best_of(items)
-            key = f"{rid}|{ep}"
-            prev = _seen_pair(state["episodes"].get(key))
+            prev = _seen_pair(state["episodes"].get(sk))
             if prev is None:
-                state["episodes"][key] = f"{best['_tier']}:{best['_rev']}"
+                state["episodes"][sk] = f"{best['_tier']}:{best['_rev']}"
             else:
-                state["episodes"][key] = f"{min(prev[0], best['_tier'])}:{max(prev[1], best['_rev'])}"
+                state["episodes"][sk] = f"{min(prev[0], best['_tier'])}:{max(prev[1], best['_rev'])}"
         state["initialized"] = True
         save_state(state)
 
