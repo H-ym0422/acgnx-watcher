@@ -24,7 +24,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: acgnx-watcher
+  group: acgnx-state-writer
   cancel-in-progress: false
 
 jobs:
@@ -34,6 +34,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
@@ -77,6 +80,7 @@ jobs:
             }
             git fetch origin "${GITHUB_REF_NAME:-main}" -q
             if git diff --quiet HEAD "origin/${GITHUB_REF_NAME:-main}" -- config.json state.json "我的番剧.md"; then
+              :
             else
               echo "⚠️⚠️ 提交没能推上去，规则可能没存进仓库 —— 请重发一次同样的 Issue"
               echo "PUSH_FAILED=1" >> "$GITHUB_ENV"
@@ -85,3 +89,4 @@ jobs:
           else
             echo "state.json unchanged, nothing to commit"
           fi
+

@@ -2,3 +2,6 @@ logs/
 __pycache__/
 *.pyc
 config.json.bak
+
+cloudflare-cron/wrangler.toml
+cloudflare-cron/.wrangler/

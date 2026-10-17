@@ -21,7 +21,7 @@ GitHub Actions 抓取 → 判定 → 推送
 本来写的是 GitHub 自带的 `schedule`，但**它对新建仓库的高频任务会降级** ——
 实测请求每小时 12 次，实际投放约每 4 小时一次，有时候干脆一次都不跑。
 
-所以定时器换成了 **Cloudflare Worker**（`cloudflare-cron/` 目录），
+所以定时器换成了 **Cloudflare Worker**（[`cloudflare-cron/`](cloudflare-cron/README.md) 目录），
 它直接调 GitHub 的 `workflow_dispatch` 接口，绕开那个调度队列，实测准点。
 GitHub 里那个 `schedule` 仍然留着，偶尔能跑一次算白捡的。
 
@@ -344,7 +344,7 @@ GitHub Actions 对公开仓库不限分钟数，所以**零成本**。
 | `.github/workflows/add-rule.yml` | Actions 页面手动加番 |
 | `.github/workflows/issue-rule.yml` | 发 Issue 加番 / 删番 / 查列表 |
 | `.github/ISSUE_TEMPLATE/` | 手机上「新建议题」时让你选的模板，标题会自动预填 |
-| `cloudflare-cron/` | ⚠️ **只在本地**，不在这个仓库里 —— 定时器 Worker 的代码和部署步骤 |
+| `cloudflare-cron/` | 不含密钥的定时器 Worker 模板和部署步骤 |
 
 > ⚠️ **改工作流后一定要跑 `python check_workflows.py`，并真发一个 Issue 实测。**
 > 这类故障全是静默的：工作流名字会变成文件路径、或者完全没反应，日志里什么都看不到。
@@ -356,10 +356,30 @@ GitHub Actions 对公开仓库不限分钟数，所以**零成本**。
 2. 把本目录所有文件传上去，包括 `.github` 和 `state.json`
 3. 仓库 `Settings` → `Secrets and variables` → `Actions` → New repository secret：
    - `ACGNX_WEBHOOK_URL` = 飞书群机器人的 Webhook 地址
-4. 建 Cloudflare Worker（`cloudflare-cron/搭建步骤.md` 里有完整步骤）：
+4. 建 Cloudflare Worker（[`cloudflare-cron/README.md`](cloudflare-cron/README.md) 里有完整步骤）：
    - 部署 `worker.js`（有 `[triggers] crons = ["*/5 * * * *"]`）
-   - 变量：`GH_TOKEN`（要 Contents: Read and write + Actions: Read and write）、
-     `REPO`（填仓库全名）、`SECRET`（可选，给手动触发地址加一道门）
+   - 变量：`GH_TOKEN`（仅目标仓库的 Actions: Read and write）、
+     `REPO`（填仓库全名）；模板不开放网页触发入口
 5. 在 Cloudflare 里点「获取 Token」确认密钥填对了
 
 Secret 是给工作流用的，`config.json` 里不要填任何密钥 —— **这个仓库是公开的**。
+
+
+## 开发验证与权限
+
+Issue 加番、删番、选组仅接受仓库所有者操作，普通访客和 PR 评论不会执行规则管理。
+三个修改配置/状态的工作流共用 `acgnx-state-writer` 并发组，检出最新 main 后执行。
+GitHub 并发组不保证先进先出，高频操作时请确认各次运行结果。
+
+`--from-episode N` 会保存为规则的 `from_episode`，后续轮询也跳过更早的集数；
+跨过 N 的合集和无法解析集数的资源仍会保留。已有规则可手工加入该字段。
+
+```bash
+pip install -r requirements-dev.txt
+python -m unittest discover -s tests -v
+python check_workflows.py --require-bash
+```
+
+工作流检查同时验证 YAML 与 Bash 脚本语法，需要可用的 Bash。
+PR 自动执行上述检查，不读取推送密钥、不发送消息。
+Worker 模板是新增参考实现，未自动替换现有 Cloudflare 部署。
