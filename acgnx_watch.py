@@ -362,6 +362,8 @@ EP_RANGE_WORD = re.compile(r"(?:Vol\.?\s*)?(\d{1,3})\s*[-~～]\s*(\d{1,3})\s*[�
 EP_RANGE_BARE = re.compile(
     r"(?<![0-9])(?:^|[^\d.])(\d{1,2})\s*[-~～]\s*(\d{1,2})"
     r"\s*(?:\+\s*SP|\bSP\b|[话話集])")
+# 「[03(51)]」—— 括号里是总集数，取前面那个
+EP_TOTAL_IN_PAREN = re.compile(r"[\[【]\s*(\d{1,3})\s*[\(（]\s*\d{1,4}\s*[\)）]")
 EP_COMPLETE = re.compile(r"全\s*(\d{1,3})\s*[话話集]")
 RE_BATCH_HINT = re.compile(r"合集|全集|完結|完结|\bBatch\b|\bFin\b", re.I)
 
@@ -383,6 +385,10 @@ def extract_episode(title: str) -> str:
     m = EP_COMPLETE.search(title)             # 全12话
     if m:
         return f"01-{int(m.group(1)):02d}"
+    # 「[03(51)]」—— 括号里是总集数，要取前面那个（2026-10-17 药屋实测）
+    m = EP_TOTAL_IN_PAREN.search(title)
+    if m:
+        return f"{int(m.group(1)):02d}"
 
     for pat in (EP_PATTERNS[0], EP_PATTERNS[2], EP_PATTERNS[3],
                 EP_PATTERNS[4], EP_PATTERNS[5], EP_PATTERNS[6]):
@@ -735,15 +741,37 @@ def _collapse_in_group(ordered: list[tuple[str, dict]]) -> list[tuple[str, dict]
 
 
 def season_ok(title: str, want: int) -> bool:
-    """标题是不是「第 want 季」。没标季号的当第一季 —— 大多数字幕组做第一季时
-    压根不写「第一季」，而第二季一定会标出来。"""
+    """标题是不是「第 want 季」。
+
+    ⚠️ **没标季号的必须放行**（2026-10-17 修）：
+    原来写的是「没标季号 = 第一季」—— 对第一季成立，对第三季就全错。
+    实测「药屋少女的呢喃 第三季」里喵萌的 11 条正片**标题里一个季号都没有**，
+    按老逻辑会以为它们是第一季，全部挡掉 → 整部番一条都推不出来。
+
+    现在：标了季号就按季号比；没标就放行
+    （标了别季的会被挡掉，不标的留下 —— 这才是安全的默认）。"""
     got = extract_season(title)
     if got is None:
-        return int(want) == 1
+        return True
     return got == int(want)
 
 
+# 不是正片的条目：主题曲 / 片尾曲 / 插曲原声 / PV / 预告。
+# 这些在站里经常跟正片混在同一部番下，标题里又没有集数，
+# 会被当成「认不出集数」的新条目推给你（2026-10-17 药屋那条实测）。
+RE_NOT_EPISODE = re.compile(
+    r"主題歌|主题歌|オープニング|エンディング|OP主題歌|ED主題歌"
+    r"|插曲|原声带|原聲帶|音集| soundtrack|\bOST\b|Drama\s*CD|Bonus\s*Track"
+    r"|音樂|音乐|选曲集|選曲集|Insert\s*Song"
+    # 「ED「AIYOU」」「OP主題歌」这种只在片名后带引号的写法（药屋那条实测漏网的）
+    r"|\bED\s*[「『“\x22]|\bOP\s*[「『“\x22]|\bOpening\b|\bEnding\b",
+    re.I)
+
+
 def match_rule(item: dict, rule: dict) -> bool:
+    # 音乐/原声/主题曲这类不是正片，直接不要
+    if RE_NOT_EPISODE.search(item.get("title", "")):
+        return False
     nt = norm(item["title"])
     na = norm(item["author"])
 

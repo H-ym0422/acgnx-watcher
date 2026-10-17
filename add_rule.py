@@ -376,9 +376,20 @@ def pick(term: str, want_all_groups: bool, forced_groups: list[str],
         "fallback_any_group": bool(fallback),
         "note": "",
     }
+    # 季号：用户没填就从番名里认（「药屋少女的呢喃 第三季」→ 只收第三季）。
+    # 不认的话，「第三季」的规则会把第一、二季的合集和单集一起收进来
+    # ——实测 药屋那条就是这么混进来 01-12、01-24、13-18 三个第二季的包。
     if season and int(season) > 0:
         rule["season"] = int(season)
         print(f"\n🎬 已设为「只收第 {season} 季」—— 标题里标了别的季号的会被丢掉")
+    else:
+        for kw in [term] + (extra_aliases or [])[:2]:
+            sn = aw.extract_season(kw)
+            if sn and sn > 1:
+                rule["season"] = sn
+                print(f"\n🎬 从番名里认出「第 {sn} 季」，已自动设为只收这一季"
+                      "（不想这样就重发 Issue，在「第几季」填 0）")
+                break
     return rule
 
 
@@ -465,9 +476,10 @@ def inspect_and_seed(rule: dict) -> list[tuple[str, dict]]:
         #     而绿茶发布机的条目标题里写的是 [绿茶字幕组]，
         #     导致它和真正的绿茶字幕组混在一组里互相折叠
         # 现在：槽位 key = 你认识的那个组名（_group_of 已经做过归一）
-        for ep in sorted(groups, key=ep_sort_key):
+        for ep in sorted({k[0] for k in buckets}, key=ep_sort_key):
+            items_ep = [it for (e, _g), lst in buckets.items() if e == ep for it in lst]
             per_slot: dict[str, tuple[str, dict]] = {}
-            for it in sorted(groups[ep], key=aw.sort_key):
+            for it in sorted(items_ep, key=aw.sort_key):
                 g = _group_of(it)
                 slot = next((w for w in want_groups if _same_group(g, w)), None) \
                     or (g or "__fb__")
@@ -484,8 +496,9 @@ def inspect_and_seed(rule: dict) -> list[tuple[str, dict]]:
                     if not any(slot == w or _same_group(slot, w) for w in want_groups)]
             ordered.extend(sorted(rest, key=lambda t: aw.sort_key(t[1])))
     else:
-        for ep in sorted(groups, key=ep_sort_key):
-            ordered.append((ep, aw.best_of(groups[ep])))
+        for ep in sorted({k[0] for k in buckets}, key=ep_sort_key):
+            items_ep = [it for (e, _g), lst in buckets.items() if e == ep for it in lst]
+            ordered.append((ep, aw.best_of(items_ep)))
     ordered = aw.collapse_overlaps(ordered, _group_of)   # 只在同组内折叠；分组口径跟上面保持一致
     ordered.sort(key=lambda t: (ep_sort_key(t[0]), aw.sort_key(t[1])))
 
