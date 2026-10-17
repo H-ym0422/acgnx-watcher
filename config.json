@@ -97,32 +97,6 @@
       ],
       "note": "",
       "fallback_any_group": true
-    },
-    {
-      "id": "r1792169849",
-      "name": "与你相恋到生命尽头（绿茶发布机/北宇治字幕组）",
-      "enabled": true,
-      "keywords": [
-        "与你相恋到生命尽头"
-      ],
-      "include_any": [
-        "与你相恋到生命尽头",
-        "Kimi ga Shinu made Koi wo Shitai"
-      ],
-      "exclude_any": [],
-      "group": [
-        "绿茶发布机",
-        "北宇治字幕组"
-      ],
-      "variant_prefer": [
-        "简日双语",
-        "简繁日内封",
-        "简日内嵌",
-        "简体",
-        "简"
-      ],
-      "fallback_any_group": true,
-      "note": ""
     }
   ]
 }
