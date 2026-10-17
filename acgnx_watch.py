@@ -826,12 +826,17 @@ def build_push_content(item: dict, rule: dict, prefix: str,
     # 之前这里显示的是「规则里配置的组」，导致兜底时会连着出现两个组名，
     # 而且上面写着「字幕组：喵萌奶茶屋」下面又写「指定字幕组还没有」，
     # 看着自相矛盾（2026-10-16 用户反馈）。
+    want_list = [g for g in (rule.get("group") or []) if not g.endswith("*")]
     want = " / ".join(rule.get("group") or []) or "任意字幕组"
-    src = actual_group(item) or "其它字幕组"
+    src = group_key(item, want_list) or "其它字幕组"
     lines.append(f"字幕组：{src}")
-    if item.get("_fallback"):
-        # 只在真的换了组时才说明原因，且把「为什么」放在后面当补充，不抢主信息
-        lines.append(f"※ 你指定的「{want}」这一集还没出，这个是自动找的替补")
+    # 只在真的换了组时才说明，且**必须说清是哪一集、实际用了谁**
+    # （2026-10-17 用户反馈：老写法「你指定的 X 这一集还没出」很容易被理解成
+    #   「整部番都没有」，而实际上只是**那一集**喵萌没做）
+    if item.get("_fallback") and src not in want_list:
+        epn = item.get("episode") or "这一集"
+        lines.append(f"※ 第 {epn} 集：「{'、'.join(want_list)}」还没出，"
+                     f"这条用的是「{src}」做的")
 
     # 字幕形式（简日双语 / 简繁日内封 …）。
     # 没标出来时**照样写出这一行**并说清为什么 ——
@@ -1315,6 +1320,14 @@ def collect(cfg: dict) -> list[dict]:
                 fallback = True
             else:
                 continue
+
+            # ⭐ **兜底判定和「字幕组」显示必须一致**（2026-10-17 用户反馈过矛盾文案）：
+            #   上面按「标题里有没有你的组名」判兜底，下面按「标题/author 归一后是谁」显示，
+            #   两套口径不一致就会出现「说没出、却又显示你的组名」。
+            #   只要归一后能认成你指定的组，就一律**不是兜底**。
+            if fallback and primary:
+                if group_key(it, primary) in primary:
+                    fallback = False
 
             variant = extract_variant(it["title"])
             if skip_trad and is_traditional_only(variant):
