@@ -25,6 +25,14 @@ body:
       placeholder: "1"
     validations:
       required: false
+  - type: input
+    id: from_episode
+    attributes:
+      label: 只要第几集之后（可选）
+      description: 本地已经有前面几集了，就填你手上最后那集的下一集。例如填 49 = 只要第 49 集及以后。填了之后前面的会记成「已看过」，不推给你，以后出修正版也不会再推
+      placeholder: "49"
+    validations:
+      required: false
   - type: markdown
     attributes:
       value: |

@@ -425,7 +425,25 @@ def _same_group(a: str, b: str) -> bool:
     return aw.group_eq(a, b)
 
 
-def inspect_and_seed(rule: dict) -> list[tuple[str, dict]]:
+def ep_at_least(ep: str, n: int) -> bool:
+    """这个集数算不算「第 n 集及以后」。
+
+    拿不准的时候（合集、认不出的哈希键）一律返回 True —— 宁可多给你一条，
+    也别把你想要的漏掉。"""
+    if n <= 0:
+        return True
+    s = (ep or "").strip()
+    if not s or s == "合集":
+        return True
+    m = re.match(r"^(\d{1,4})-(\d{1,4})$", s)
+    if m:                       # 区间：末尾集号 >= n 就算有交集
+        return int(m.group(2)) >= n
+    if s.isdigit():
+        return int(s) >= n
+    return True
+
+
+def inspect_and_seed(rule: dict, from_ep: int = 0) -> list[tuple[str, dict]]:
     """抓一遍，做两件事：
        ① 把这条规则当前命中的集数记进 state 当「已记录」基线 ——
           这样**之后只有新发布的集数才会提醒**；
@@ -502,6 +520,20 @@ def inspect_and_seed(rule: dict) -> list[tuple[str, dict]]:
     ordered = aw.collapse_overlaps(ordered, _group_of)   # 只在同组内折叠；分组口径跟上面保持一致
     ordered.sort(key=lambda t: (ep_sort_key(t[0]), aw.sort_key(t[1])))
 
+    # ⭐ 「只要第 N 集之后」（用户 2026-10-17 提的需求）：
+    #   前面那些集数**照样写进 state 基线**（所以它们的修正版/更好版本以后也不会再推），
+    #   只是**这次不列进回溯**。用户本地已有的内容不该再推一遍。
+    all_n = len(ordered)
+    if from_ep > 0:
+        ordered = [(ep, it) for ep, it in ordered if ep_at_least(ep, from_ep)]
+        skipped = all_n - len(ordered)
+        print(f"\n📌 按你的要求，只回溯第 {from_ep} 集及以后 —— 跳过 {skipped} 条"
+              f"（第 1~{from_ep - 1} 集已记为看过，以后出修正版也不会再推你）")
+
+    if not ordered:
+        print(f"\n（要的第 {from_ep} 集及以后暂时还没有资源，等更新了会推你）")
+        return []
+
     print(f"   原始命中 {len(matched)} 条，归并成 {len(ordered)} 集（按集数从小到大）：")
     for ep, item in ordered:
         d = f"{item['pub_dt']:%m-%d}" if item.get("pub_dt") else "??"
@@ -515,7 +547,7 @@ def inspect_and_seed(rule: dict) -> list[tuple[str, dict]]:
 
 
 def notify_result(rule: dict, episodes: list[tuple[str, dict]],
-                  mode: str = "all") -> None:
+                  mode: str = "all", from_ep: int = 0) -> None:
     """把加番结果推到手机。
     mode: all = 把第1集到最新集的磁力全部列出（默认）
           latest = 只推最新一集
@@ -528,6 +560,8 @@ def notify_result(rule: dict, episodes: list[tuple[str, dict]],
     lines = [f"字幕组：{' / '.join(rule['group']) if rule['group'] else '任意字幕组'}"]
     if rule.get("include_any"):
         lines.append(f"标题需含：{'、'.join(rule['include_any'])}")
+    if from_ep > 0:
+        lines.append(f"只要第 {from_ep} 集及以后（前面的已记为看过，不再提醒）")
 
     if not episodes:
         lines.append("")
@@ -767,6 +801,9 @@ def main() -> None:
     ap.add_argument("--backfill", choices=["all", "latest", "none"], default="all",
                     help="加番时把已发布的集数推到什么程度："
                          "all=第1集到最新集全部给你（默认）；latest=只给最新一集；none=都不推")
+    ap.add_argument("--from-episode", type=int, default=0, metavar="N",
+                    help="只要第 N 集及以后。前面那些会记成「已看过」，"
+                         "既不推给你，以后出修正版也不会再推。0=不限制（默认）")
     ap.add_argument("--list", action="store_true", help="列出已有规则")
     ap.add_argument("--render", action="store_true",
                     help=f"生成/刷新「{WATCHLIST_NAME}」并打印（手机上直接看这个文件）")
@@ -923,10 +960,10 @@ def main() -> None:
             return
 
     append_rule(rule)
-    episodes = inspect_and_seed(rule)
+    episodes = inspect_and_seed(rule, from_ep=args.from_episode)
     write_watchlist()
     if args.notify:
-        notify_result(rule, episodes, args.backfill)
+        notify_result(rule, episodes, args.backfill, from_ep=args.from_episode)
     maybe_push(term, not args.no_push)
 
     print("\n🎉 完成。想微调就编辑 config.json 里这条规则（字段含义见 README.md）。")

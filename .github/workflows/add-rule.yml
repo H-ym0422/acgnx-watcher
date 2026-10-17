@@ -31,6 +31,11 @@ on:
         required: false
         type: string
         default: ""
+      from_episode:
+        description: "只要第几集之后（本地已有前面几集就填，比如 49）。留空 = 从第 1 集开始"
+        required: false
+        type: string
+        default: ""
       backfill:
         description: "加完后推哪些 → all=第1集到最新集全给（默认）；latest=只给最新一集；none=都不推"
         required: false
@@ -68,6 +73,7 @@ jobs:
           GROUP: ${{ inputs.group }}
           ANYGROUP: ${{ inputs.any_group }}
           SEA: ${{ inputs.season }}
+          FROM_EP: ${{ inputs.from_episode }}
         run: |
           GRP_CLEAN="$(printf '%s' "$GROUP" | tr -d '[:space:]')"
           SEA_CLEAN="$(printf '%s' "$SEA" | tr -d '[:space:]')"
@@ -104,6 +110,7 @@ jobs:
           echo "----------------------------------------"
           ARGS=("$ANIME" --yes --no-push --notify --backfill "${BACKFILL:-all}")
           [ -n "$SEA" ] && ARGS+=(--season "$SEA")
+          [ -n "$FROM_EP" ] && ARGS+=(--from-episode "$FROM_EP")
           if [ "$ANYGROUP" = "true" ]; then
             ARGS+=(--any-group)
           else

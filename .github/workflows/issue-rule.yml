@@ -94,6 +94,13 @@ jobs:
             v="$(trim "$(grab_field "$1" "季")")"
             case "$v" in ''|*[!0-9]*) printf '' ;; *) printf '%s' "$v" ;; esac
           }
+          # 「只要第几集之后」—— 必须抽「只要第几集之后」这几个字，
+          # 不能抽「季」，否则会撞上「第几季」那个输入框（实测会抽错）
+          grab_from_ep() {
+            local v
+            v="$(trim "$(grab_field "$1" "只要第几集之后")")"
+            case "$v" in ''|*[!0-9]*) printf '' ;; *) printf '%s' "$v" ;; esac
+          }
 
           STEP=done
           OUT=""
@@ -122,8 +129,9 @@ jobs:
               if [ -z "$MODE" ]; then MODE=add; KW="$(trim "$I_TITLE")"; NOPREFIX=1; fi
               GRP="$(grab_group "$I_BODY")"
               SEA="$(grab_season "$I_BODY")"
+              FROM_EP="$(grab_from_ep "$I_BODY")"
 
-              echo "事件=新 Issue | 模式=$MODE | 关键词=$KW | 字幕组=${GRP:-（待选）} | 季=${SEA:-不限} | 忘了写前缀=$NOPREFIX"
+              echo "事件=新 Issue | 模式=$MODE | 关键词=$KW | 字幕组=${GRP:-（待选）} | 季=${SEA:-不限} | 只要第${FROM_EP:-1}集起 | 忘了写前缀=$NOPREFIX"
 
               if [ "$MODE" = "add" ] && [ -z "$GRP" ]; then
                 # —— 第一步：只列清单，先不加 ——
@@ -141,6 +149,7 @@ jobs:
                 OUT="$(python add_rule.py --del-name "$KW" --no-push 2>&1 || true)"
               else
                 ARGS=("$KW" --yes --no-push --notify --backfill all)
+                [ -n "$FROM_EP" ] && ARGS+=(--from-episode "$FROM_EP")
                 [ -n "$SEA" ] && ARGS+=(--season "$SEA")
                 IFS=',' read -ra G <<< "$GRP"
                 for g in "${G[@]}"; do
@@ -157,7 +166,8 @@ jobs:
               KW="$(trim "${I_TITLE#加番}")"
               PICK="$(printf '%s\n' "$C_BODY" | head -1 | tr -d '`' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
               SEA="$(grab_season "$I_BODY")"
-              echo "事件=回复 | 关键词=$KW | 回复=$PICK | 季=${SEA:-不限}"
+              FROM_EP="$(grab_from_ep "$I_BODY")"
+              echo "事件=回复 | 关键词=$KW | 回复=$PICK | 季=${SEA:-不限} | 只要第${FROM_EP:-1}集起"
 
               # 已经加过就别重复加
               if python add_rule.py --exists "$KW" > /dev/null 2>&1; then
@@ -165,6 +175,7 @@ jobs:
                 OUT="「$KW」已经在追了，没有重复添加。想换字幕组的话，先发一个标题是「删番 $KW」的 Issue，然后再加一次。"
               else
                 ARGS=("$KW" --yes --no-push --notify --backfill all)
+                [ -n "$FROM_EP" ] && ARGS+=(--from-episode "$FROM_EP")
                 [ -n "$SEA" ] && ARGS+=(--season "$SEA")
                 NG=0
                 if [[ "$PICK" == "任意" || "$PICK" == "any" || "$PICK" == "*" ]]; then
