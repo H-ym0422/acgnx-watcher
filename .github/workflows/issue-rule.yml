@@ -258,8 +258,21 @@ jobs:
           if [ -n "$(git status --porcelain config.json state.json "我的番剧.md")" ]; then
             git add config.json state.json "我的番剧.md"
             git commit -m "${{ github.event.issue.title }} [skip ci]"
-            git push
-            echo "已提交并推送"
+            # ⚠️ 必须 rebase 后再推：每 5 分钟的 watcher 也会往 main 提交「更新进度」，
+            #    直接 push 会 non-fast-forward 失败 —— 而失败意味着**规则没存进仓库**，
+            #    但飞书通知已经发出去了，看着像成功了（2026-10-17 实测踩到）
+            git push 2>/dev/null || {
+              echo "首次推送被拒（可能有并发提交），rebase 后重试…"
+              git pull --rebase origin "${GITHUB_REF_NAME:-main}"
+              git push
+            }
+            git fetch origin "${GITHUB_REF_NAME:-main}" -q
+            if git diff --quiet HEAD "origin/${GITHUB_REF_NAME:-main}" -- config.json state.json "我的番剧.md"; then
+              echo "已提交并推送"
+            else
+              echo "⚠️⚠️ 提交没能推上去，规则可能没存进仓库 —— 请重发一次同样的 Issue"
+              echo "PUSH_FAILED=1" >> "$GITHUB_ENV"
+            fi
           else
             echo "没有变化"
           fi
@@ -269,17 +282,26 @@ jobs:
         env:
           OUT: ${{ steps.handle.outputs.RESULT }}
           STEP: ${{ steps.handle.outputs.STEP }}
-          JOBSTATUS: ${{ job.status }}
+          # ⚠️ 不要再用 `job.status` 判断成败：这一步是在 job **运行中**执行的，
+          #    job.status 这时永远是 in_progress，判出来必然是「失败」。
+          #    改成看「实际工作有没有跑完」+「有没有推上去」。
+          WORKOK: ${{ steps.handle.outcome == 'success' }}
+          PUSHFAILED: ${{ env.PUSH_FAILED }}
         uses: actions/github-script@v7
         with:
           script: |
-            const ok = process.env.JOBSTATUS === 'success';
+            const workOk = process.env.WORKOK === 'true';
+            const pushFailed = process.env.PUSHFAILED === '1';
+            // 判定依据：解析步骤本身成功了 + 提交确实推上去了
+            const ok = workOk && !pushFailed;
             const step = process.env.STEP || '';
             const out = (process.env.OUT || '(没有输出)').slice(0, 8000);
 
             let tail;
-            if (!ok) {
+            if (!workOk) {
               tail = '出错了。把 `Actions` 里这次运行的日志发我看看。';
+            } else if (pushFailed) {
+              tail = '**⚠️ 这次的改动没能提交进仓库（可能有并发提交冲突）—— 请把同样的 Issue 再发一次。**';
             } else if (step === 'survey') {
               tail = '**看清楚后在下面回复序号或组名，我再真正加上。**';
             } else if (step === 'dup') {

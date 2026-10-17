@@ -127,8 +127,20 @@ jobs:
           if [ -n "$(git status --porcelain config.json state.json "我的番剧.md")" ]; then
             git add config.json state.json "我的番剧.md"
             git commit -m "加番：$ANIME [skip ci]"
-            git push
-            echo "已提交并推送"
+            # ⚠️ 必须 rebase 后再推：每 5 分钟的 watcher 也会往 main 提交「更新进度」，
+            #    直接 push 会 non-fast-forward 失败 —— 而失败意味着**规则没存进仓库**，
+            #    但飞书通知已经发出去了，看着像成功了（2026-10-17 实测踩到）
+            git push 2>/dev/null || {
+              echo "首次推送被拒（可能有并发提交），rebase 后重试…"
+              git pull --rebase origin "${GITHUB_REF_NAME:-main}"
+              git push
+            }
+            git fetch origin "${GITHUB_REF_NAME:-main}" -q
+            if git diff --quiet HEAD "origin/${GITHUB_REF_NAME:-main}" -- config.json state.json "我的番剧.md"; then
+            else
+              echo "⚠️⚠️ 提交没能推上去，规则可能没存进仓库 —— 请重发一次同样的 Issue"
+              echo "PUSH_FAILED=1" >> "$GITHUB_ENV"
+            fi
           else
             echo "没有变化（这部番可能没搜到）"
           fi
