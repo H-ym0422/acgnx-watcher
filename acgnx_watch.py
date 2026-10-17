@@ -646,15 +646,41 @@ def _pref_key(item: dict) -> tuple[int, int]:
     return (1 if item.get("_fallback") else 0, item.get("_tier", 0))
 
 
-def collapse_overlaps(ordered: list[tuple[str, dict]]) -> list[tuple[str, dict]]:
-    """同一部番里，如果已经有「01-12 全集」，就把落在它区间内的单集丢掉。
+def collapse_overlaps(ordered: list[tuple[str, dict]], _group_key=None) -> list[tuple[str, dict]]:
+    """同一「字幕组」里，如果已经有「01-12 全集」，就把落在它区间内的单集丢掉。
 
     不然推给你的消息会又给一个完整合集、又给一堆 05~12 的单集，看着莫名其妙
     （用户 2026-10-16 实测反馈的问题）。
 
-    两种例外，单集比合集更该留下的就保留：
-      · 单集来自你指定的字幕组，合集是兜底抓来的（你想看的是你选的组）
-      · 字幕形式明显更好（比如合集是繁中，单集是简日双语）"""
+    ⭐ **只在同一个字幕组内部折叠**（2026-10-17 修）：
+    绿茶字幕组发的 `01-13` 全季包，会把北宇治、TSDM、喵萌、悠哈璃羽
+    在 01~13 区间内的**全部单集**吃掉 —— 实测 50 条被吃到只剩 8 条。
+    你选了哪几个组，就要能同时拿到那几个组的资源，所以 A 组的合集
+    不该覆盖 B 组的单集。
+
+    字幕组认不出来（`actual_group` 为空）的条目归为同一组，避免误伤。
+    ⚠️ 分组口径由 `_group_key` 决定（默认 `actual_group`）；调用方如果做过
+    「标题组名 ≠ author」的归一，要把自己的口径传进来，否则折叠时又会混组
+    （绿茶发布机标题写 [绿茶字幕组]，会跟真正的绿茶字幕组互相折叠 —— 踩过）。"""
+
+    def key_of(it: dict) -> str:
+        return (_group_key(it) if _group_key else actual_group(it)) or ""
+
+    by_group: dict[str, list[tuple[str, dict]]] = {}
+    for ep, it in ordered:
+        by_group.setdefault(key_of(it).strip(), []).append((ep, it))
+
+    out: list[tuple[str, dict]] = []
+    for items in by_group.values():
+        out.extend(_collapse_in_group(items))
+    # 保持原来的排序
+    order = {id(it): i for i, (_, it) in enumerate(ordered)}
+    out.sort(key=lambda t: order.get(id(t[1]), 1 << 30))
+    return out
+
+
+def _collapse_in_group(ordered: list[tuple[str, dict]]) -> list[tuple[str, dict]]:
+    """单个字幕组内部的合集折叠（不跨组）。"""
     spans: list[tuple[int, int, tuple[int, int]]] = []      # (起, 止, 权重)
     for ep, it in ordered:
         m = re.match(r"^(\d{1,4})-(\d{1,4})$", (ep or "").strip())
@@ -672,7 +698,7 @@ def collapse_overlaps(ordered: list[tuple[str, dict]]) -> list[tuple[str, dict]]
             n = int(m.group(1))
             k = _pref_key(it)
             if any(a <= n <= b and k >= sk for a, b, sk in spans):
-                continue                                # 已被合集涵盖，且合集不比它差
+                continue                                # 被本组合集涵盖，且合集不比它差
         out.append((ep, it))
     return out
 
@@ -1168,31 +1194,49 @@ def collect(cfg: dict) -> list[dict]:
             all_items[it["btih"]] = it
 
     # ---- 路径 2：每条规则的关键词搜索（补漏 / 电脑睡过一觉后回溯） ----
+    # ⚠️ **站点每次搜索最多只返回 50 条，且没有分页参数**（page/p/start/offset 全试过）。
+    #    热门番十几个字幕组一叠加，50 条装不下 —— 实测「与你相恋到生命尽头」
+    #    单搜一次只拿到 8 个组，绿茶发布机那 14 条根本没进来。
+    #    所以对**长中文番名**额外搜几个切分变体，按 btih 合并
+    #    （命中的是不同排序/不同切片，合并后能翻出一倍多的结果：50 → 79~100 条）。
     seen_kw: set[str] = set()
+
+    def _variants(kw: str) -> list[str]:
+        out = [kw]
+        if len(kw) >= 7 and re.search(r"[\u4e00-\u9fff]", kw):
+            out += [kw[:4], kw[-4:], kw[max(0, len(kw) // 2 - 2): len(kw) // 2 + 2]]
+        seen, uniq = set(), []
+        for k in out:
+            if k and k not in seen:
+                seen.add(k)
+                uniq.append(k)
+        return uniq[:4]
+
     for rule in rules:
         for kw in (rule.get("keywords") or []):
-            if kw in seen_kw:
-                continue
-            seen_kw.add(kw)
-            path = "/topics/rss/rss.xml?keyword=" + urllib.parse.quote(kw)
-            body = http_get(base + path, timeout=timeout, retry=retry, proxy=proxy)
-            if body is None:
-                # 只在这个 base 上失败时才尝试一次其它镜像
-                for alt in BASES:
-                    if alt == base:
-                        continue
-                    body = http_get(alt + path, timeout=timeout, retry=1, proxy=proxy)
-                    if body:
-                        break
-            got = parse_feed(body or "")
-            if not got:
-                log.info("关键词「%s」本轮返回 0 条（站点偶发空结果，下轮重试）", kw)
-            for it in got:
-                if it["btih"] in all_items:
-                    all_items[it["btih"]]["from"].add("search")
-                else:
-                    it["from"] = {"search"}
-                    all_items[it["btih"]] = it
+            for q in _variants(kw):
+                if q in seen_kw:
+                    continue
+                seen_kw.add(q)
+                path = "/topics/rss/rss.xml?keyword=" + urllib.parse.quote(q)
+                body = http_get(base + path, timeout=timeout, retry=retry, proxy=proxy)
+                if body is None:
+                    # 只在这个 base 上失败时才尝试一次其它镜像
+                    for alt in BASES:
+                        if alt == base:
+                            continue
+                        body = http_get(alt + path, timeout=timeout, retry=1, proxy=proxy)
+                        if body:
+                            break
+                got = parse_feed(body or "")
+                if not got and q == kw:
+                    log.info("关键词「%s」本轮返回 0 条（站点偶发空结果，下轮重试）", kw)
+                for it in got:
+                    if it["btih"] in all_items:
+                        all_items[it["btih"]]["from"].add("search")
+                    else:
+                        it["from"] = {"search"}
+                        all_items[it["btih"]] = it
             time.sleep(0.5)  # 温柔一点，别把站点惹毛了
 
     # ---- 规则匹配 ----

@@ -70,13 +70,55 @@ def extract_alias_names(title: str) -> list[str]:
 
 
 def search(term: str) -> list[dict]:
+    """搜一部番的所有已发布条目。
+
+    ⚠️ **站点每次搜索最多只返回 50 条**，而且没有分页参数（试过 page/p/start/offset，
+    全都还是那 50 条）。热门番十几个字幕组一叠加，50 条根本装不下 ——
+    实测「与你相恋到生命尽头」只搜一次会漏掉 TSDM、喵萌的大部分资源。
+
+    所以改成：**用几个关键词变体各搜一次，再按 btih 合并**。
+    不同关键词命中的是不同排序/不同切片，合并后能翻出一倍多的结果。
+    实测 50 → 100 条，覆盖明显更全。"""
     cfg = {"settings": {"request_timeout": 15, "retry": 2, "proxy": ""}, "rules": []}
     base, _ = aw.pick_base(cfg)
     if base is None:
         print("❌ 所有镜像都连不上，检查一下网络。")
         return []
-    path = "/topics/rss/rss.xml?keyword=" + urllib.parse.quote(term)
-    return aw.parse_feed(aw.http_get(base + path, timeout=15, retry=2) or "")
+
+    merged: dict[str, dict] = {}
+    for kw in _search_variants(term):
+        path = "/topics/rss/rss.xml?keyword=" + urllib.parse.quote(kw)
+        for it in aw.parse_feed(aw.http_get(base + path, timeout=15, retry=2) or ""):
+            merged.setdefault(it["btih"], it)      # 按 btih 去重，先到的为准
+        if len(merged) >= 400:                       # 够用了，别把站点惹毛了
+            break
+    return list(merged.values())
+
+
+def _search_variants(term: str) -> list[str]:
+    """从番名生成几个搜索关键词，覆盖不同切片的搜索结果。
+
+    只对**比较长的中文名**做切分（短的切了会搜到无关内容）；
+    英文/罗马音名原样搜即可。"""
+    t = (term or "").strip()
+    if not t:
+        return []
+    out = [t]
+    if len(t) >= 5 and re.search(r"[\u4e00-\u9fff]", t):
+        # 「与你相恋到生命尽头」→ 加「与你相恋」和「相恋到生命尽头」
+        # 取头 4 字和尾 4 字，两头都盖到
+        if len(t) >= 7:
+            out.append(t[:4])
+            out.append(t[-4:])
+        # 中间再切一刀，命中排序不同的那批
+        mid = len(t) // 2
+        out.append(t[max(0, mid - 2): mid + 2])
+    seen, uniq = set(), []
+    for k in out:
+        if k and k not in seen:
+            seen.add(k)
+            uniq.append(k)
+    return uniq[:5]
 
 
 def extract_variant(title: str) -> str:
@@ -360,6 +402,39 @@ def ep_sort_key(ep: str):
     return (10 ** 6, 0)
 
 
+_want_groups: list[str] = []      # 当前规则里用户显式指定的字幕组
+
+
+def _group_of(it: dict) -> str:
+    """这条到底算哪个字幕组的**用于分组**的名字。
+
+    ⭐ 标题里的组名和 RSS 的 author 字段**经常不一致**（2026-10-17 用户实测）：
+    绿茶发布机发的条目，标题开头写的是 `[绿茶字幕组]`，author 才是 `绿茶发布机`。
+    只认标题的话，你在规则里选的「绿茶发布机」就一条都匹配不上，
+    最后全被兜底组顶掉 —— 表现就是「我明明要了两个组，只拿到一个」。
+
+    所以：**你指定的组名只要能对上标题或 author 任意一个，就算命中**，
+    并且分组时用「你认识的那个名字」，保证同一组不会被拆成两个。"""
+    title_g = (aw.actual_group(it) or "").strip()
+    author = (it.get("author") or "").strip()
+    for w in _want_groups:
+        if w and (_same_group(title_g, w) or _same_group(author, w)):
+            return w
+    return title_g or author
+
+
+def _same_group(a: str, b: str) -> bool:
+    """两个字幕组名算不算同一个（「绿茶字幕组」vs「綠茶字幕組」要能对上）。"""
+    na = aw.norm(a or "")
+    nb = aw.norm(b or "")
+    if not na or not nb:
+        return False
+    if na == nb:
+        return True
+    # 一方是另一方的前缀/子串即可（组名后面常带「字幕组」「字幕組」等后缀）
+    return na in nb or nb in na
+
+
 def inspect_and_seed(rule: dict) -> list[tuple[str, dict]]:
     """抓一遍，做两件事：
        ① 把这条规则当前命中的集数记进 state 当「已记录」基线 ——
@@ -388,10 +463,44 @@ def inspect_and_seed(rule: dict) -> list[tuple[str, dict]]:
         return []
 
     # ---- ② 按集数从小到大排；同一集优先用指定字幕组的 ----
+    # ⭐ **规则里显式选了多个字幕组时，每个组的资源都保留**（2026-10-17 修）。
+    # 原来每集只留 best_of 一个版本，你选了「绿茶发布机 + 北宇治」，
+    # 结果北宇治那一份被绿茶挤掉了 —— 选两个组却只拿到一个组的资源。
+    # 现在：指定组之间互不覆盖；只有「兜底组」跟指定组抢时才让位。
+    want_groups = [g for g in (rule.get("group") or []) if not g.endswith("*")]
+    global _want_groups
+    _want_groups = want_groups
     ordered: list[tuple[str, dict]] = []
-    for ep in sorted(groups, key=ep_sort_key):
-        ordered.append((ep, aw.best_of(groups[ep])))
-    ordered = aw.collapse_overlaps(ordered)      # 有全集就别再列它涵盖的单集
+    if len(want_groups) > 1:
+        # ⭐ **每个指定字幕组各留各的**（2026-10-17 修了两轮才对）
+        #   第 1 轮错在：所有指定组共用一个 "__pick__" 槽位 → 同一集里两个组只活一个
+        #   第 2 轮错在：折叠时用 actual_group 分组，
+        #     而绿茶发布机的条目标题里写的是 [绿茶字幕组]，
+        #     导致它和真正的绿茶字幕组混在一组里互相折叠
+        # 现在：槽位 key = 你认识的那个组名（_group_of 已经做过归一）
+        for ep in sorted(groups, key=ep_sort_key):
+            per_slot: dict[str, tuple[str, dict]] = {}
+            for it in sorted(groups[ep], key=aw.sort_key):
+                g = _group_of(it)
+                slot = next((w for w in want_groups if _same_group(g, w)), None) \
+                    or (g or "__fb__")
+                cur = per_slot.get(slot)
+                if cur is None or aw.sort_key(it) < aw.sort_key(cur[1]):
+                    per_slot[slot] = (ep, it)
+            # 指定组的资源排在前面，兜底组靠后
+            for w in want_groups:
+                for slot, v in per_slot.items():
+                    if slot == w or _same_group(slot, w):
+                        ordered.append(v)
+                        break
+            rest = [v for slot, v in per_slot.items()
+                    if not any(slot == w or _same_group(slot, w) for w in want_groups)]
+            ordered.extend(sorted(rest, key=lambda t: aw.sort_key(t[1])))
+    else:
+        for ep in sorted(groups, key=ep_sort_key):
+            ordered.append((ep, aw.best_of(groups[ep])))
+    ordered = aw.collapse_overlaps(ordered, _group_of)   # 只在同组内折叠；分组口径跟上面保持一致
+    ordered.sort(key=lambda t: (ep_sort_key(t[0]), aw.sort_key(t[1])))
 
     print(f"   原始命中 {len(matched)} 条，归并成 {len(ordered)} 集（按集数从小到大）：")
     for ep, item in ordered:
@@ -438,10 +547,34 @@ def notify_result(rule: dict, episodes: list[tuple[str, dict]],
 
     else:  # all
         rng = f"第 {nums[0]} ~ {nums[-1]} 集" if nums else f"{len(episodes)} 集"
-        lines += ["", f"📺 {rng}的磁力（共 {len(episodes)} 条，按集数从小到大）：", ""]
+        # 总览放在磁力**之前** —— 之前「以后只推新集数」那句挂在磁力列表最后面，
+        # 容易让人以为是某条磁力的说明（用户 2026-10-17 指出）
+        all_nums: set[int] = set()
+        span_ends: list[int] = []
+        for ep, _ in episodes:
+            m2 = re.match(r"^(\d{1,3})-(\d{1,3})$", (ep or "").strip())
+            if m2:
+                span_ends.append(int(m2.group(2)))       # 有合集：末尾集号最能代表整季
+            for x in ep_numbers([ep]):
+                if x < 10 ** 6:
+                    all_nums.add(x)
+        if all_nums:
+            # 「全季 N 集」是**推断**的：站点不提供总集数。
+            # 优先用合集的末尾集号（01-13 这种包通常就是整季），否则退到已知的最大集号。
+            season_max = max(span_ends) if span_ends else max(all_nums)
+            got = len(all_nums)
+            tail = f"（{min(all_nums):02d}~{max(all_nums):02d}）" if got > 1 else ""
+            lines += ["", f"📺 全季为 {season_max} 集，已出 {got} 集{tail}",
+                      f"下面共 {len(episodes)} 条磁力，按集数从小到大：", ""]
+        else:
+            lines += ["", f"📺 共 {len(episodes)} 条磁力，按集数从小到大：", ""]
         for ep, item in episodes:
-            lines.append(f"[{ep}] {item.get('magnet') or '（无磁力，见详情页）'}")
-        lines += ["", "以后只推新发布的集数，不会再重复推这些。"]
+            tag = f"[{ep}]"
+            g = _group_of(item)
+            if g:
+                tag += f" {g}"
+            lines.append(f"{tag} {item.get('magnet') or '（无磁力，见详情页）'}")
+        lines += ["", "———", "以上是历史集，已经记下来了。以后只推新发布的集数，不会再重复推这些。"]
 
     aw.send_notification(title, "\n".join(lines), s)
 
