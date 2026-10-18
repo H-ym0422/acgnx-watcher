@@ -12,6 +12,7 @@ import tempfile
 import urllib.request
 
 import add_rule as ar
+from watcher_core import natural_language, issue_natural
 
 MARKER = re.compile(r"<!-- acgnx-survey:v1:([A-Za-z0-9_=-]+) -->")
 RESULT_PATH = Path(".issue-result.json")
@@ -149,14 +150,14 @@ def run_cli(args: list[str]) -> dict:
             "exit_code": process.returncode}
 
 
-def handle(event: dict, event_name: str) -> dict:
+def handle_legacy(event: dict, event_name: str) -> dict:
     issue = event["issue"]
     owner = event["repository"]["owner"]["login"]
     if event.get("sender", {}).get("login") != owner or issue.get("pull_request"):
         raise ValueError("只有仓库所有者可以管理规则，且不处理 PR 评论")
     mode, term = command(issue.get("title") or "")
     group, season, floor, backfill = options(issue.get("body") or "")
-    controls = season_controls(issue.get("body") or "")
+    controls = season_controls(issue.get("body") or "") + fallback_controls(issue.get("body") or "")
     if mode == "list":
         return run_cli(["--render", "--no-push"])
     if not term:
@@ -213,6 +214,26 @@ def handle(event: dict, event_name: str) -> dict:
     if not groups:
         args.append("--any-group")
     return run_cli(args)
+
+
+def fallback_controls(body):
+    args = []
+    for key, value in fields(body).items():
+        if key.startswith('兜底') and value:
+            if value not in ('关闭', '不允许', 'false'):
+                raise ValueError('兜底仅支持关闭、不允许或 false')
+            args.append('--no-fallback')
+    return args
+
+
+def handle(event: dict, event_name: str) -> dict:
+    if (event.get('sender', {}).get('login') != event['repository']['owner']['login']
+            or event['issue'].get('pull_request')):
+        raise ValueError('只有仓库所有者可以管理规则，且不处理 PR 评论')
+    request = natural_language.parse(event['issue'].get('title') or '')
+    if request is None:
+        return handle_legacy(event, event_name)
+    return issue_natural.handle(request, event, event_name, sys.modules[__name__])
 
 
 def main() -> int:

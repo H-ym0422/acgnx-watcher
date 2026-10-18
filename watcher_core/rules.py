@@ -6,6 +6,7 @@ import unicodedata
 import uuid
 
 from .configuration import write_config
+from .parsing import extract_season
 
 
 def normalized(value):
@@ -14,7 +15,12 @@ def normalized(value):
 
 def identity(rule):
     names = rule.get('keywords') or rule.get('include_any') or [rule.get('name', '')]
-    return (tuple(sorted({normalized(x) for x in names})),
+    season = rule.get('season', 0)
+    def canonical(value):
+        if season and extract_season(value) == season:
+            value = re.sub(r'(?:第\s*[0-9零〇一二两三四五六七八九十百千]+\s*[季期]|\bS0*' + str(season) + r')\s*$', '', value, flags=re.I)
+        return normalized(value)
+    return (tuple(sorted({canonical(x) for x in names})),
             rule.get('season', 0), tuple(sorted({normalized(x) for x in rule.get('group', [])})))
 
 

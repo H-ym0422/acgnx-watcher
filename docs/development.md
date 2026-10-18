@@ -18,7 +18,10 @@ python check_workflows.py --require-bash
 |---|---|
 | acgnx_watch.py | 命令入口、采集编排、版本筛选、队列执行与一轮调度 |
 | add_rule.py | 搜索向导、回溯、清单与命令行规则管理 |
-| issue_commands.py | Issue 参数、原清单快照、业务执行结果 |
+| issue_commands.py | Issue 权限、兼容命令、原清单快照和执行结果 |
+| watcher_core/natural_language.py | 常见中文操作及番名、季度、集数、组名提取 |
+| watcher_core/issue_natural.py | 条件冲突校验、唯一规则选择及兼容路由 |
+| watcher_core/resource_query.py | 仅读取采集，按季度/集数/字幕组回复资源 |
 | watcher_core/network.py | HTTP 与镜像探测 |
 | watcher_core/parsing.py | RSS、集数、字幕、季号、组名解析 |
 | watcher_core/matching.py | 规则匹配、普通兜底抑制 |
