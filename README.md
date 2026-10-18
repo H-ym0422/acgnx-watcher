@@ -383,3 +383,26 @@ python check_workflows.py --require-bash
 工作流检查同时验证 YAML 与 Bash 脚本语法，需要可用的 Bash。
 PR 自动执行上述检查，不读取推送密钥、不发送消息。
 Worker 模板是新增参考实现，未自动替换现有 Cloudflare 部署。
+
+## 第一批可靠性改进
+
+- 加番时的历史通知如果发送失败，会作为待发送消息保存在 `state.json` 的
+  `pending_notifications`，由定时检测继续重试；成功后移除。这里保存消息内容，不保存渠道密钥。
+  删除规则时也会取消它尚未送达的通知。`backfill=none` 仍只发送加番确认，不发送历史磁力。
+- Issue 明确显示脚本执行是否成功。规则已保存但消息尚未送达时，会提示“通知待重试”，
+  不把接口失败当成已送达；脚本异常和无搜索结果也不会再显示成添加成功。
+- 序号选组绑定机器人评论中保存的原清单。搜索排名变化不会改变序号的含义；
+  回复“刷新”可重新获取清单。旧 Issue 如果没有清单快照，会先刷新并请你重新选，不猜测原序号。
+- Actions 的 `all/latest/none`、季号和起始集数在“直接加番”和“转 Issue 选组”两条路径保留一致。
+  Issue 正文可使用 `### 推哪些` 字段，值填 `all`、`latest` 或 `none`；省略时仍为 `all`。
+- `--list` 和 `--dry-run` 不修改持久状态；标题解析诊断由正式执行入口统一合并保存。
+
+命令行按序号选组时也必须使用原快照：
+
+```bash
+python add_rule.py demo --survey --snapshot-out survey.json
+python add_rule.py demo --pick 2 --snapshot-file survey.json --yes --no-push
+```
+
+这批改进没有改变已有规则和去重键。外部消息发送与远端状态提交仍不是同一个事务，
+进程中断或 Git 提交失败后的恢复属于后续改进范围，不能保证任意故障下绝对不重发。

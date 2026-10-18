@@ -1,347 +1,82 @@
 name: 加番（发 Issue）
-
-# 手机上的入口：新建 Issue，标题写
-#     加番 咒术回战          → 机器人先列出「有哪些字幕组在做、各发过什么类型」
-#                              你在同一条 Issue 里回复序号或组名，它才真正加
-#     删番 咒术回战          → 删掉这部
-#     列表                   → 回一份当前追番清单
-#
-# 一步到位也可以：标题写「加番 咒术回战」，正文第一行填字幕组（逗号分隔），
-# 这样就不再问，直接加。
-
 on:
   issues:
     types: [opened]
   issue_comment:
     types: [created]
-
 permissions:
   contents: write
   issues: write
-
 concurrency:
   group: acgnx-state-writer
   cancel-in-progress: false
-
 jobs:
   handle:
     runs-on: ubuntu-latest
     if: >
       github.actor == github.repository_owner &&
       !github.event.issue.pull_request &&
-      (github.event_name == 'issues' ||
-      (github.event_name == 'issue_comment' &&
-        github.event.comment.user.type != 'Bot' &&
-        !startsWith(github.event.issue.title, '删番') &&
-        !startsWith(github.event.issue.title, '删除') &&
-        !startsWith(github.event.issue.title, '移除') &&
-        !startsWith(github.event.issue.title, '取消') &&
-        !startsWith(github.event.issue.title, '列表') &&
-        !startsWith(github.event.issue.title, '清单') &&
-        !startsWith(github.event.issue.title, '我的番')))
+      (github.event_name == 'issues' || github.event.comment.user.type != 'Bot')
     timeout-minutes: 10
-
     steps:
       - uses: actions/checkout@v4
         with:
           ref: main
           fetch-depth: 0
-
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
-
+          python-version: '3.12'
       - name: 解析并执行
         id: handle
         env:
-          EVENT: ${{ github.event_name }}
-          I_TITLE: ${{ github.event.issue.title }}
-          I_BODY: ${{ github.event.issue.body }}
-          C_BODY: ${{ github.event.comment.body }}
+          GH_TOKEN: ${{ github.token }}
           ACGNX_WEBHOOK_URL: ${{ secrets.ACGNX_WEBHOOK_URL }}
           ACGNX_DINGTALK_SECRET: ${{ secrets.ACGNX_DINGTALK_SECRET }}
           ACGNX_FEISHU_SECRET: ${{ secrets.ACGNX_FEISHU_SECRET }}
           PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
           SERVERCHAN_SENDKEY: ${{ secrets.SERVERCHAN_SENDKEY }}
-        run: |
-          trim() { printf '%s' "$1" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//'; }
-
-          # 按「### 字段名」取某个字段的内容（Issue 模板生成的正文就是这个结构）。
-          # 不按行号取，是因为模板有多个可选输入框，空着的会把位置错开。
-          grab_field() {
-            printf '%s\n' "$1" | awk -v k="$2" '
-              /^#{1,6}[[:space:]]/ { inside = index($0, k) > 0; next }
-              inside {
-                gsub(/^[[:space:]]+/, ""); gsub(/[[:space:]]+$/, "")
-                if (length($0)) { print; exit }
-              }'
-          }
-
-          # 没有交互终端，向导任何时候都不该卡在 input() 上
-          export PYTHONUNBUFFERED=1
-
-          # 字幕组：优先按字段名取；取不到再退回「第一行非空内容」的老办法
-          grab_group() {
-            local txt="$1" v raw
-            v="$(grab_field "$txt" "字幕组")"
-            if [ -z "$v" ]; then
-              # ⚠️ 先把纯数字行剔掉，再取第一行 ——
-              #    否则「49\n喵萌奶茶屋」这种顺序会先抓到 49
-              raw="$(printf '%s\n' "$txt" | grep -v '^[[:space:]]*$' | grep -v '^#' | grep -v '^<!--' \
-                     | grep -vE '^[[:space:]]*[0-9]+[[:space:]]*$' | head -1)"
-              raw="$(trim "$raw")"
-              case "$raw" in ''|*[!0-9]*) v="$raw" ;; *) v="" ;; esac
-            fi
-            printf '%s' "$v"
-          }
-
-          # 纯文本正文（没用 Issue 模板）时的兜底：正文形如
-          #     喵萌奶茶屋
-          #     49
-          # 这时要能从非空行里认出那个纯数字。
-          # ⚠️ 必须**按行**处理：用 `tr -d '[:space:]'` 会把换行也删掉，
-          #    多行正文会粘成一行，就认不出来了（2026-10-17 踩过）
-          plain_number() {
-            printf '%s\n' "$1" | grep -v '^[[:space:]]*$' | grep -v '^#' | grep -v '^<!--' \
-              | sed 's/[[:space:]]//g' | grep -E '^[0-9]+$' | head -1
-          }
-
-          # 第几季：只认纯数字。模板里没有但正文里有裸数字时（1~9）也认
-          grab_season() {
-            local v
-            v="$(trim "$(grab_field "$1" "季")")"
-            case "$v" in ''|*[!0-9]*) v="" ;; esac
-            if [ -z "$v" ]; then
-              v="$(plain_number "$1")"
-              case "$v" in ''|*[!0-9]*) v="" ;; esac
-              if [ -n "$v" ] && [ "$v" -ge 10 ]; then v=""; fi   # 10 以上当集数，不是季号
-            fi
-            printf '%s' "$v"
-          }
-
-          # 「只要第几集之后」—— 必须抽「只要第几集之后」这几个字，
-          # 不能抽「季」，否则会撞上「第几季」那个输入框（实测会抽错）
-          # 模板里没填时退回认正文里的裸数字（>=10 才算，第 1~9 集的集数没意义）
-          grab_from_ep() {
-            local v
-            v="$(trim "$(grab_field "$1" "只要第几集之后")")"
-            case "$v" in ''|*[!0-9]*) v="" ;; esac
-            if [ -z "$v" ]; then
-              v="$(plain_number "$1")"
-              case "$v" in ''|*[!0-9]*) v="" ;; esac
-              if [ -n "$v" ] && [ "$v" -lt 10 ]; then v="" ; fi
-            fi
-            printf '%s' "$v"
-          }
-
-          STEP=done
-          OUT=""
-          SEA=""
-
-          case "$EVENT" in
-            issues)
-              NOPREFIX=0
-              MODE=""
-              # 命令词容错：「删番 / 删除 / 移除 / 取消」都算删；「加番 / 添加 / 新增」都算加。
-              # 只认「删番」的话，写成「删除 XXX」会被当成番名去搜，什么都搜不到。
-              for p in 加番 添加 新增 追番; do
-                case "$I_TITLE" in "$p"*) MODE=add; KW="$(trim "${I_TITLE#"$p"}")"; break;; esac
-              done
-              if [ -z "$MODE" ]; then
-                for p in 删番 删除 移除 取消; do
-                  case "$I_TITLE" in "$p"*) MODE=del; KW="$(trim "${I_TITLE#"$p"}")"; break;; esac
-                done
-              fi
-              if [ -z "$MODE" ]; then
-                for p in 列表 清单 我的番; do
-                  case "$I_TITLE" in "$p"*) MODE=list; KW=""; break;; esac
-                done
-              fi
-              # 忘了写前缀（很常见）—— 就按「加番 整个标题」处理，别让人白等
-              if [ -z "$MODE" ]; then MODE=add; KW="$(trim "$I_TITLE")"; NOPREFIX=1; fi
-              GRP="$(grab_group "$I_BODY")"
-              SEA="$(grab_season "$I_BODY")"
-              FROM_EP="$(grab_from_ep "$I_BODY")"
-
-              echo "事件=新 Issue | 模式=$MODE | 关键词=$KW | 字幕组=${GRP:-（待选）} | 季=${SEA:-不限} | 只要第${FROM_EP:-1}集起 | 忘了写前缀=$NOPREFIX"
-
-              if [ "$MODE" = "add" ] && [ -z "$GRP" ]; then
-                # —— 第一步：只列清单，先不加 ——
-                STEP=survey
-                if [ -n "$SEA" ]; then
-                  OUT="$(python add_rule.py --survey "$KW" --season "$SEA" 2>&1 || true)"
-                else
-                  OUT="$(python add_rule.py --survey "$KW" 2>&1 || true)"
-                fi
-                [ -z "$OUT" ] && OUT="没搜到「$KW」。试试日文原名、罗马音，或者只取其中 2~4 个字。"
-              elif [ "$MODE" = "list" ]; then
-                OUT="$(python add_rule.py --render --no-push 2>&1 || true)"
-              elif [ "$MODE" = "del" ]; then
-                STEP=del
-                OUT="$(python add_rule.py --del-name "$KW" --no-push 2>&1 || true)"
-              else
-                ARGS=("$KW" --yes --no-push --notify --backfill all)
-                [ -n "$FROM_EP" ] && ARGS+=(--from-episode "$FROM_EP")
-                [ -n "$SEA" ] && ARGS+=(--season "$SEA")
-                IFS=',' read -ra G <<< "$GRP"
-                for g in "${G[@]}"; do
-                  g="$(trim "$g")"
-                  [ -n "$g" ] && ARGS+=(--group "$g")
-                done
-                [ ${#ARGS[@]} -le 6 ] && ARGS+=(--auto-group)
-                OUT="$(python add_rule.py "${ARGS[@]}" 2>&1 || true)"
-              fi
-              ;;
-
-            issue_comment)
-              # —— 第二步：用户在清单下面回复了 ——
-              KW="$I_TITLE"
-              for p in 加番 添加 新增 追番; do
-                case "$KW" in "$p"*) KW="${KW#"$p"}"; break;; esac
-              done
-              KW="$(trim "$KW")"
-              PICK="$(printf '%s\n' "$C_BODY" | head -1 | tr -d '`' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
-              SEA="$(grab_season "$I_BODY")"
-              FROM_EP="$(grab_from_ep "$I_BODY")"
-              echo "事件=回复 | 关键词=$KW | 回复=$PICK | 季=${SEA:-不限} | 只要第${FROM_EP:-1}集起"
-
-              # 已经加过就别重复加
-              if python add_rule.py --exists "$KW" > /dev/null 2>&1; then
-                STEP=dup
-                OUT="「$KW」已经在追了，没有重复添加。想换字幕组的话，先发一个标题是「删番 $KW」的 Issue，然后再加一次。"
-              else
-                ARGS=("$KW" --yes --no-push --notify --backfill all)
-                [ -n "$FROM_EP" ] && ARGS+=(--from-episode "$FROM_EP")
-                [ -n "$SEA" ] && ARGS+=(--season "$SEA")
-                NG=0
-                if [[ "$PICK" == "任意" || "$PICK" == "any" || "$PICK" == "*" ]]; then
-                  ARGS+=(--any-group)
-                elif [[ "$PICK" =~ ^[0-9]+([,，、[:space:]]+[0-9]+)*$ ]]; then
-                  ARGS+=(--pick "$PICK")
-                elif [ -z "$PICK" ]; then
-                  ARGS+=(--auto-group)
-                else
-                  # 当组名处理。但先拿清单核一遍 —— 不然随便回一句话就会被当成
-                  # 字幕组过滤条件写进规则，最后什么都推不出来。
-                  SURVEY="$(python add_rule.py --survey "$KW" 2>&1 || true)"
-                  if printf '%s\n' "$SURVEY" | grep -qF -- "$PICK"; then
-                    IFS=',' read -ra G <<< "$PICK"
-                    for g in "${G[@]}"; do
-                      g="$(trim "$g")"
-                      if [ -n "$g" ]; then ARGS+=(--group "$g"); NG=$((NG+1)); fi
-                    done
-                  else
-                    STEP=badpick
-                    # 注意：这里必须写成一行。之前在双引号里换行，续行会顶格，
-                    # 直接把上面 run: | 的缩进块截断，整个工作流变成语法错误、
-                    # 所有触发都失败且不产生任何 job（2026-10-16 踩过）。
-                    OUT="$(printf '没认出「%s」是哪个字幕组，所以**没有加**。当前清单：\n\n%s' "$PICK" "$SURVEY")"
-                  fi
-                fi
-                if [ "${STEP}" = "done" ]; then
-                  [ "$NG" -eq 0 ] && [[ "$PICK" != "任意" && "$PICK" != "any" && "$PICK" != "*" && -n "$PICK" ]] \
-                    && ARGS+=(--auto-group)
-                  OUT="$(python add_rule.py "${ARGS[@]}" 2>&1 || true)"
-                fi
-              fi
-              ;;
-          esac
-
-          if [ "${NOPREFIX:-0}" = "1" ]; then
-            OUT="$(printf '（小提示：标题写成「加番 %s」我更认得出，这次先按加番处理。）\n\n%s' "$KW" "$OUT")"
-          fi
-
-          echo "----------------------------------------"
-          echo "$OUT"
-          echo "STEP=$STEP" >> "$GITHUB_OUTPUT"
-          {
-            echo "RESULT<<ACGNX_EOF"
-            printf '%s\n' "$OUT" | tail -c 8000
-            echo "ACGNX_EOF"
-          } >> "$GITHUB_OUTPUT"
-
+        run: python issue_commands.py
       - name: 提交并推送
         id: persist
+        if: ${{ !cancelled() && steps.handle.outcome != 'skipped' }}
         env:
           I_TITLE: ${{ github.event.issue.title }}
         run: |
-          git config user.name  "acgnx-bot"
-          git config user.email "acgnx-bot@users.noreply.github.com"
+          git config user.name acgnx-bot
+          git config user.email acgnx-bot@users.noreply.github.com
           if [ -n "$(git status --porcelain config.json state.json "我的番剧.md")" ]; then
             git add config.json state.json "我的番剧.md"
             git commit -m "$I_TITLE [skip ci]"
-            # ⚠️ 必须 rebase 后再推：每 5 分钟的 watcher 也会往 main 提交「更新进度」，
-            #    直接 push 会 non-fast-forward 失败 —— 而失败意味着**规则没存进仓库**，
-            #    但飞书通知已经发出去了，看着像成功了（2026-10-17 实测踩到）
-            git push 2>/dev/null || {
-              echo "首次推送被拒（可能有并发提交），rebase 后重试…"
-              git pull --rebase origin "${GITHUB_REF_NAME:-main}"
+            git push || {
+              git pull --rebase origin main
               git push
             }
-            git fetch origin "${GITHUB_REF_NAME:-main}" -q
-            if git diff --quiet HEAD "origin/${GITHUB_REF_NAME:-main}" -- config.json state.json "我的番剧.md"; then
-              echo "已提交并推送"
-            else
-              echo "⚠️⚠️ 提交没能推上去，规则可能没存进仓库 —— 请重发一次同样的 Issue"
-              echo "PUSH_FAILED=1" >> "$GITHUB_ENV"
-            fi
-          else
-            echo "没有变化"
           fi
-
       - name: 回复 Issue
         if: always()
         env:
-          OUT: ${{ steps.handle.outputs.RESULT }}
-          STEP: ${{ steps.handle.outputs.STEP }}
-          # ⚠️ 不要再用 `job.status` 判断成败：这一步是在 job **运行中**执行的，
-          #    job.status 这时永远是 in_progress，判出来必然是「失败」。
-          #    改成看「实际工作有没有跑完」+「有没有推上去」。
-          WORKOK: ${{ steps.handle.outcome == 'success' && steps.persist.outcome == 'success' }}
-          PUSHFAILED: ${{ env.PUSH_FAILED }}
+          PERSIST_OK: ${{ steps.persist.outcome == 'success' }}
         uses: actions/github-script@v7
         with:
           script: |
-            const workOk = process.env.WORKOK === 'true';
-            const pushFailed = process.env.PUSHFAILED === '1';
-            // 判定依据：解析步骤本身成功了 + 提交确实推上去了
-            const ok = workOk && !pushFailed;
-            const step = process.env.STEP || '';
-            const out = (process.env.OUT || '(没有输出)').slice(0, 8000);
-
-            let tail;
-            if (!workOk) {
-              tail = '出错了。把 `Actions` 里这次运行的日志发我看看。';
-            } else if (pushFailed) {
-              tail = '**⚠️ 这次的改动没能提交进仓库（可能有并发提交冲突）—— 请把同样的 Issue 再发一次。**';
-            } else if (step === 'survey') {
-              tail = '**看清楚后在下面回复序号或组名，我再真正加上。**';
-            } else if (step === 'dup') {
-              tail = '';
-            } else if (step === 'badpick') {
-              tail = '**回复序号（如 `2` 或 `1,3`）或者清单里出现过的组名，我才加。**';
-            } else if (step === 'list') {
-              tail = '上面就是你当前在追的全部番剧。';
-            } else if (step === 'del') {
-              // 删番后不能说「会开始盯这部番」，那是加番的话术（2026-10-16 用户反馈）
-              tail = '以后这部番的新集不会再推给你了。';
-            } else {
-              tail = '云端最多 5 分钟后就会开始盯这部番，新集一出来就推你手机。';
+            const fs = require('fs');
+            let result = {ok: false, text: '处理步骤未完成，请检查 Actions 日志。'};
+            if (fs.existsSync('.issue-result.json')) {
+              result = JSON.parse(fs.readFileSync('.issue-result.json', 'utf8'));
             }
-
-            const body = [
-              ok ? '✅ **处理完成**' : '❌ **处理失败**',
-              '',
-              '```',
-              out,
-              '```',
-              tail
-            ].filter(Boolean).join('\n');
-
+            const saved = process.env.PERSIST_OK === 'true';
+            const ok = result.ok && saved;
+            const content = String(result.text || '(无输出)').slice(-12000).replace(/```/g, '~~~');
+            const tail = !saved
+              ? '仓库保存失败，请检查运行日志后重试；通知可能已发送。'
+              : result.step === 'survey'
+                ? '请按本条清单回复序号或组名；回复“刷新”重新获取清单。'
+                : result.ok
+                  ? '请以上方输出确认规则保存与通知送达状态；待重试通知会由定时任务补发。'
+                  : '未能完整执行，请按上方错误提示处理。';
+            const body = [ok ? '✅ 处理完成' : '❌ 处理未完成', '', '```', content, '```', tail,
+              saved ? result.marker || '' : ''].join('\n');
             await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body
+              owner: context.repo.owner, repo: context.repo.repo,
+              issue_number: context.issue.number, body,
             });
-

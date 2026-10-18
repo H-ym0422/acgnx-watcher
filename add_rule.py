@@ -193,7 +193,8 @@ def rank_groups(items: list[dict]) -> list[dict]:
     return order
 
 
-def survey_text(term: str, limit: int = 20, season: int = 0) -> str | None:
+def survey_text(term: str, limit: int = 20, season: int = 0,
+                snapshot_path: str | None = None) -> str | None:
     """生成「谁在做、覆盖哪些集、各是什么类型」的清单（Markdown），供 Issue 回复用。"""
     items = search(term)
     if not items:
@@ -207,6 +208,11 @@ def survey_text(term: str, limit: int = 20, season: int = 0) -> str | None:
     order = rank_groups(items)
     if not order:
         return None
+
+    if snapshot_path:
+        with open(snapshot_path, "w", encoding="utf-8") as f:
+            json.dump({"version": 1, "term": term, "season": season,
+                       "groups": [g["name"] for g in order[:limit]]}, f, ensure_ascii=False)
 
     head = f"搜到 **{len(order)}** 个字幕组在做「{term}」"
     if season:
@@ -227,19 +233,22 @@ def survey_text(term: str, limit: int = 20, season: int = 0) -> str | None:
     return "\n".join(out)
 
 
-def resolve_picks(term: str, picks: list[int], season: int = 0) -> list[str]:
-    """把用户在清单里选的序号换算回字幕组名。"""
-    items = search(term)
-    if not items:
-        return []
-    if season and int(season) > 0:
-        items = [i for i in items if aw.season_ok(i["title"], int(season))]
-    order = rank_groups(items)
-    names = []
-    for p in picks:
-        if 1 <= p <= len(order):
-            names.append(order[p - 1]["name"])
-    return list(dict.fromkeys(names))
+def resolve_snapshot(snapshot: dict, term: str, picks: list[int], season: int = 0) -> list[str]:
+    if snapshot.get("version") != 1 or snapshot.get("term") != term or snapshot.get("season") != season:
+        raise ValueError("清单与番名/季号不一致，请重新获取清单")
+    groups = snapshot.get("groups")
+    if not isinstance(groups, list) or not groups or not all(isinstance(g, str) and g for g in groups):
+        raise ValueError("清单无效，请重新获取清单")
+    if not picks or any(p < 1 or p > len(groups) for p in picks):
+        raise ValueError("序号超出原清单范围，未添加规则")
+    return list(dict.fromkeys(groups[p - 1] for p in picks))
+
+
+def resolve_picks(term: str, picks: list[int], season: int = 0, snapshot_path: str | None = None) -> list[str]:
+    if not snapshot_path:
+        raise ValueError("按序号选组必须使用原清单快照，请重新获取清单")
+    with open(snapshot_path, encoding="utf-8") as f:
+        return resolve_snapshot(json.load(f), term, picks, season)
 
 
 def pick(term: str, want_all_groups: bool, forced_groups: list[str],
@@ -468,6 +477,7 @@ def inspect_and_seed(rule: dict, from_ep: int = 0) -> list[tuple[str, dict]]:
         gk = aw.group_key(m, want_g)
         buckets.setdefault((ep, gk), []).append(m)
     st = aw.load_state()
+    aw.note_unparsed([m for m in matched if not m.get("episode") and not aw.RE_BATCH_HINT.search(m["title"])], st)
     for (ep, gk), items in buckets.items():
         items.sort(key=aw.sort_key)
         key = f"{rule['id']}|{ep}|{gk}" if gk else f"{rule['id']}|{ep}"
@@ -547,7 +557,7 @@ def inspect_and_seed(rule: dict, from_ep: int = 0) -> list[tuple[str, dict]]:
 
 
 def notify_result(rule: dict, episodes: list[tuple[str, dict]],
-                  mode: str = "all", from_ep: int = 0) -> None:
+                  mode: str = "all", from_ep: int = 0) -> bool:
     """把加番结果推到手机。
     mode: all = 把第1集到最新集的磁力全部列出（默认）
           latest = 只推最新一集
@@ -566,8 +576,7 @@ def notify_result(rule: dict, episodes: list[tuple[str, dict]],
     if not episodes:
         lines.append("")
         lines.append("现在还没搜到已发布的集数，之后出新集会提醒你。")
-        aw.send_notification(title, "\n".join(lines), s)
-        return
+        return queue_result(rule, title, "\n".join(lines), s)
 
     nums = [ep for ep, _ in episodes if ep and ep != "-"]
 
@@ -610,7 +619,17 @@ def notify_result(rule: dict, episodes: list[tuple[str, dict]],
             lines.append(f"{tag} {item.get('magnet') or '（无磁力，见详情页）'}")
         lines += ["", "———", "以上是历史集，已经记下来了。以后只推新发布的集数，不会再重复推这些。"]
 
-    aw.send_notification(title, "\n".join(lines), s)
+    return queue_result(rule, title, "\n".join(lines), s)
+
+
+def queue_result(rule: dict, title: str, body: str, settings: dict) -> bool:
+    state = aw.load_state()
+    key = aw.enqueue_notification(state, rule["id"], title, body)
+    aw.save_state(state)
+    delivered = bool(aw.deliver_pending(state, settings, only=key))
+    aw.save_state(state)
+    print("历史通知已送达" if delivered else "规则已保存；通知待重试，定时检测会自动补发")
+    return delivered
 
 
 WATCHLIST_NAME = "我的番剧.md"
@@ -837,10 +856,14 @@ def purge_baseline(rule_ids: list[str]) -> int:
     st = aw.load_state()
     eps = st.get("episodes") or {}
     gone = [k for k in eps if k.split("|", 1)[0] in ids]
-    if not gone:
+    pending = st.get("pending_notifications") or {}
+    queued = [key for key, message in pending.items() if message.get("rule_id") in ids]
+    if not gone and not queued:
         return 0
     for k in gone:
         eps.pop(k, None)
+    for key in queued:
+        pending.pop(key, None)
     aw.save_state(st)
     return len(gone)
 
@@ -886,6 +909,8 @@ def main() -> None:
                     help="删除名字里包含该关键词的规则（手机上传个词就能删，不用记序号）")
     ap.add_argument("--yes", action="store_true", help="跳过确认直接写入")
     ap.add_argument("--no-push", action="store_true", help="就算在 git 仓库里也不自动推送")
+    ap.add_argument("--snapshot-out", help="保存选组清单快照")
+    ap.add_argument("--snapshot-file", help="按序号选择时读取原清单快照")
     args = ap.parse_args()
 
     if args.exists:
@@ -902,7 +927,7 @@ def main() -> None:
         if not term:
             print("没输入番名。")
             return
-        txt = survey_text(term, season=args.season)
+        txt = survey_text(term, season=args.season, snapshot_path=args.snapshot_out)
         print(txt if txt else
               f"没搜到「{term}」。试试日文原名、罗马音，或者只取其中 2~4 个字。")
         return
@@ -998,7 +1023,9 @@ def main() -> None:
 
     pick_indexes = None
     if args.pick:
-        pick_indexes = [int(x) for x in re.split(r"[,，\s]+", args.pick) if x.isdigit()]
+        pick_indexes = [int(x) for x in re.split(r"[,，、\s]+", args.pick) if x.isdigit()]
+        args.group = resolve_picks(term, pick_indexes, args.season, args.snapshot_file)
+        pick_indexes = None
 
     rule = pick(term, args.any_group, args.group, args.also,
                 auto_top=2 if args.auto_group else 0,
@@ -1015,7 +1042,7 @@ def main() -> None:
                 "· 番名写法跟站上不一致 —— 试试日文原名、罗马音，或只取其中 2~4 个字\n"
                 "· 站点这一轮恰好返回空结果（偶发，过几分钟重跑一次即可）",
                 s)
-        return
+        raise SystemExit(2)
 
     print("\n即将加入的规则：")
     print(json.dumps(rule, ensure_ascii=False, indent=2))

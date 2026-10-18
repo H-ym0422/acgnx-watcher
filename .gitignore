@@ -5,3 +5,5 @@ config.json.bak
 
 cloudflare-cron/wrangler.toml
 cloudflare-cron/.wrangler/
+.issue-result.json
+.survey-snapshot.json

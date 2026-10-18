@@ -1350,7 +1350,6 @@ def collect(cfg: dict) -> list[dict]:
         key = (m["_rid"], m["btih"])
         if key not in uniq:
             uniq[key] = m
-    note_unparsed([m for m in uniq.values() if not m["episode"] and not RE_BATCH_HINT.search(m["title"])])
     return list(uniq.values())
 
 
@@ -1364,11 +1363,10 @@ def collect(cfg: dict) -> list[dict]:
 UNPARSE_CAP = 60          # 最多记多少条（避免 state 无限膨胀）
 
 
-def note_unparsed(items: list[dict]) -> None:
+def note_unparsed(items: list[dict], st: dict) -> None:
     """把「看起来是正经单集、但集数解析不出来」的标题记进 state。"""
     if not items:
         return
-    st = load_state()
     box = st.get("unparsed")
     if not isinstance(box, dict):
         box = {}
@@ -1391,7 +1389,6 @@ def note_unparsed(items: list[dict]) -> None:
     # 只留最近出现的那些
     items_sorted = sorted(box.items(), key=lambda kv: kv[1].get("last", ""), reverse=True)
     st["unparsed"] = dict(items_sorted[:UNPARSE_CAP])
-    save_state(st)
 
 
 def sort_key(m: dict):
@@ -1433,13 +1430,48 @@ def episode_allowed(ep: str, minimum: int) -> bool:
     return minimum <= 0 or match is None or int(match.group(2) or match.group(1)) >= minimum
 
 
+def enqueue_notification(state: dict, rule_id: str, title: str, body: str) -> str:
+    """Persist only message content, never credentials, until delivery succeeds."""
+    key = hashlib.sha256((rule_id + "\0" + title + "\0" + body).encode()).hexdigest()
+    state.setdefault("pending_notifications", {}).setdefault(key, {
+        "rule_id": rule_id, "title": title, "body": body,
+    })
+    return key
+
+
+def deliver_pending(state: dict, settings: dict, only: str | None = None) -> int:
+    pending = state.setdefault("pending_notifications", {})
+    sent = 0
+    attempts = 0
+    for key, message in list(pending.items()):
+        if only is not None and key != only:
+            continue
+        if attempts:
+            time.sleep(max(0, int(settings.get("push_min_interval_seconds", 13))))
+        attempts += 1
+        try:
+            ok, _ = send_notification(message["title"], message["body"], settings)
+        except Exception:
+            log.exception("Queued notification failed; retained for next cycle")
+            ok = False
+        if ok:
+            del pending[key]
+            sent += 1
+        else:
+            log.warning("Queued notification retained for retry")
+    return sent
+
+
 def run_cycle(cfg: dict, state: dict, dry_run: bool = False) -> int:
     settings = cfg["settings"]
     prefix = settings.get("title_prefix") or "【新番速递】"
     first_run = not state.get("initialized")
     mode = (settings.get("first_run_mode") or "latest").lower()
 
+    pending_sent = 0 if dry_run else deliver_pending(state, settings)
     matched = collect(cfg)
+    if not dry_run:
+        note_unparsed([m for m in matched if not m.get("episode") and not RE_BATCH_HINT.search(m["title"])], state)
     log.info("本轮共命中 %d 条（去重后）", len(matched))
 
     # 按 (规则, 集数, 字幕组) 分组
@@ -1521,7 +1553,7 @@ def run_cycle(cfg: dict, state: dict, dry_run: bool = False) -> int:
                 if id(best) in keep:
                     pushes.append((best, is_up, sk))
 
-    sent = 0
+    sent = pending_sent
     failed: set[str] = set()   # 推送失败的 (规则id, 集数)，这些不记为已看
     gap = max(0, int(settings.get("push_min_interval_seconds", 13)))
     for idx, (best, is_upgrade, sk) in enumerate(pushes):
@@ -1533,7 +1565,7 @@ def run_cycle(cfg: dict, state: dict, dry_run: bool = False) -> int:
             print(title)
             print(body)
         else:
-            if idx > 0 and gap:
+            if (idx > 0 or pending_sent) and gap:
                 # PushPlus 消息接口限「1 分钟最多 5 次」，集中补推时把请求摊开
                 log.info("等待 %d 秒再发下一条（避开平台频率限制）…", gap)
                 time.sleep(gap)
@@ -1679,4 +1711,5 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
 
