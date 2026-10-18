@@ -88,7 +88,7 @@
     "d0403d88f01b1cab3d7e5b04c3f9b0b71a72a2e0": {
       "title": "生徒会にも穴はある！ 第01-05巻 [Seitokai nimo Ana wa Aru! vol 01-05]",
       "group": "",
-      "n": 6,
+      "n": 7,
       "first": "10-18 12:45",
       "last": "10-18 12:45"
     },
@@ -145,13 +145,13 @@
   "state_version": 1,
   "pending_notifications": {},
   "health": {
-    "last_check": "2026-10-18T13:05:31+08:00",
+    "last_check": "2026-10-18T13:10:29+08:00",
     "matched": 92,
     "successful_sources": 9,
     "failed_sources": 0,
     "failures": 0,
     "status": "ok",
-    "last_successful_check": "2026-10-18T13:05:31+08:00"
+    "last_successful_check": "2026-10-18T13:10:29+08:00"
   },
   "primary_episodes": {
     "kurumi-lvcha|01": true,
