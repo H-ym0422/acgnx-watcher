@@ -34,7 +34,7 @@ ACGNX 新番发布实时监听器
 from __future__ import annotations
 
 from watcher_core.configuration import validate_config
-from watcher_core import state_store, health
+from watcher_core import state_store, health, fallback_wait
 from watcher_core.parsing import *  # Backward-compatible public parser API
 from watcher_core.matching import *
 from watcher_core.notifications import *
@@ -42,6 +42,7 @@ from watcher_core.network import http_get, pick_base
 
 
 import argparse
+import copy
 import base64
 import gzip
 import hashlib
@@ -216,8 +217,8 @@ def build_push_content(item: dict, rule: dict, prefix: str,
     #   「整部番都没有」，而实际上只是**那一集**喵萌没做）
     if item.get("_fallback") and src not in want_list:
         epn = item.get("episode") or "这一集"
-        lines.append(f"※ 第 {epn} 集：「{'、'.join(want_list)}」还没出，"
-                     f"这条用的是「{src}」做的")
+        lines.append(f"※ 第 {epn} 集：发现其他组资源已满 {fallback_wait.WAIT_DAYS} 天，"
+                     f"仍未检测到「{'、'.join(want_list)}」版本；本条来自「{src}」。这不代表指定组停更。")
 
     # 字幕形式（简日双语 / 简繁日内封 …）。
     # 没标出来时**照样写出这一行**并说清为什么 ——
@@ -360,7 +361,7 @@ def collect(cfg: dict) -> list[dict]:
     for ri, rule in enumerate(rules):
         rid = rule_id(rule, ri)
         primary = list(rule.get("group") or [])
-        # 兜底：指定字幕组没做这一集（或中途弃番）时，用别的组补上。
+        # 收集其他组候选；真正推送由逐集 7 天等待策略决定，不能据此认定弃番。
         # 判定见 fallback_match() —— 必须标题里带完整番名，免得短关键词误伤别的番。
         use_fallback = bool(primary) and rule.get("fallback_any_group", True)
 
@@ -520,18 +521,24 @@ def run_cycle(cfg: dict, state: dict, dry_run: bool = False) -> int:
     first_run = not state.get("initialized")
     mode = (settings.get("first_run_mode") or "latest").lower()
 
-    pending_sent = 0 if dry_run else deliver_pending(state, settings, rules=cfg.get("rules"))
+    pending_sent = 0
     matched = collect(cfg)
     if not dry_run:
         transition = health.update(state, matched, settings.get("failure_alert_after", 3))
         if transition:
             key = enqueue_notification(state, "__health__", prefix + transition[0], transition[1])
-            pending_sent += deliver_pending(state, settings, only=key, rules=cfg.get("rules"))
         if not getattr(matched, "available", True):
+            pending_sent += deliver_pending(state, settings, rules=cfg.get("rules"))
             save_state(state)
             log.error("本轮抓取失败，状态基线未推进")
             return pending_sent
-    matched = suppress_fallbacks(matched, None if dry_run else state)
+    policy_state = copy.deepcopy(state) if dry_run else state
+    matched = suppress_fallbacks(matched, policy_state)
+    matched = fallback_wait.apply_wait(matched, policy_state, cfg.get("rules", []))
+    log.info("兜底等待期内 %d 个集号（逐集等待 7 天）",
+             sum(not e.get("ready", False) for e in policy_state.get("fallback_waiting", {}).values()))
+    if not dry_run:
+        pending_sent += deliver_pending(state, settings, rules=cfg.get("rules"))
     if not dry_run:
         note_unparsed([m for m in matched if not m.get("episode") and not RE_BATCH_HINT.search(m["title"])], state)
     log.info("本轮共命中 %d 条（去重后）", len(matched))

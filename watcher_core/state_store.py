@@ -2,6 +2,7 @@
 import json
 from pathlib import Path
 import shutil
+from datetime import datetime
 
 VERSION = 1
 
@@ -18,13 +19,22 @@ def migrate(state):
         raise StateError('不支持此状态版本，请使用对应版本程序')
     if type(state.get('initialized', False)) is not bool:
         raise StateError('state.initialized 必须是布尔值')
-    for field in ['pending_notifications', 'health', 'deliveries', 'primary_episodes']:
+    for field in ['pending_notifications', 'health', 'deliveries', 'primary_episodes', 'fallback_waiting']:
         if not isinstance(state.get(field, {}), dict):
             raise StateError(f'state.{field} 必须是对象')
     for message in state.get('pending_notifications', {}).values():
         if not isinstance(message, dict) or any(not isinstance(message.get(k), str)
                                                 for k in ['rule_id', 'title', 'body']):
             raise StateError('待发送消息格式错误，请恢复备份')
+    for entry in state.get('fallback_waiting', {}).values():
+        if not isinstance(entry, dict) or not isinstance(entry.get('signature'), str) or not isinstance(entry.get('candidate'), dict):
+            raise StateError('兜底等待记录格式错误，请恢复备份')
+        try:
+            date = datetime.fromisoformat(entry['first_seen'])
+            if date.tzinfo is None:
+                raise ValueError('missing timezone')
+        except (KeyError, TypeError, ValueError) as error:
+            raise StateError('兜底等待时间无效，请恢复备份') from error
     state.setdefault('episodes', {})
     state.setdefault('initialized', False)
     state['state_version'] = VERSION
