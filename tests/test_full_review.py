@@ -172,6 +172,22 @@ class QueueAndBudgetTests(unittest.TestCase):
         with patch('watcher_core.send_budget.time.monotonic', return_value=131):
             self.assertFalse(budget.reserve(13))
 
+    def test_push_gap_is_measured_from_actual_send_after_slow_checkpoint(self):
+        clock = [0]
+        sleeps = []
+        def sleep(seconds):
+            sleeps.append(seconds)
+            clock[0] += seconds
+        with patch('watcher_core.send_budget.time.monotonic', side_effect=lambda: clock[0]), \
+             patch('watcher_core.send_budget.time.sleep', side_effect=sleep):
+            budget = SendBudget()
+            self.assertTrue(budget.reserve(13))
+            clock[0] = 45
+            budget.mark_attempt()
+            clock[0] = 46
+            self.assertTrue(budget.reserve(13))
+        self.assertEqual(sleeps, [12])
+
     def test_checkpoint_failure_prevents_external_notification(self):
         with tempfile.TemporaryDirectory(dir=Path.cwd()) as tmp, patch.object(aw, 'STATE_PATH', str(Path(tmp) / 'state.json')):
             state = self.queued(('03',))
