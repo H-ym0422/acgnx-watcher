@@ -17,7 +17,7 @@ import zlib
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 TZ8 = timezone(timedelta(hours=8))
-log = logging.getLogger("acgnx_watch")
+log = logging.getLogger("acgnx")
 
 
 _T2S_PAIRS = [

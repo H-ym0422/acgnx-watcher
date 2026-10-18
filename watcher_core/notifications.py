@@ -18,7 +18,7 @@ from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from .network import UA
 TZ8 = timezone(timedelta(hours=8))
-log = logging.getLogger("acgnx_watch")
+log = logging.getLogger("acgnx")
 
 
 def _post_json(url: str, payload: dict, timeout: int = 15,
