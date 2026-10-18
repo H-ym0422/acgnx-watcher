@@ -475,24 +475,40 @@ def enqueue_notification(state: dict, rule_id: str, title: str, body: str) -> st
     return key
 
 
-def deliver_pending(state: dict, settings: dict, only: str | None = None) -> int:
+def deliver_pending(state: dict, settings: dict, only: str | None = None,
+                    rules: list[dict] | None = None) -> int:
     pending = state.setdefault("pending_notifications", {})
-    sent = 0
-    attempts = 0
+    active = None if rules is None else {r["id"] for r in rules if r.get("enabled", True)}
+    sent = attempts = 0
     for key, message in list(pending.items()):
         if only is not None and key != only:
+            continue
+        if active is not None and message["rule_id"] != "__health__" and message["rule_id"] not in active:
+            del pending[key]
+            save_state(state)
             continue
         if attempts:
             time.sleep(max(0, int(settings.get("push_min_interval_seconds", 13))))
         attempts += 1
+        # Persist the complete outbox before touching the external service.
+        save_state(state)
         try:
             ok, _ = send_notification(message["title"], message["body"], settings)
         except Exception:
             log.exception("Queued notification failed; retained for next cycle")
             ok = False
         if ok:
+            delivery = message.get("delivery")
+            if delivery:
+                state.setdefault("deliveries", {})[delivery["state_key"]] = {
+                    k: v for k, v in delivery.items() if k != "state_key"
+                }
+                state["deliveries"][delivery["state_key"]]["time"] = health.now()
+                state.setdefault("health", {})["last_delivery"] = health.now()
             del pending[key]
             sent += 1
+            # Never wait until the entire batch finishes to checkpoint a receipt.
+            save_state(state)
         else:
             log.warning("Queued notification retained for retry")
     return sent
@@ -504,13 +520,13 @@ def run_cycle(cfg: dict, state: dict, dry_run: bool = False) -> int:
     first_run = not state.get("initialized")
     mode = (settings.get("first_run_mode") or "latest").lower()
 
-    pending_sent = 0 if dry_run else deliver_pending(state, settings)
+    pending_sent = 0 if dry_run else deliver_pending(state, settings, rules=cfg.get("rules"))
     matched = collect(cfg)
     if not dry_run:
         transition = health.update(state, matched, settings.get("failure_alert_after", 3))
         if transition:
             key = enqueue_notification(state, "__health__", prefix + transition[0], transition[1])
-            pending_sent += deliver_pending(state, settings, only=key)
+            pending_sent += deliver_pending(state, settings, only=key, rules=cfg.get("rules"))
         if not getattr(matched, "available", True):
             save_state(state)
             log.error("本轮抓取失败，状态基线未推进")
@@ -599,52 +615,42 @@ def run_cycle(cfg: dict, state: dict, dry_run: bool = False) -> int:
                 if id(best) in keep:
                     pushes.append((best, is_up, sk))
 
-    sent = pending_sent
-    failed: set[str] = set()   # 推送失败的 (规则id, 集数)，这些不记为已看
-    gap = max(0, int(settings.get("push_min_interval_seconds", 13)))
-    for idx, (best, is_upgrade, sk) in enumerate(pushes):
-        rule = best["_rule"]
-        title, body = build_push_content(best, rule, prefix, is_upgrade)
-        log.info("%s -> %s", "补推" if is_upgrade else "命中", best["title"])
-        if dry_run:
+    if dry_run:
+        for best, is_upgrade, _sk in pushes:
+            title, body = build_push_content(best, best["_rule"], prefix, is_upgrade)
             print("\n" + "=" * 70)
             print(title)
             print(body)
-        else:
-            if (idx > 0 or pending_sent) and gap:
-                # PushPlus 消息接口限「1 分钟最多 5 次」，集中补推时把请求摊开
-                log.info("等待 %d 秒再发下一条（避开平台频率限制）…", gap)
-                time.sleep(gap)
-            ok, _mid = send_notification(title, body, settings)
-            if ok:
-                state.setdefault("deliveries", {})[sk] = {
-                    "time": health.now(), "group": group_key(best, rule.get("group") or []),
-                    "fallback": bool(best.get("_fallback")), "episode_known": bool(best.get("episode")),
-                }
-                state.setdefault("health", {})["last_delivery"] = health.now()
-            if not ok:
-                # 没推出去就别记成「已看」，下一轮还会推，否则这集就永久漏了
-                # （2026-10-16 修：原来返回值被丢掉，推送失败照样标记已看）
-                failed.add(sk)          # 用带组的键，跟下面写 state 的键保持一致
-                log.warning("这条没推成功，本轮不标记为已看，下一轮会重推")
-        sent += 1
+        return len(pushes)
 
-    if not dry_run:
-        # 记下「见过的最好档位:见过的最大修订号」，档位和修订号各自单调，不会因为
-        # 后出的版本字幕形式更差就把记录冲低（否则会出现反复补推）
-        for (rid, ep, gk), items in groups.items():
-            sk = f"{rid}|{ep}|{gk}" if gk else f"{rid}|{ep}"
-            if sk in failed:
-                continue          # 上一条没推成功，别记成已看，下一轮还会推
-            best = best_of(items)
-            prev = _seen_pair(state_store.previous_episode(state, rid, ep, gk, group_eq))
-            if prev is None:
-                state["episodes"][sk] = f"{best['_tier']}:{best['_rev']}"
-            else:
-                state["episodes"][sk] = f"{min(prev[0], best['_tier'])}:{max(prev[1], best['_rev'])}"
-        state["initialized"] = True
-        save_state(state)
+    queued = []
+    for best, is_upgrade, sk in pushes:
+        rule = best["_rule"]
+        title, body = build_push_content(best, rule, prefix, is_upgrade)
+        key = enqueue_notification(state, best["_rid"], title, body)
+        state["pending_notifications"][key]["delivery"] = {
+            "state_key": sk, "group": group_key(best, rule.get("group") or []),
+            "fallback": bool(best.get("_fallback")), "episode_known": bool(best.get("episode")),
+        }
+        queued.append(key)
 
+    # Baselines and the corresponding outbox are saved together. A failed send
+    # retries its original queued content, even after the item drops out of RSS.
+    for (rid, ep, gk), items in groups.items():
+        sk = f"{rid}|{ep}|{gk}" if gk else f"{rid}|{ep}"
+        best = best_of(items)
+        prev = _seen_pair(state_store.previous_episode(state, rid, ep, gk, group_eq))
+        state.setdefault("episodes", {})[sk] = (f"{best['_tier']}:{best['_rev']}" if prev is None else
+            f"{min(prev[0], best['_tier'])}:{max(prev[1], best['_rev'])}")
+    state["initialized"] = True
+    save_state(state)
+
+    sent = pending_sent
+    gap = max(0, int(settings.get("push_min_interval_seconds", 13)))
+    for idx, key in enumerate(queued):
+        if (idx > 0 or pending_sent) and gap:
+            time.sleep(gap)
+        sent += deliver_pending(state, settings, only=key, rules=cfg.get("rules"))
     return sent
 
 

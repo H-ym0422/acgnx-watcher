@@ -451,7 +451,7 @@ def ep_at_least(ep: str, n: int) -> bool:
     return True
 
 
-def inspect_and_seed(rule: dict, from_ep: int = 0) -> list[tuple[str, dict]]:
+def inspect_and_seed(rule: dict, from_ep: int = 0, backfill_mode: str | None = None) -> list[tuple[str, dict]]:
     """抓一遍，做两件事：
        ① 把这条规则当前命中的集数记进 state 当「已记录」基线 ——
           这样**之后只有新发布的集数才会提醒**；
@@ -485,11 +485,16 @@ def inspect_and_seed(rule: dict, from_ep: int = 0) -> list[tuple[str, dict]]:
         key = f"{rule['id']}|{ep}|{gk}" if gk else f"{rule['id']}|{ep}"
         st["episodes"].setdefault(key, items[0]["_seen"])
     st["initialized"] = True
-    aw.save_state(st)
+    def finish(ordered):
+        if backfill_mode is not None:
+            title, body, _settings = format_result(rule, ordered, backfill_mode, from_ep)
+            aw.enqueue_notification(st, rule["id"], title, body)
+        aw.save_state(st)
+        return ordered
 
     if not matched:
         print("   （当前没有命中的条目 —— 正常，说明这部番最近没更新）")
-        return []
+        return finish([])
 
     # ---- ② 按集数从小到大排；同一集优先用指定字幕组的 ----
     # ⭐ **规则里显式选了多个字幕组时，每个组的资源都保留**（2026-10-17 修）。
@@ -544,7 +549,7 @@ def inspect_and_seed(rule: dict, from_ep: int = 0) -> list[tuple[str, dict]]:
 
     if not ordered:
         print(f"\n（要的第 {from_ep} 集及以后暂时还没有资源，等更新了会推你）")
-        return []
+        return finish([])
 
     print(f"   原始命中 {len(matched)} 条，归并成 {len(ordered)} 集（按集数从小到大）：")
     for ep, item in ordered:
@@ -555,11 +560,17 @@ def inspect_and_seed(rule: dict, from_ep: int = 0) -> list[tuple[str, dict]]:
 
     print(f"\n📌 这 {len(ordered)} 个集数已记为基线 ——")
     print("   之后只有新发布的集数才会提醒。")
-    return ordered
+    return finish(ordered)
 
 
 def notify_result(rule: dict, episodes: list[tuple[str, dict]],
                   mode: str = "all", from_ep: int = 0) -> bool:
+    title, body, settings = format_result(rule, episodes, mode, from_ep)
+    return queue_result(rule, title, body, settings)
+
+
+def format_result(rule: dict, episodes: list[tuple[str, dict]],
+                  mode: str = "all", from_ep: int = 0) -> tuple[str, str, dict]:
     """把加番结果推到手机。
     mode: all = 把第1集到最新集的磁力全部列出（默认）
           latest = 只推最新一集
@@ -578,7 +589,7 @@ def notify_result(rule: dict, episodes: list[tuple[str, dict]],
     if not episodes:
         lines.append("")
         lines.append("现在还没搜到已发布的集数，之后出新集会提醒你。")
-        return queue_result(rule, title, "\n".join(lines), s)
+        return title, "\n".join(lines), s
 
     nums = [ep for ep, _ in episodes if ep and ep != "-"]
 
@@ -621,7 +632,7 @@ def notify_result(rule: dict, episodes: list[tuple[str, dict]],
             lines.append(f"{tag} {item.get('magnet') or '（无磁力，见详情页）'}")
         lines += ["", "———", "以上是历史集，已经记下来了。以后只推新发布的集数，不会再重复推这些。"]
 
-    return queue_result(rule, title, "\n".join(lines), s)
+    return title, "\n".join(lines), s
 
 
 def queue_result(rule: dict, title: str, body: str, settings: dict) -> bool:
@@ -1052,7 +1063,8 @@ def main() -> None:
         rule["from_episode"] = args.from_episode
     if not append_rule(rule):
         return
-    episodes = inspect_and_seed(rule, from_ep=args.from_episode)
+    episodes = inspect_and_seed(rule, from_ep=args.from_episode,
+                                backfill_mode=args.backfill if args.notify else None)
     write_watchlist()
     if args.notify:
         notify_result(rule, episodes, args.backfill, from_ep=args.from_episode)

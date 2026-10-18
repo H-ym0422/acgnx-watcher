@@ -41,6 +41,7 @@
         "简体"
       ],
       "season": 0,
+      "allow_unmarked_season": false,
       "from_episode": 0,
       "fallback_any_group": true,
       "note": ""

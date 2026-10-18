@@ -20,7 +20,7 @@ def match_rule(item: dict, rule: dict) -> bool:
 
     # 分季过滤：想只看第一季，就别让第二三四五季混进来
     sea = rule.get("season")
-    if sea and not season_ok(item["title"], int(sea)):
+    if sea and not season_ok(item["title"], int(sea), rule.get("allow_unmarked_season", False)):
         return False
 
     grp = rule.get("group") or []

@@ -30,8 +30,10 @@ class WatcherTests(unittest.TestCase):
     def test_failed_notification_is_retried(self):
         state = {"initialized": True, "episodes": {}}
         self.assertEqual(self.cycle(state, False), 1)
-        self.assertEqual(state["episodes"], {})
+        self.assertEqual(state["episodes"], {"r123456789|02|demo-group": "0:1"})
+        self.assertEqual(len(state["pending_notifications"]), 1)
         self.assertEqual(self.cycle(state, True), 1)
+        self.assertEqual(state["pending_notifications"], {})
 
     def test_persistent_episode_floor(self):
         for episode, expected in [("48", False), ("49", True), ("45-50", True), ("01-12", False), ("unknown", True)]:

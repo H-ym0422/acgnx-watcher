@@ -24,6 +24,7 @@ class DeliveryTests(unittest.TestCase):
         self.cfg = {'settings': {'push_min_interval_seconds': 0}, 'rules': []}
         aw.save_state({'initialized': True, 'episodes': {'old|01': '0:1'}})
         self.rule = {'id': 'new-rule', 'name': 'demo', 'group': []}
+        self.cfg['rules'] = [self.rule]
         self.item = {'btih': 'a' * 40, 'episode': '01', 'title': 'demo', 'author': '', 'size': '',
                      'pub_dt': None, 'magnet': 'magnet:test', '_seen': '0:1',
                      '_tier': 0, '_rev': 1, '_fallback': False, '_rule': self.rule,
