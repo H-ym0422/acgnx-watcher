@@ -103,6 +103,8 @@ jobs:
           BACKFILL: ${{ inputs.backfill }}
           FROM_EP: ${{ inputs.from_episode }}
           SEA: ${{ steps.decide.outputs.sea }}
+          ACGNX_REMOTE_CHECKPOINT: "1"
+          ACGNX_REQUEST_BUDGET_SECONDS: "120"
           ACGNX_WEBHOOK_URL: ${{ secrets.ACGNX_WEBHOOK_URL }}
           ACGNX_DINGTALK_SECRET: ${{ secrets.ACGNX_DINGTALK_SECRET }}
           ACGNX_FEISHU_SECRET: ${{ secrets.ACGNX_FEISHU_SECRET }}

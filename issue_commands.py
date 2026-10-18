@@ -87,6 +87,21 @@ def options(body: str) -> tuple[str, int, int, str]:
     return group, int(season or 0), int(floor or 0), backfill
 
 
+def season_controls(body: str) -> list[str]:
+    data = fields(body)
+    args = []
+    for key, value in data.items():
+        if key.startswith('季内起始总集号') and value:
+            if not re.fullmatch(r'\d{1,4}', value):
+                raise ValueError('季内起始总集号必须是 0 到 9999 的整数')
+            args += ['--season-start-episode', value]
+        if key.startswith('未标季度') and value:
+            if value not in ('允许', '不允许', 'true', 'false'):
+                raise ValueError('未标季度请填写“允许”或“不允许”')
+            args.append('--allow-unmarked-season' if value in ('允许', 'true') else '--strict-season')
+    return args
+
+
 def command(title: str) -> tuple[str, str]:
     title = title.strip()
     for mode, prefixes in (("add", ("加番", "添加", "新增", "追番")),
@@ -141,6 +156,7 @@ def handle(event: dict, event_name: str) -> dict:
         raise ValueError("只有仓库所有者可以管理规则，且不处理 PR 评论")
     mode, term = command(issue.get("title") or "")
     group, season, floor, backfill = options(issue.get("body") or "")
+    controls = season_controls(issue.get("body") or "")
     if mode == "list":
         return run_cli(["--render", "--no-push"])
     if not term:
@@ -152,7 +168,7 @@ def handle(event: dict, event_name: str) -> dict:
     if mode in ("pause", "resume"):
         return run_cli(["--" + mode, term, "--no-push"])
     if mode == "edit":
-        args = ['--edit', term, '--no-push']
+        args = ['--edit', term, '--no-push', *controls]
         data = fields(issue.get('body') or '')
         if group:
             if group.lower() in ('任意', 'any', '*'):
@@ -191,6 +207,7 @@ def handle(event: dict, event_name: str) -> dict:
         groups = [] if group.lower() in ("任意", "any", "*") else [g.strip() for g in re.split(r"[,，、]", group) if g.strip()]
     args = [term, "--yes", "--no-push", "--notify", "--backfill", backfill,
             "--season", str(season), "--from-episode", str(floor)]
+    args.extend(controls)
     for group in groups:
         args.extend(["--group", group])
     if not groups:

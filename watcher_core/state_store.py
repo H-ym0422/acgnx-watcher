@@ -19,7 +19,7 @@ def migrate(state):
         raise StateError('不支持此状态版本，请使用对应版本程序')
     if type(state.get('initialized', False)) is not bool:
         raise StateError('state.initialized 必须是布尔值')
-    for field in ['pending_notifications', 'health', 'deliveries', 'primary_episodes', 'fallback_waiting']:
+    for field in ['pending_notifications', 'health', 'deliveries', 'primary_episodes', 'fallback_waiting', 'episode_maps', 'season_ambiguous', 'rule_health']:
         if not isinstance(state.get(field, {}), dict):
             raise StateError(f'state.{field} 必须是对象')
     for message in state.get('pending_notifications', {}).values():

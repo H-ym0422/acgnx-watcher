@@ -26,12 +26,21 @@ BASES = [
 
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+_REQUEST_DEADLINE = None
 
 
 def http_get(url: str, timeout: int = 20, retry: int = 3, proxy: str = "") -> str | None:
+    global _REQUEST_DEADLINE
+    seconds = int(os.environ.get('ACGNX_REQUEST_BUDGET_SECONDS', '0'))
+    if seconds and _REQUEST_DEADLINE is None:
+        _REQUEST_DEADLINE = time.monotonic() + seconds
     last_err = None
     for attempt in range(1, retry + 1):
         try:
+            remaining = timeout if _REQUEST_DEADLINE is None else min(timeout, _REQUEST_DEADLINE - time.monotonic())
+            if remaining <= 0:
+                log.warning('抓取预算已用完，剩余搜索下轮重试')
+                return None
             req = urllib.request.Request(url, headers={
                 "User-Agent": UA,
                 "Accept": "*/*",
@@ -44,7 +53,7 @@ def http_get(url: str, timeout: int = 20, retry: int = 3, proxy: str = "") -> st
                     urllib.request.ProxyHandler({"http": proxy, "https": proxy}))
             else:
                 opener = urllib.request.build_opener()
-            with opener.open(req, timeout=timeout) as resp:
+            with opener.open(req, timeout=remaining) as resp:
                 raw = resp.read()
                 enc = (resp.headers.get("Content-Encoding") or "").lower()
                 if "gzip" in enc:
@@ -58,7 +67,10 @@ def http_get(url: str, timeout: int = 20, retry: int = 3, proxy: str = "") -> st
         except Exception as e:  # noqa: BLE001
             last_err = e
             if attempt < retry:
-                time.sleep(1.5 * attempt)
+                delay = 1.5 * attempt
+                if _REQUEST_DEADLINE is not None:
+                    delay = max(0, min(delay, _REQUEST_DEADLINE - time.monotonic()))
+                time.sleep(delay)
     log.warning("请求失败(%s)：%s | %s", retry, url, last_err)
     return None
 

@@ -20,7 +20,9 @@
     "feishu_app_id": "",
     "feishu_app_secret": "",
     "feishu_chat_id": "",
-    "failure_alert_after": 3
+    "failure_alert_after": 3,
+    "max_pushes_per_cycle": 12,
+    "send_budget_seconds": 240
   },
   "rules": [
     {
@@ -44,7 +46,8 @@
       "allow_unmarked_season": false,
       "from_episode": 0,
       "fallback_any_group": true,
-      "note": ""
+      "note": "",
+      "season_start_episode": 0
     }
   ]
 }

@@ -17,7 +17,8 @@ def validate_config(cfg):
         raise ConfigError('settings 必须是对象，rules 必须是数组')
     ranges = {'interval_minutes': (1, 1440), 'request_timeout': (1, 300), 'retry': (1, 10),
               'push_min_interval_seconds': (0, 3600), 'poll_jitter_seconds': (0, 3600),
-              'failure_alert_after': (1, 100)}
+              'failure_alert_after': (1, 100), 'max_pushes_per_cycle': (1, 12),
+              'send_budget_seconds': (120, 240)}
     for field, (lo, hi) in ranges.items():
         if field in settings and (type(settings[field]) is not int or not lo <= settings[field] <= hi):
             raise ConfigError(f'settings.{field}: 必须是 {lo}..{hi} 的整数')
@@ -52,7 +53,7 @@ def validate_config(cfg):
                 raise ConfigError(f'{prefix}.{field}: 必须是非空字符串组成的数组')
             if field == 'group' and any('|' in x for x in value):
                 raise ConfigError(f'{prefix}.group: 组名不能包含 |')
-        for field in ['season', 'from_episode']:
+        for field in ['season', 'from_episode', 'season_start_episode']:
             value = rule.get(field, 0)
             if type(value) is not int or not 0 <= value <= 9999:
                 raise ConfigError(f'{prefix}.{field}: 必须是 0..9999 的整数')
