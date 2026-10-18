@@ -128,8 +128,9 @@ jobs:
 
           git config user.name  "acgnx-bot"
           git config user.email "acgnx-bot@users.noreply.github.com"
-          if [ -n "$(git status --porcelain config.json state.json "我的番剧.md")" ]; then
+          if [ -n "$(git status --porcelain config.json state.json state.backup.json "我的番剧.md")" ]; then
             git add config.json state.json "我的番剧.md"
+            if [ -f state.backup.json ]; then git add state.backup.json; fi
             git commit -m "加番：$ANIME [skip ci]"
             # ⚠️ 必须 rebase 后再推：每 5 分钟的 watcher 也会往 main 提交「更新进度」，
             #    直接 push 会 non-fast-forward 失败 —— 而失败意味着**规则没存进仓库**，

@@ -1,0 +1,49 @@
+{
+  "settings": {
+    "interval_minutes": 5,
+    "push_channel": "webhook",
+    "pushplus_token": "",
+    "serverchan_sendkey": "",
+    "webhook_url": "",
+    "dingtalk_secret": "",
+    "dingtalk_keyword": "新番",
+    "feishu_secret": "",
+    "title_prefix": "【新番速递】",
+    "first_run_mode": "latest",
+    "push_min_interval_seconds": 13,
+    "request_timeout": 15,
+    "retry": 2,
+    "proxy": "",
+    "poll_jitter_seconds": 20,
+    "watch_global_feed": true,
+    "skip_traditional_only": true,
+    "feishu_app_id": "",
+    "feishu_app_secret": "",
+    "feishu_chat_id": "",
+    "failure_alert_after": 3
+  },
+  "rules": [
+    {
+      "id": "demo-rule",
+      "name": "示例动画",
+      "enabled": true,
+      "keywords": [
+        "示例动画"
+      ],
+      "include_any": [
+        "示例动画"
+      ],
+      "exclude_any": [],
+      "group": [],
+      "variant_prefer": [
+        "简日双语",
+        "简繁日内封",
+        "简体"
+      ],
+      "season": 0,
+      "from_episode": 0,
+      "fallback_any_group": true,
+      "note": ""
+    }
+  ]
+}

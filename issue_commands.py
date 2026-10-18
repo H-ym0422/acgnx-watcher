@@ -91,6 +91,7 @@ def command(title: str) -> tuple[str, str]:
     title = title.strip()
     for mode, prefixes in (("add", ("加番", "添加", "新增", "追番")),
                            ("del", ("删番", "删除", "移除", "取消")),
+                           ("pause", ("暂停",)), ("resume", ("恢复",)), ("edit", ("修改",)),
                            ("list", ("列表", "清单", "我的番"))):
         for prefix in prefixes:
             if title.startswith(prefix):
@@ -145,7 +146,26 @@ def handle(event: dict, event_name: str) -> dict:
     if not term:
         raise ValueError("请填写番名，未修改规则")
     if mode == "del":
+        if event_name == 'issue_comment':
+            return {'ok': True, 'step': 'done', 'text': '删除指令仅在新 Issue 执行，未重复删除。'}
         return run_cli(["--del-name", term, "--no-push"])
+    if mode in ("pause", "resume"):
+        return run_cli(["--" + mode, term, "--no-push"])
+    if mode == "edit":
+        args = ['--edit', term, '--no-push']
+        data = fields(issue.get('body') or '')
+        if group:
+            if group.lower() in ('任意', 'any', '*'):
+                args.append('--any-group')
+            else:
+                for value in re.split(r'[,，、]', group):
+                    if value.strip():
+                        args.extend(['--group', value.strip()])
+        if any(k.startswith('第几季') and v for k, v in data.items()):
+            args.extend(['--season', str(season)])
+        if any(k.startswith('只要第几集之后') and v for k, v in data.items()):
+            args.extend(['--from-episode', str(floor)])
+        return run_cli(args)
     if event_name == "issues" and not group:
         return survey(term, season)
     if event_name == "issue_comment":
@@ -153,9 +173,6 @@ def handle(event: dict, event_name: str) -> dict:
         selection = text.splitlines()[0].strip().strip('`') if text else ""
         if selection in ("刷新", "重新获取清单"):
             return survey(term, season)
-        cfg = ar.aw.load_config()
-        if any(term in " ".join(r.get("keywords") or []) for r in cfg["rules"]):
-            return {"ok": True, "step": "dup", "text": "已经在监听，未重复添加。"}
         snapshot = read_snapshot(comments_for_issue(issue["number"]), term, season)
         if snapshot is None:
             result = survey(term, season)

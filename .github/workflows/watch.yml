@@ -61,14 +61,16 @@ jobs:
           fi
 
       - name: 回写去重状态
+        if: ${{ !cancelled() }}
         run: |
           # 顺便刷新「我的番剧.md」，手机上直接打开就能看自己在追什么
           python add_rule.py --render --no-push > /dev/null 2>&1 || true
 
           git config user.name  "acgnx-bot"
           git config user.email "acgnx-bot@users.noreply.github.com"
-          if [ -n "$(git status --porcelain state.json "我的番剧.md")" ]; then
+          if [ -n "$(git status --porcelain state.json state.backup.json "我的番剧.md")" ]; then
             git add state.json "我的番剧.md"
+            if [ -f state.backup.json ]; then git add state.backup.json; fi
             git commit -m "更新进度 [skip ci]"
             # ⚠️ 必须 rebase 后再推：每 5 分钟的 watcher 也会往 main 提交「更新进度」，
             #    直接 push 会 non-fast-forward 失败 —— 而失败意味着**规则没存进仓库**，

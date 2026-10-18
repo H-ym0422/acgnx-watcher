@@ -44,8 +44,9 @@ jobs:
         run: |
           git config user.name acgnx-bot
           git config user.email acgnx-bot@users.noreply.github.com
-          if [ -n "$(git status --porcelain config.json state.json "我的番剧.md")" ]; then
+          if [ -n "$(git status --porcelain config.json state.json state.backup.json "我的番剧.md")" ]; then
             git add config.json state.json "我的番剧.md"
+            if [ -f state.backup.json ]; then git add state.backup.json; fi
             git commit -m "$I_TITLE [skip ci]"
             git push || {
               git pull --rebase origin main
