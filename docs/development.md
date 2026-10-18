@@ -22,6 +22,7 @@ python check_workflows.py --require-bash
 | watcher_core/network.py | HTTP 与镜像探测 |
 | watcher_core/parsing.py | RSS、集数、字幕、季号、组名解析 |
 | watcher_core/matching.py | 规则匹配、普通兜底抑制 |
+| watcher_core/fallback_wait.py | 逐集 7 天等待、候选保存与指定组优先取消 |
 | watcher_core/notifications.py | 飞书等渠道与响应判断 |
 | watcher_core/configuration.py | 字段验证与原子配置写入 |
 | watcher_core/rules.py | 稳定 ID、重复规则检查、保留 ID 的修改 |

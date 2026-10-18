@@ -464,7 +464,11 @@ def inspect_and_seed(rule: dict, from_ep: int = 0, backfill_mode: str | None = N
     matched = aw.collect(probe)
     if not getattr(matched, "available", True):
         raise RuntimeError("抓取失败，未建立初始化基线，请检查网络后重试")
-    matched = aw.suppress_fallbacks(matched)
+    st = aw.load_state()
+    matched = aw.suppress_fallbacks(matched, st)
+    observed = list(matched)
+    policy_rules = [r for r in cfg.get("rules", []) if r['id'] != rule['id']] + [rule]
+    matched = [i for i in aw.fallback_wait.apply_wait(matched, st, policy_rules) if i['_rid'] == rule['id']]
 
     # ---- ① 记基线 ----
     # ⚠️ 键的格式必须跟 run_cycle 完全一致（2026-10-17 体检发现）：
@@ -478,12 +482,20 @@ def inspect_and_seed(rule: dict, from_ep: int = 0, backfill_mode: str | None = N
         ep = m.get("episode") or m["btih"]
         gk = aw.group_key(m, want_g)
         buckets.setdefault((ep, gk), []).append(m)
-    st = aw.load_state()
     aw.note_unparsed([m for m in matched if not m.get("episode") and not aw.RE_BATCH_HINT.search(m["title"])], st)
     for (ep, gk), items in buckets.items():
         items.sort(key=aw.sort_key)
         key = f"{rule['id']}|{ep}|{gk}" if gk else f"{rule['id']}|{ep}"
         st["episodes"].setdefault(key, items[0]["_seen"])
+    # Waiting must not turn "none" or "latest" into delayed "all" backfill.
+    newest = max((ep_sort_key(i.get("episode") or i["btih"]) for i in observed), default=None)
+    for item in observed:
+        ep = item.get("episode") or item["btih"]
+        skip_history = backfill_mode in (None, "none") or (backfill_mode == "latest" and ep_sort_key(ep) != newest)
+        if item.get("_fallback") and skip_history:
+            gk = aw.group_key(item, want_g)
+            key = f"{rule['id']}|{ep}|{gk}" if gk else f"{rule['id']}|{ep}"
+            st["episodes"].setdefault(key, item["_seen"])
     st["initialized"] = True
     def finish(ordered):
         if backfill_mode is not None:
@@ -493,7 +505,7 @@ def inspect_and_seed(rule: dict, from_ep: int = 0, backfill_mode: str | None = N
         return ordered
 
     if not matched:
-        print("   （当前没有命中的条目 —— 正常，说明这部番最近没更新）")
+        print("   （当前没有可推送条目；其他组资源按集等待 7 天）")
         return finish([])
 
     # ---- ② 按集数从小到大排；同一集优先用指定字幕组的 ----
@@ -588,7 +600,7 @@ def format_result(rule: dict, episodes: list[tuple[str, dict]],
 
     if not episodes:
         lines.append("")
-        lines.append("现在还没搜到已发布的集数，之后出新集会提醒你。")
+        lines.append("目前没有符合推送条件的资源；其他组资源会逐集等待 7 天，指定组发布后会优先提醒。")
         return title, "\n".join(lines), s
 
     nums = [ep for ep, _ in episodes if ep and ep != "-"]
@@ -660,6 +672,7 @@ def render_watchlist() -> str:
         "",
         f"**已配置 {len(rules)} 部，其中 {sum(r.get('enabled', True) for r in rules)} 部监听中。** 自动生成，请通过规则管理修改。",
         "",
+        f"兜底等待：{sum(not e.get('ready', False) for e in st.get('fallback_waiting', {}).values())} 个集号（逐集等待 7 天）",
         f"最近检查：{st.get('health', {}).get('last_check', '尚无记录')}",
         f"抓取状态：{st.get('health', {}).get('status', '待检查')}；连续失败：{st.get('health', {}).get('failures', 0)} 次",
         f"最近成功推送：{st.get('health', {}).get('last_delivery', '尚无记录')}；待重试：{len(st.get('pending_notifications', {}))} 条",
@@ -821,8 +834,12 @@ def purge_baseline(rule_ids: list[str]) -> int:
     gone = [k for k in eps if k.split("|", 1)[0] in ids]
     pending = st.get("pending_notifications") or {}
     queued = [key for key, message in pending.items() if message.get("rule_id") in ids]
-    if not gone and not queued:
+    waiting = st.get("fallback_waiting", {})
+    waiting_gone = [k for k in waiting if k.split("|", 1)[0] in ids]
+    if not gone and not queued and not waiting_gone:
         return 0
+    for k in waiting_gone:
+        waiting.pop(k, None)
     for k in gone:
         eps.pop(k, None)
     for key in queued:
@@ -907,6 +924,9 @@ def main() -> None:
         pending = st.get("pending_notifications", {})
         st["pending_notifications"] = {k: v for k, v in pending.items()
                                        if v.get("rule_id") != rid or not (identity_changed or args.pause)}
+        if identity_changed or args.pause:
+            st["fallback_waiting"] = {k: v for k, v in st.get("fallback_waiting", {}).items()
+                                      if not k.startswith(rid + "|")}
         if identity_changed:
             st["primary_episodes"] = {k: v for k, v in st.get("primary_episodes", {}).items()
                                       if not k.startswith(rid + "|")}
