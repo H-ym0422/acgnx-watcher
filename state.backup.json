@@ -145,13 +145,13 @@
   "state_version": 1,
   "pending_notifications": {},
   "health": {
-    "last_check": "2026-10-18T13:10:29+08:00",
+    "last_check": "2026-10-18T13:15:29+08:00",
     "matched": 92,
     "successful_sources": 9,
     "failed_sources": 0,
     "failures": 0,
     "status": "ok",
-    "last_successful_check": "2026-10-18T13:10:29+08:00"
+    "last_successful_check": "2026-10-18T13:15:29+08:00"
   },
   "primary_episodes": {
     "kurumi-lvcha|01": true,
@@ -165,5 +165,133 @@
     "r1792222855|50": true,
     "r1792222855|25-48": true,
     "r1792222855|48": true
+  },
+  "fallback_waiting": {
+    "seitokai-nekomoe|03": {
+      "first_seen": "2026-10-18T05:15:29.777264+00:00",
+      "signature": "{\"allow_unmarked_season\": null, \"exclude_any\": [], \"fallback_any_group\": true, \"from_episode\": null, \"group\": [\"喵萌奶茶屋\", \"nekomoekissaten\"], \"include_any\": [\"学生会有洞\", \"也有洞\", \"seitokainimoana\"], \"keywords\": [\"Seitokai\", \"学生会\"], \"season\": null, \"variant_prefer\": [\"简日双语\", \"简繁日内封\", \"简体\", \"简\"]}",
+      "candidate": {
+        "title": "[黒ネズミたち] 學生會也有洞！ / Seitokai ni mo Ana wa Aru! - 03 (Baha 1920x1080 AVC AAC MP4)",
+        "author": "TrySail",
+        "episode": "03",
+        "btih": "a99da9060bd90cc16f57a7294662606efb589bb5",
+        "magnet": "magnet:?xt=urn:btih:a99da9060bd90cc16f57a7294662606efb589bb5&tr=http%3A%2F%2Fopentracker.acgnx.se%2Fannounce",
+        "link": "https://share.acgnx.se/show-a99da9060bd90cc16f57a7294662606efb589bb5.html",
+        "size": "336MB",
+        "_tier": 999,
+        "_rev": 1,
+        "_seen": "999:1",
+        "_variant": "",
+        "_rid": "seitokai-nekomoe",
+        "_fallback": true,
+        "pub_dt": "2026-10-18T01:00:51+08:00"
+      },
+      "ready": false
+    },
+    "seitokai-nekomoe|d0403d88f01b1cab3d7e5b04c3f9b0b71a72a2e0": {
+      "first_seen": "2026-10-18T05:15:29.777264+00:00",
+      "signature": "{\"allow_unmarked_season\": null, \"exclude_any\": [], \"fallback_any_group\": true, \"from_episode\": null, \"group\": [\"喵萌奶茶屋\", \"nekomoekissaten\"], \"include_any\": [\"学生会有洞\", \"也有洞\", \"seitokainimoana\"], \"keywords\": [\"Seitokai\", \"学生会\"], \"season\": null, \"variant_prefer\": [\"简日双语\", \"简繁日内封\", \"简体\", \"简\"]}",
+      "candidate": {
+        "title": "生徒会にも穴はある！ 第01-05巻 [Seitokai nimo Ana wa Aru! vol 01-05]",
+        "author": "萌萌的搬運者",
+        "episode": "",
+        "btih": "d0403d88f01b1cab3d7e5b04c3f9b0b71a72a2e0",
+        "magnet": "magnet:?xt=urn:btih:d0403d88f01b1cab3d7e5b04c3f9b0b71a72a2e0&tr=http%3A%2F%2Fopentracker.acgnx.se%2Fannounce",
+        "link": "https://share.acgnx.se/show-d0403d88f01b1cab3d7e5b04c3f9b0b71a72a2e0.html",
+        "size": "1.0GB",
+        "_tier": 999,
+        "_rev": 1,
+        "_seen": "999:1",
+        "_variant": "",
+        "_rid": "seitokai-nekomoe",
+        "_fallback": true,
+        "pub_dt": "2023-12-02T22:15:10+08:00"
+      },
+      "ready": false
+    },
+    "r1792222855|03": {
+      "first_seen": "2026-10-18T05:15:29.777264+00:00",
+      "signature": "{\"allow_unmarked_season\": null, \"exclude_any\": [], \"fallback_any_group\": true, \"from_episode\": null, \"group\": [\"喵萌奶茶屋\"], \"include_any\": [\"药屋少女的呢喃 第三季\", \"药师少女的独语\", \"药屋少女的呢喃\", \"Kusuriya no Hitorigoto\"], \"keywords\": [\"药屋少女的呢喃 第三季\"], \"season\": 3, \"variant_prefer\": [\"简日双语\", \"简繁日内封\", \"简日内嵌\", \"简体\", \"简\"]}",
+      "candidate": {
+        "title": "【豌豆字幕组】[药屋少女的呢喃（药师少女的独语）/ Kusuriya no Hitorigoto S3][03(51)][简体][1080P][MP4]",
+        "author": "豌豆字幕组",
+        "episode": "03",
+        "btih": "bd8509dabb12513c88470ce7a32f4b172fcac3b8",
+        "magnet": "magnet:?xt=urn:btih:bd8509dabb12513c88470ce7a32f4b172fcac3b8&tr=http%3A%2F%2Fopentracker.acgnx.se%2Fannounce",
+        "link": "https://share.acgnx.se/show-bd8509dabb12513c88470ce7a32f4b172fcac3b8.html",
+        "size": "300.1MB",
+        "_tier": 3,
+        "_rev": 1,
+        "_seen": "3:1",
+        "_variant": "简体",
+        "_rid": "r1792222855",
+        "_fallback": true,
+        "pub_dt": "2026-10-17T02:17:00+08:00"
+      },
+      "ready": false
+    },
+    "r1792222855|02": {
+      "first_seen": "2026-10-18T05:15:29.777264+00:00",
+      "signature": "{\"allow_unmarked_season\": null, \"exclude_any\": [], \"fallback_any_group\": true, \"from_episode\": null, \"group\": [\"喵萌奶茶屋\"], \"include_any\": [\"药屋少女的呢喃 第三季\", \"药师少女的独语\", \"药屋少女的呢喃\", \"Kusuriya no Hitorigoto\"], \"keywords\": [\"药屋少女的呢喃 第三季\"], \"season\": 3, \"variant_prefer\": [\"简日双语\", \"简繁日内封\", \"简日内嵌\", \"简体\", \"简\"]}",
+      "candidate": {
+        "title": "【豌豆字幕组】[药屋少女的呢喃（药师少女的独语）/ Kusuriya no Hitorigoto S3][02(50)][简体][1080P][MP4]",
+        "author": "豌豆字幕组",
+        "episode": "02",
+        "btih": "96bfc9ed16b7b1978570ed28808c3f6e03725e20",
+        "magnet": "magnet:?xt=urn:btih:96bfc9ed16b7b1978570ed28808c3f6e03725e20&tr=http%3A%2F%2Fopentracker.acgnx.se%2Fannounce",
+        "link": "https://share.acgnx.se/show-96bfc9ed16b7b1978570ed28808c3f6e03725e20.html",
+        "size": "349.5MB",
+        "_tier": 3,
+        "_rev": 1,
+        "_seen": "3:1",
+        "_variant": "简体",
+        "_rid": "r1792222855",
+        "_fallback": true,
+        "pub_dt": "2026-10-10T02:22:00+08:00"
+      },
+      "ready": false
+    },
+    "r1792222855|51": {
+      "first_seen": "2026-10-18T05:15:29.777264+00:00",
+      "signature": "{\"allow_unmarked_season\": null, \"exclude_any\": [], \"fallback_any_group\": true, \"from_episode\": null, \"group\": [\"喵萌奶茶屋\"], \"include_any\": [\"药屋少女的呢喃 第三季\", \"药师少女的独语\", \"药屋少女的呢喃\", \"Kusuriya no Hitorigoto\"], \"keywords\": [\"药屋少女的呢喃 第三季\"], \"season\": 3, \"variant_prefer\": [\"简日双语\", \"简繁日内封\", \"简日内嵌\", \"简体\", \"简\"]}",
+      "candidate": {
+        "title": "[Nix-Raws] 药屋少女的呢喃 第三季 / 药师少女的独语 第三季 / 薬屋のひとりごと 第3期 / Kusuriya no Hitorigoto S01E51 [CR WEB-DL 1080p AVC AAC][简繁内封]",
+        "author": "MioBT鏡像",
+        "episode": "51",
+        "btih": "364803d7b6310ce450c53e4d051435c3c6a40cef",
+        "magnet": "magnet:?xt=urn:btih:364803d7b6310ce450c53e4d051435c3c6a40cef&tr=http%3A%2F%2Fopentracker.acgnx.se%2Fannounce",
+        "link": "https://share.acgnx.se/show-364803d7b6310ce450c53e4d051435c3c6a40cef.html",
+        "size": "889.4MB",
+        "_tier": 4,
+        "_rev": 1,
+        "_seen": "4:1",
+        "_variant": "简繁内封",
+        "_rid": "r1792222855",
+        "_fallback": true,
+        "pub_dt": "2026-10-16T23:20:20+08:00"
+      },
+      "ready": false
+    },
+    "r1792222855|01": {
+      "first_seen": "2026-10-18T05:15:29.777264+00:00",
+      "signature": "{\"allow_unmarked_season\": null, \"exclude_any\": [], \"fallback_any_group\": true, \"from_episode\": null, \"group\": [\"喵萌奶茶屋\"], \"include_any\": [\"药屋少女的呢喃 第三季\", \"药师少女的独语\", \"药屋少女的呢喃\", \"Kusuriya no Hitorigoto\"], \"keywords\": [\"药屋少女的呢喃 第三季\"], \"season\": 3, \"variant_prefer\": [\"简日双语\", \"简繁日内封\", \"简日内嵌\", \"简体\", \"简\"]}",
+      "candidate": {
+        "title": "【豌豆字幕组】[药屋少女的呢喃（药师少女的独语）/ Kusuriya no Hitorigoto S3][01(49)][简体][1080P][MP4]",
+        "author": "豌豆字幕组",
+        "episode": "01",
+        "btih": "eb418e34352039b63a3f38ed9d3f4bcb72b8e57c",
+        "magnet": "magnet:?xt=urn:btih:eb418e34352039b63a3f38ed9d3f4bcb72b8e57c&tr=http%3A%2F%2Fopentracker.acgnx.se%2Fannounce",
+        "link": "https://share.acgnx.se/show-eb418e34352039b63a3f38ed9d3f4bcb72b8e57c.html",
+        "size": "328.7MB",
+        "_tier": 3,
+        "_rev": 1,
+        "_seen": "3:1",
+        "_variant": "简体",
+        "_rid": "r1792222855",
+        "_fallback": true,
+        "pub_dt": "2026-10-03T02:55:00+08:00"
+      },
+      "ready": false
+    }
   }
 }
