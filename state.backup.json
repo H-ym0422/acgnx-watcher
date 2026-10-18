@@ -85,6 +85,13 @@
   },
   "initialized": true,
   "unparsed": {
+    "d0403d88f01b1cab3d7e5b04c3f9b0b71a72a2e0": {
+      "title": "生徒会にも穴はある！ 第01-05巻 [Seitokai nimo Ana wa Aru! vol 01-05]",
+      "group": "",
+      "n": 1,
+      "first": "10-18 12:45",
+      "last": "10-18 12:45"
+    },
     "bd8509dabb12513c88470ce7a32f4b172fcac3b8": {
       "title": "【豌豆字幕组】[药屋少女的呢喃（药师少女的独语）/ Kusuriya no Hitorigoto S3][03(51)][简体][1080P][MP4]",
       "group": "豌豆字幕组",
@@ -134,5 +141,29 @@
       "first": "10-17 12:14",
       "last": "10-17 12:14"
     }
+  },
+  "state_version": 1,
+  "pending_notifications": {},
+  "health": {
+    "last_check": "2026-10-18T12:45:29+08:00",
+    "matched": 106,
+    "successful_sources": 9,
+    "failed_sources": 0,
+    "failures": 0,
+    "status": "ok",
+    "last_successful_check": "2026-10-18T12:45:29+08:00"
+  },
+  "primary_episodes": {
+    "kurumi-lvcha|01": true,
+    "kurumi-lvcha|02": true,
+    "kurumi-lvcha|03": true,
+    "anbu-nekomoe|02": true,
+    "anbu-nekomoe|01": true,
+    "seitokai-nekomoe|02": true,
+    "seitokai-nekomoe|01": true,
+    "r1792222855|49": true,
+    "r1792222855|50": true,
+    "r1792222855|25-48": true,
+    "r1792222855|48": true
   }
 }
