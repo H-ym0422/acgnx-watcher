@@ -94,7 +94,8 @@
     "r1792222855|01|SkyMoonAnime": "999:1",
     "r1792222855|03|黒ネズミたち": "999:1",
     "r1792222855|02|黒ネズミたち": "999:1",
-    "seitokai-nekomoe|03|喵萌奶茶屋": "0:1"
+    "seitokai-nekomoe|03|喵萌奶茶屋": "0:1",
+    "r1792222855|03|喵萌奶茶屋": "0:1"
   },
   "initialized": true,
   "unparsed": {
@@ -156,15 +157,45 @@
     }
   },
   "state_version": 1,
-  "pending_notifications": {},
+  "pending_notifications": {
+    "3ea958a11a522547a36931fe0bc3d3fb52e4bb670ba82c6d95f6f3a559adb5f7": {
+      "rule_id": "r1792222855",
+      "title": "【新番速递】药屋少女的呢喃 第三季（喵萌奶茶屋）",
+      "body": "推送时间：2026年10月19日 00:10（北京时间）\n\n标题：【喵萌奶茶屋】★10月新番★[药师少女的独语 / 药屋少女的呢喃 / Kusuriya no Hitorigoto][51][1080p][简日双语]\n字幕组：喵萌奶茶屋\n字幕形式：简日双语\n集数：第 03 集\n大小：369.1MB\n发布：2026-10-19 00:08\n详情：https://share.acgnx.se/show-8c71d0b984dd25abc0c3c7f8050d0aaed707390a.html\n磁力：\nmagnet:?xt=urn:btih:8c71d0b984dd25abc0c3c7f8050d0aaed707390a&tr=http%3A%2F%2Fopentracker.acgnx.se%2Fannounce",
+      "source": {
+        "title": "【喵萌奶茶屋】★10月新番★[药师少女的独语 / 药屋少女的呢喃 / Kusuriya no Hitorigoto][51][1080p][简日双语]",
+        "author": "nekomoekissaten",
+        "category": "動畫",
+        "episode": "03",
+        "btih": "8c71d0b984dd25abc0c3c7f8050d0aaed707390a",
+        "magnet": "magnet:?xt=urn:btih:8c71d0b984dd25abc0c3c7f8050d0aaed707390a&tr=http%3A%2F%2Fopentracker.acgnx.se%2Fannounce",
+        "link": "https://share.acgnx.se/show-8c71d0b984dd25abc0c3c7f8050d0aaed707390a.html",
+        "size": "369.1MB",
+        "_tier": 0,
+        "_rev": 1,
+        "_seen": "0:1",
+        "_variant": "简日双语",
+        "_rid": "r1792222855",
+        "_fallback": false,
+        "pub_dt": "2026-10-19T00:08:46+08:00"
+      },
+      "rule_signature": "{\"allow_unmarked_season\": null, \"exclude_any\": [], \"fallback_any_group\": true, \"from_episode\": null, \"group\": [\"喵萌奶茶屋\"], \"include_any\": [\"药屋少女的呢喃 第三季\", \"药师少女的独语\", \"药屋少女的呢喃\", \"Kusuriya no Hitorigoto\"], \"keywords\": [\"药屋少女的呢喃 第三季\"], \"season\": 3, \"variant_prefer\": [\"简日双语\", \"简繁日内封\", \"简日内嵌\", \"简体\", \"简\"]}",
+      "delivery": {
+        "state_key": "r1792222855|03|喵萌奶茶屋",
+        "group": "喵萌奶茶屋",
+        "fallback": false,
+        "episode_known": true
+      }
+    }
+  },
   "health": {
-    "last_check": "2026-10-19T00:05:31+08:00",
-    "matched": 97,
+    "last_check": "2026-10-19T00:10:31+08:00",
+    "matched": 98,
     "successful_sources": 9,
     "failed_sources": 0,
     "failures": 0,
     "status": "ok",
-    "last_successful_check": "2026-10-19T00:05:31+08:00",
+    "last_successful_check": "2026-10-19T00:10:31+08:00",
     "last_delivery": "2026-10-18T21:35:35+08:00"
   },
   "primary_episodes": {
@@ -181,69 +212,48 @@
     "r1792222855|48": true,
     "r1792222855|01": true,
     "r1792222855|02": true,
-    "seitokai-nekomoe|03": true
+    "seitokai-nekomoe|03": true,
+    "r1792222855|03": true
   },
-  "fallback_waiting": {
-    "r1792222855|03": {
-      "first_seen": "2026-10-18T05:15:29.777264+00:00",
-      "signature": "{\"allow_unmarked_season\": null, \"exclude_any\": [], \"fallback_any_group\": true, \"from_episode\": null, \"group\": [\"喵萌奶茶屋\"], \"include_any\": [\"药屋少女的呢喃 第三季\", \"药师少女的独语\", \"药屋少女的呢喃\", \"Kusuriya no Hitorigoto\"], \"keywords\": [\"药屋少女的呢喃 第三季\"], \"season\": 3, \"variant_prefer\": [\"简日双语\", \"简繁日内封\", \"简日内嵌\", \"简体\", \"简\"]}",
-      "candidate": {
-        "title": "【豌豆字幕组】[药屋少女的呢喃（药师少女的独语）/ Kusuriya no Hitorigoto S3][03(51)][简体][1080P][MP4]",
-        "author": "豌豆字幕组",
-        "episode": "03",
-        "btih": "bd8509dabb12513c88470ce7a32f4b172fcac3b8",
-        "magnet": "magnet:?xt=urn:btih:bd8509dabb12513c88470ce7a32f4b172fcac3b8&tr=http%3A%2F%2Fopentracker.acgnx.se%2Fannounce",
-        "link": "https://share.acgnx.se/show-bd8509dabb12513c88470ce7a32f4b172fcac3b8.html",
-        "size": "300.1MB",
-        "_tier": 3,
-        "_rev": 1,
-        "_seen": "3:1",
-        "_variant": "简体",
-        "_rid": "r1792222855",
-        "_fallback": true,
-        "pub_dt": "2026-10-17T02:17:00+08:00"
-      },
-      "ready": false
-    }
-  },
+  "fallback_waiting": {},
   "rule_health": {
     "kurumi-lvcha": {
       "successful_sources": 1,
       "failed_sources": 0,
-      "last_check": "2026-10-19T00:05:31+08:00",
+      "last_check": "2026-10-19T00:10:31+08:00",
       "ambiguous_episodes": [],
       "failures": 0,
       "status": "ok",
-      "last_successful_check": "2026-10-19T00:05:31+08:00"
+      "last_successful_check": "2026-10-19T00:10:31+08:00"
     },
     "anbu-nekomoe": {
       "successful_sources": 1,
       "failed_sources": 0,
-      "last_check": "2026-10-19T00:05:31+08:00",
+      "last_check": "2026-10-19T00:10:31+08:00",
       "ambiguous_episodes": [],
       "failures": 0,
       "status": "ok",
-      "last_successful_check": "2026-10-19T00:05:31+08:00"
+      "last_successful_check": "2026-10-19T00:10:31+08:00"
     },
     "seitokai-nekomoe": {
       "successful_sources": 2,
       "failed_sources": 0,
-      "last_check": "2026-10-19T00:05:31+08:00",
+      "last_check": "2026-10-19T00:10:31+08:00",
       "ambiguous_episodes": [],
       "failures": 0,
       "status": "ok",
-      "last_successful_check": "2026-10-19T00:05:31+08:00"
+      "last_successful_check": "2026-10-19T00:10:31+08:00"
     },
     "r1792222855": {
       "successful_sources": 4,
       "failed_sources": 0,
-      "last_check": "2026-10-19T00:05:31+08:00",
+      "last_check": "2026-10-19T00:10:31+08:00",
       "ambiguous_episodes": [
         "25-48"
       ],
       "failures": 0,
       "status": "needs_confirmation",
-      "last_successful_check": "2026-10-19T00:05:31+08:00"
+      "last_successful_check": "2026-10-19T00:10:31+08:00"
     }
   },
   "season_ambiguous": {
