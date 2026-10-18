@@ -21,6 +21,9 @@
 from __future__ import annotations
 
 import argparse
+import uuid
+from watcher_core import rules as rule_store
+from watcher_core.configuration import validate_config, write_config
 import json
 import logging
 import os
@@ -193,7 +196,8 @@ def rank_groups(items: list[dict]) -> list[dict]:
     return order
 
 
-def survey_text(term: str, limit: int = 20, season: int = 0) -> str | None:
+def survey_text(term: str, limit: int = 20, season: int = 0,
+                snapshot_path: str | None = None) -> str | None:
     """生成「谁在做、覆盖哪些集、各是什么类型」的清单（Markdown），供 Issue 回复用。"""
     items = search(term)
     if not items:
@@ -207,6 +211,11 @@ def survey_text(term: str, limit: int = 20, season: int = 0) -> str | None:
     order = rank_groups(items)
     if not order:
         return None
+
+    if snapshot_path:
+        with open(snapshot_path, "w", encoding="utf-8") as f:
+            json.dump({"version": 1, "term": term, "season": season,
+                       "groups": [g["name"] for g in order[:limit]]}, f, ensure_ascii=False)
 
     head = f"搜到 **{len(order)}** 个字幕组在做「{term}」"
     if season:
@@ -227,19 +236,22 @@ def survey_text(term: str, limit: int = 20, season: int = 0) -> str | None:
     return "\n".join(out)
 
 
-def resolve_picks(term: str, picks: list[int], season: int = 0) -> list[str]:
-    """把用户在清单里选的序号换算回字幕组名。"""
-    items = search(term)
-    if not items:
-        return []
-    if season and int(season) > 0:
-        items = [i for i in items if aw.season_ok(i["title"], int(season))]
-    order = rank_groups(items)
-    names = []
-    for p in picks:
-        if 1 <= p <= len(order):
-            names.append(order[p - 1]["name"])
-    return list(dict.fromkeys(names))
+def resolve_snapshot(snapshot: dict, term: str, picks: list[int], season: int = 0) -> list[str]:
+    if snapshot.get("version") != 1 or snapshot.get("term") != term or snapshot.get("season") != season:
+        raise ValueError("清单与番名/季号不一致，请重新获取清单")
+    groups = snapshot.get("groups")
+    if not isinstance(groups, list) or not groups or not all(isinstance(g, str) and g for g in groups):
+        raise ValueError("清单无效，请重新获取清单")
+    if not picks or any(p < 1 or p > len(groups) for p in picks):
+        raise ValueError("序号超出原清单范围，未添加规则")
+    return list(dict.fromkeys(groups[p - 1] for p in picks))
+
+
+def resolve_picks(term: str, picks: list[int], season: int = 0, snapshot_path: str | None = None) -> list[str]:
+    if not snapshot_path:
+        raise ValueError("按序号选组必须使用原清单快照，请重新获取清单")
+    with open(snapshot_path, encoding="utf-8") as f:
+        return resolve_snapshot(json.load(f), term, picks, season)
 
 
 def pick(term: str, want_all_groups: bool, forced_groups: list[str],
@@ -363,7 +375,7 @@ def pick(term: str, want_all_groups: bool, forced_groups: list[str],
         print(f"     · {a}")
 
     rule = {
-        "id": f"r{int(time.time())}",
+        "id": "r-" + uuid.uuid4().hex,
         "name": f"{term}（{'任意字幕组' if not selected else '/'.join(selected[:2]) + ('等' if len(selected) > 2 else '')}）",
         "enabled": True,
         "keywords": [term],
@@ -393,14 +405,10 @@ def pick(term: str, want_all_groups: bool, forced_groups: list[str],
     return rule
 
 
-def append_rule(rule: dict) -> None:
-    with open(aw.CONFIG_PATH, "r", encoding="utf-8") as f:
-        cfg = json.load(f)
-    shutil.copyfile(aw.CONFIG_PATH, aw.CONFIG_PATH + ".bak")
-    cfg.setdefault("rules", []).append(rule)
-    with open(aw.CONFIG_PATH, "w", encoding="utf-8") as f:
-        json.dump(cfg, f, ensure_ascii=False, indent=2)
-    print(f"\n💾 已写入 {os.path.basename(aw.CONFIG_PATH)}（原文件备份为 config.json.bak）")
+def append_rule(rule: dict) -> bool:
+    added = rule_store.append(aw.CONFIG_PATH, rule)
+    print("规则已保存" if added else "相同番名、季号和字幕组的规则已存在，未重复添加")
+    return added
 
 
 def ep_sort_key(ep: str):
@@ -454,6 +462,9 @@ def inspect_and_seed(rule: dict, from_ep: int = 0) -> list[tuple[str, dict]]:
     probe = dict(cfg)
     probe["rules"] = [rule]
     matched = aw.collect(probe)
+    if not getattr(matched, "available", True):
+        raise RuntimeError("抓取失败，未建立初始化基线，请检查网络后重试")
+    matched = aw.suppress_fallbacks(matched)
 
     # ---- ① 记基线 ----
     # ⚠️ 键的格式必须跟 run_cycle 完全一致（2026-10-17 体检发现）：
@@ -468,6 +479,7 @@ def inspect_and_seed(rule: dict, from_ep: int = 0) -> list[tuple[str, dict]]:
         gk = aw.group_key(m, want_g)
         buckets.setdefault((ep, gk), []).append(m)
     st = aw.load_state()
+    aw.note_unparsed([m for m in matched if not m.get("episode") and not aw.RE_BATCH_HINT.search(m["title"])], st)
     for (ep, gk), items in buckets.items():
         items.sort(key=aw.sort_key)
         key = f"{rule['id']}|{ep}|{gk}" if gk else f"{rule['id']}|{ep}"
@@ -547,7 +559,7 @@ def inspect_and_seed(rule: dict, from_ep: int = 0) -> list[tuple[str, dict]]:
 
 
 def notify_result(rule: dict, episodes: list[tuple[str, dict]],
-                  mode: str = "all", from_ep: int = 0) -> None:
+                  mode: str = "all", from_ep: int = 0) -> bool:
     """把加番结果推到手机。
     mode: all = 把第1集到最新集的磁力全部列出（默认）
           latest = 只推最新一集
@@ -566,8 +578,7 @@ def notify_result(rule: dict, episodes: list[tuple[str, dict]],
     if not episodes:
         lines.append("")
         lines.append("现在还没搜到已发布的集数，之后出新集会提醒你。")
-        aw.send_notification(title, "\n".join(lines), s)
-        return
+        return queue_result(rule, title, "\n".join(lines), s)
 
     nums = [ep for ep, _ in episodes if ep and ep != "-"]
 
@@ -598,7 +609,7 @@ def notify_result(rule: dict, episodes: list[tuple[str, dict]],
             season_max = max(span_ends) if span_ends else max(all_nums)
             got = len(all_nums)
             tail = f"（{min(all_nums):02d}~{max(all_nums):02d}）" if got > 1 else ""
-            lines += ["", f"📺 全季为 {season_max} 集，已出 {got} 集{tail}",
+            lines += ["", f"📺 目前检索到第 {season_max} 集，覆盖 {got} 个集号{tail}（不代表全季总集数）",
                       f"下面共 {len(episodes)} 条磁力，按集数从小到大：", ""]
         else:
             lines += ["", f"📺 共 {len(episodes)} 条磁力，按集数从小到大：", ""]
@@ -610,7 +621,17 @@ def notify_result(rule: dict, episodes: list[tuple[str, dict]],
             lines.append(f"{tag} {item.get('magnet') or '（无磁力，见详情页）'}")
         lines += ["", "———", "以上是历史集，已经记下来了。以后只推新发布的集数，不会再重复推这些。"]
 
-    aw.send_notification(title, "\n".join(lines), s)
+    return queue_result(rule, title, "\n".join(lines), s)
+
+
+def queue_result(rule: dict, title: str, body: str, settings: dict) -> bool:
+    state = aw.load_state()
+    key = aw.enqueue_notification(state, rule["id"], title, body)
+    aw.save_state(state)
+    delivered = bool(aw.deliver_pending(state, settings, only=key))
+    aw.save_state(state)
+    print("历史通知已送达" if delivered else "规则已保存；通知待重试，定时检测会自动补发")
+    return delivered
 
 
 WATCHLIST_NAME = "我的番剧.md"
@@ -620,16 +641,20 @@ def render_watchlist() -> str:
     """把当前在追的番渲染成一份 Markdown 清单。返回正文。"""
     cfg = aw.load_config()
     st = aw.load_state()
-    rules = [r for r in cfg["rules"] if r.get("enabled", True)]
+    rules = cfg["rules"]
     eps_map = st.get("episodes", {})
 
     out = [
         "# 我的追番列表",
         "",
-        f"**当前在追 {len(rules)} 部。** 这个文件自动生成，有新集时会刷新，不用手动改。",
+        f"**已配置 {len(rules)} 部，其中 {sum(r.get('enabled', True) for r in rules)} 部监听中。** 自动生成，请通过规则管理修改。",
         "",
-        "| 番剧 | 字幕组 | 已记录到 | 已记录 | 说明 |",
-        "|---|---|---|---|---|",
+        f"最近检查：{st.get('health', {}).get('last_check', '尚无记录')}",
+        f"抓取状态：{st.get('health', {}).get('status', '待检查')}；连续失败：{st.get('health', {}).get('failures', 0)} 次",
+        f"最近成功推送：{st.get('health', {}).get('last_delivery', '尚无记录')}；待重试：{len(st.get('pending_notifications', {}))} 条",
+        "",
+        "| 番剧 / ID | 状态 | 字幕组 | 已记录到 | 集号数 | 最近推送 | 说明 |",
+        "|---|---|---|---|---|---|---|",
     ]
     for r in rules:
         rid = r.get("id") or ""
@@ -660,77 +685,23 @@ def render_watchlist() -> str:
             notes.append(f"只收第 {r['season']} 季")
         if r.get("note"):
             notes.append(r["note"][:24])
-        out.append(f"| {name} | {grp} | {latest} | {len(eps)} 集 | {'、'.join(notes) or '—'} |")
+        deliveries = [v for k, v in st.get("deliveries", {}).items() if k.startswith(rid + "|")]
+        last = max(deliveries, key=lambda v: v["time"]) if deliveries else None
+        delivery_text = (last["time"] + " / " + ("兜底" if last["fallback"] else "指定组/任意组") +
+                         (" / 集数待确认" if not last["episode_known"] else "")) if last else "尚无记录"
+        safe = lambda value: str(value).replace("|", r"\|").replace("\n", " ")
+        out.append("| " + " | ".join(map(safe, [f"{name} / {rid}", "监听中" if r.get("enabled", True) else "已暂停",
+                    grp, latest, str(len(eps)), delivery_text, "、".join(notes) or "—"])) + " |")
 
     out += [
-        "",
-        "**怎么看这张表**",
-        "",
-        "| 列 | 意思 |",
-        "|---|---|",
-        "| 已记录到 | 已经推送到第几集。之后每出一集新集都会推给你 |",
-        "| 已记录 | 一共记了多少条（含多个字幕组的版本、去重前的） |",
-        "| 说明 | 有特殊设置时会写在这里，比如「只收第 3 季」 |",
-        "",
-        "---",
-        "",
-        "## 加番 / 删番 / 看列表",
-        "",
-        "在仓库的 **Issues** 里新开一个，标题写命令：",
-        "",
-        "| 标题写 | 作用 |",
-        "|---|---|",
-        "| `加番 咒术回战` | 加一部番 |",
-        "| `删番 咒术回战` | 删掉，不再推 |",
-        "| `列表` | 重新看一遍这张表 |",
-        "",
-        "提交后约 20 秒，机器人会在那条 Issue 里回复结果。",
-        "",
-        "## 加番时正文能填什么",
-        "",
-        "用「新建议题」按钮新建的话，下面有三个输入框：",
-        "",
-        "| 输入框 | 什么时候填 | 例子 |",
-        "|---|---|---|",
-        "| **字幕组**（可选） | 只想看某个组做的 | `喵萌奶茶屋`<br>`绿茶字幕组,喵萌奶茶屋` |",
-        "| **第几季**（可选） | 多季番只追某一季 | `3` |",
-        "| **只要第几集之后**（可选） | **本地已经有前面几集了** | `49` |",
-        "",
-        "都不填也能用：机器人会先列出有哪些字幕组在做这部番、各自做到了第几集、",
-        "字幕类型是什么，你在同一条 Issue 下面回复序号或组名，它才会真正加上。",
-        "",
-        "### 「只要第几集之后」怎么用",
-        "",
-        "比如《药屋少女的呢喃》第三季你本地已经有前 48 集了，就填 **49**：",
-        "",
-        "```",
-        "加番 药屋少女的呢喃 第三季",
-        "",
-        "喵萌奶茶屋",
-        "",
-        "49        ← 只要第几集之后",
-        "```",
-        "",
-        "- 只会推第 49 集及以后的",
-        "- **前面那些会记成「已看过」** —— 以后它们出修正版、或出了更好的字幕形式，**也不会再推你**",
-        "- **留空 = 从第 1 集开始**（跟以前一样）",
-        "",
-        "判断依据是集数本身：第 48 集会跳过、第 49 集会保留；",
-        "合集看它覆盖到的最大集号（`45-50` 这种有交集的会保留）；",
-        "认不出集数的条目一律保留 —— 宁可多给一条也不漏。",
-        "",
-        "### 三个例子",
-        "",
-        "**① 最简单**：标题写 `加番 咒术回战`，正文全留空 → 机器人列清单，你回 `2`",
-        "",
-        "**② 指定字幕组一步到位**：标题 `加番 咒术回战`，正文只填 `喵萌奶茶屋` → 直接加，不问",
-        "",
-        "**③ 跳过已有集数**：标题 `加番 药屋少女的呢喃 第三季`，",
-        "正文填 `喵萌奶茶屋` + `只要第几集之后` 填 `49` → 只推 49 集及以后",
-        "",
-        "---",
-        "",
-        f"<sub>自动生成于 {aw.datetime.now(aw.TZ8):%Y-%m-%d %H:%M}（北京时间）</sub>",
+        "", "去重基线不等于全部消息已经送达；集号数不是全季总集数。",
+        "", "## 常用操作", "",
+        "- 新建 Issue：`加番 番名`、`删番 规则ID`、`列表`。",
+        "- 管理规则：`暂停 规则ID`、`恢复 规则ID`、`修改 规则ID`。",
+        "- 修改时正文填写 `### 字幕组`、`### 第几季`、`### 只要第几集之后`；只写需要改的项。",
+        "- 加番可选 `### 推哪些`：all / latest / none，默认 all。",
+        "- 清单选组：回复原清单序号或完整组名；回复“刷新”重新获取。",
+        "", "详细说明见 [使用说明](docs/usage.md)，异常恢复见 [恢复说明](docs/recovery.md)。", "",
     ]
     return "\n".join(out) + "\n"
 
@@ -794,7 +765,7 @@ def maybe_push(term: str, do_push: bool) -> None:
         print("    等 `push_to_github.bat` 推过一次之后，以后加番就会自动同步了。")
         return
 
-    changed = [f for f in ("config.json", "state.json", WATCHLIST_NAME)
+    changed = [f for f in ("config.json", "state.json", "state.backup.json", WATCHLIST_NAME)
                if _git(root, "status", "--porcelain", "--", f).stdout.strip()]
     if not changed:
         print("\nℹ️  配置没有变化，不需要推送。")
@@ -837,10 +808,14 @@ def purge_baseline(rule_ids: list[str]) -> int:
     st = aw.load_state()
     eps = st.get("episodes") or {}
     gone = [k for k in eps if k.split("|", 1)[0] in ids]
-    if not gone:
+    pending = st.get("pending_notifications") or {}
+    queued = [key for key, message in pending.items() if message.get("rule_id") in ids]
+    if not gone and not queued:
         return 0
     for k in gone:
         eps.pop(k, None)
+    for key in queued:
+        pending.pop(key, None)
     aw.save_state(st)
     return len(gone)
 
@@ -886,7 +861,49 @@ def main() -> None:
                     help="删除名字里包含该关键词的规则（手机上传个词就能删，不用记序号）")
     ap.add_argument("--yes", action="store_true", help="跳过确认直接写入")
     ap.add_argument("--no-push", action="store_true", help="就算在 git 仓库里也不自动推送")
+    ap.add_argument("--pause", metavar="ID", help="暂停规则")
+    ap.add_argument("--resume", metavar="ID", help="恢复规则")
+    ap.add_argument("--edit", metavar="ID", help="修改规则，保留 ID 和历史")
+    ap.add_argument("--validate", action="store_true", help="只验证配置")
+    ap.add_argument("--snapshot-out", help="保存选组清单快照")
+    ap.add_argument("--snapshot-file", help="按序号选择时读取原清单快照")
     args = ap.parse_args()
+
+    if args.validate:
+        aw.load_config()
+        print("配置验证通过")
+        return
+
+    selector = args.pause or args.resume or args.edit
+    if selector:
+        changes = {}
+        if args.pause or args.resume:
+            changes["enabled"] = bool(args.resume)
+        if args.edit:
+            if args.group or args.any_group:
+                changes["group"] = [] if args.any_group else args.group
+            if "--from-episode" in sys.argv:
+                changes["from_episode"] = args.from_episode
+            if "--season" in sys.argv:
+                changes["season"] = args.season
+            if "--no-fallback" in sys.argv:
+                changes["fallback_any_group"] = False
+            if not changes:
+                raise ValueError("请指定要修改的字幕组、季号或起始集数")
+        rid, identity_changed = rule_store.edit(aw.CONFIG_PATH, selector, changes)
+        # Cancel only now-obsolete queued historical messages; keep episode deduplication.
+        st = aw.load_state()
+        pending = st.get("pending_notifications", {})
+        st["pending_notifications"] = {k: v for k, v in pending.items()
+                                       if v.get("rule_id") != rid or not (identity_changed or args.pause)}
+        if identity_changed:
+            st["primary_episodes"] = {k: v for k, v in st.get("primary_episodes", {}).items()
+                                      if not k.startswith(rid + "|")}
+        aw.save_state(st)
+        write_watchlist()
+        maybe_push(selector, not args.no_push)
+        print(f"已更新规则 {rid}，历史去重记录保留")
+        return
 
     if args.exists:
         cfg = aw.load_config()
@@ -902,7 +919,7 @@ def main() -> None:
         if not term:
             print("没输入番名。")
             return
-        txt = survey_text(term, season=args.season)
+        txt = survey_text(term, season=args.season, snapshot_path=args.snapshot_out)
         print(txt if txt else
               f"没搜到「{term}」。试试日文原名、罗马音，或者只取其中 2~4 个字。")
         return
@@ -910,14 +927,14 @@ def main() -> None:
     if args.list:
         cfg = aw.load_config()
         st = aw.load_state()
-        rules = [r for r in cfg["rules"] if r.get("enabled", True)]
-        print(f"\n当前在追 {len(rules)} 部：\n" + "-" * 70)
+        rules = cfg["rules"]
+        print(f"\n当前已配置 {len(rules)} 部：\n" + "-" * 70)
         for i, r in enumerate(rules, 1):
             rid = r.get("id") or ""
             eps = sorted((k.split("|", 1)[1] for k in st.get("episodes", {})
                           if k.startswith(rid + "|")), key=ep_sort_key)
             done = f"已记录到第 {eps[-1]} 集（共 {len(eps)} 集）" if eps else "还没记录"
-            print(f"[{i}] {r.get('name', '?')}")
+            print(f"[{i}] {r.get('name', '?')} | ID={rid} | 状态={'监听中' if r.get('enabled', True) else '已暂停'}")
             print(f"    字幕组={r.get('group') or '任意'}  关键词={r.get('keywords')}  {done}")
         print("-" * 70)
         print(f"（完整清单：跑 --render，或看仓库里的「{WATCHLIST_NAME}」）")
@@ -950,12 +967,16 @@ def main() -> None:
         with open(aw.CONFIG_PATH, "r", encoding="utf-8") as f:
             cfg = json.load(f)
         rules = cfg.get("rules", [])
-        hit = [i for i, r in enumerate(rules) if args.del_name in (r.get("name") or "")]
+        hit = [i for i, r in enumerate(rules) if args.del_name == r.get("id")]
+        if not hit:
+            hit = [i for i, r in enumerate(rules) if args.del_name in (r.get("name") or "")]
+        if len(hit) > 1:
+            raise ValueError("匹配多条规则，未删除；请使用列表中的唯一规则 ID")
         if not hit:
             print(f"没找到名字包含「{args.del_name}」的规则。当前规则：")
             for i, r in enumerate(rules, 1):
                 print(f"  [{i}] {r.get('name')}")
-            return
+            raise SystemExit(2)
         shutil.copyfile(aw.CONFIG_PATH, aw.CONFIG_PATH + ".bak")
         removed_ids = []
         for i in reversed(hit):
@@ -998,7 +1019,9 @@ def main() -> None:
 
     pick_indexes = None
     if args.pick:
-        pick_indexes = [int(x) for x in re.split(r"[,，\s]+", args.pick) if x.isdigit()]
+        pick_indexes = [int(x) for x in re.split(r"[,，、\s]+", args.pick) if x.isdigit()]
+        args.group = resolve_picks(term, pick_indexes, args.season, args.snapshot_file)
+        pick_indexes = None
 
     rule = pick(term, args.any_group, args.group, args.also,
                 auto_top=2 if args.auto_group else 0,
@@ -1015,7 +1038,7 @@ def main() -> None:
                 "· 番名写法跟站上不一致 —— 试试日文原名、罗马音，或只取其中 2~4 个字\n"
                 "· 站点这一轮恰好返回空结果（偶发，过几分钟重跑一次即可）",
                 s)
-        return
+        raise SystemExit(2)
 
     print("\n即将加入的规则：")
     print(json.dumps(rule, ensure_ascii=False, indent=2))
@@ -1027,7 +1050,8 @@ def main() -> None:
 
     if args.from_episode > 0:
         rule["from_episode"] = args.from_episode
-    append_rule(rule)
+    if not append_rule(rule):
+        return
     episodes = inspect_and_seed(rule, from_ep=args.from_episode)
     write_watchlist()
     if args.notify:

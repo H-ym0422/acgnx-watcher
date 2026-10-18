@@ -15,5 +15,6 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install -r requirements-dev.txt
+      - run: python -c "import acgnx_watch as w; w.load_config(); w.load_state(); print('config/state readable')"
       - run: python check_workflows.py --require-bash
       - run: python -m unittest discover -s tests -v
