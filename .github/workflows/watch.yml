@@ -46,6 +46,8 @@ jobs:
         env:
           PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
           SERVERCHAN_SENDKEY: ${{ secrets.SERVERCHAN_SENDKEY }}
+          ACGNX_REMOTE_CHECKPOINT: "1"
+          ACGNX_REQUEST_BUDGET_SECONDS: "120"
           ACGNX_WEBHOOK_URL: ${{ secrets.ACGNX_WEBHOOK_URL }}
           ACGNX_DINGTALK_SECRET: ${{ secrets.ACGNX_DINGTALK_SECRET }}
           ACGNX_FEISHU_SECRET: ${{ secrets.ACGNX_FEISHU_SECRET }}

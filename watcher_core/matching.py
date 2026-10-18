@@ -2,10 +2,11 @@
 from __future__ import annotations
 import re
 from .parsing import norm, season_ok, RE_NOT_EPISODE, group_eq
+from .release_identity import is_animation, covers, primary_covers
 
 def match_rule(item: dict, rule: dict) -> bool:
     # 音乐/原声/主题曲这类不是正片，直接不要
-    if RE_NOT_EPISODE.search(item.get("title", "")):
+    if not is_animation(item):
         return False
     nt = norm(item["title"])
     na = norm(item["author"])
@@ -20,7 +21,7 @@ def match_rule(item: dict, rule: dict) -> bool:
 
     # 分季过滤：想只看第一季，就别让第二三四五季混进来
     sea = rule.get("season")
-    if sea and not season_ok(item["title"], int(sea), rule.get("allow_unmarked_season", False)):
+    if sea and item.get('_season_evidence') != sea and not season_ok(item["title"], int(sea), rule.get("allow_unmarked_season", False)):
         return False
 
     grp = rule.get("group") or []
@@ -66,15 +67,16 @@ def suppress_fallbacks(items: list[dict], state: dict | None = None) -> list[dic
     for item in items:
         ep = item.get("episode") or item["btih"]
         if state is not None and item.get("_fallback"):
-            prefix = f"{item['_rid']}|{ep}|"
             wanted = item.get("_rule", {}).get("group") or []
-            if any(key.startswith(prefix) and any(group_eq(key[len(prefix):], w) for w in wanted)
-                   for key in state.get("episodes", {})):
+            historical = [parts[1] for key in state.get('episodes', {})
+                          for parts in [key.split('|', 2)] if len(parts) == 3 and parts[0] == item['_rid']
+                          and any(group_eq(parts[2], w) for w in wanted)]
+            if covers(historical, ep):
                 primary[f"{item['_rid']}|{ep}"] = True
         if not item.get("_fallback"):
             primary[f"{item['_rid']}|{ep}"] = True
     return [item for item in items if not item.get("_fallback") or
-            not primary.get(f"{item['_rid']}|{item.get('episode') or item['btih']}")]
+            not primary_covers(state or {'primary_episodes': primary}, item['_rid'], item.get('episode') or item['btih'])]
 
 
 __all__ = ['match_rule', '_compact', 'rule_anime_name', 'fallback_match', 'suppress_fallbacks']

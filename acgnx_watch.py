@@ -34,7 +34,8 @@ ACGNX 新番发布实时监听器
 from __future__ import annotations
 
 from watcher_core.configuration import validate_config
-from watcher_core import state_store, health, fallback_wait
+from watcher_core import state_store, health, fallback_wait, release_identity, outbox_policy, remote_checkpoint
+from watcher_core.send_budget import SendBudget
 from watcher_core.parsing import *  # Backward-compatible public parser API
 from watcher_core.matching import *
 from watcher_core.notifications import *
@@ -170,6 +171,7 @@ def load_state() -> dict:
 
 def save_state(st: dict) -> None:
     state_store.write(STATE_PATH, st)
+    remote_checkpoint.publish()
 
 
 # HTTP
@@ -184,80 +186,9 @@ def save_state(st: dict) -> None:
 # --------------------------------------------------------------------------
 # 推送
 # --------------------------------------------------------------------------
-def build_push_content(item: dict, rule: dict, prefix: str,
-                       upgrade: bool = False) -> tuple[str, str]:
-    """返回 (标题, 正文)。
-    标题保证单行 —— Server酱 / PushPlus 的标题都不允许出现换行。"""
-    name = rule.get("name") or item["title"][:60]
-    rev = item.get("_rev", 1)
-    if upgrade:
-        tag = "（修正版）" if rev > 1 else "（更优版本）"
-    else:
-        tag = ""
-    title = f"{prefix}{tag}{name}"[:120]
-
-    # 推送时间放在最前面，像微信聊天记录那样一眼看到是几点收到的
-    # （2026-10-16 用户要求：年月日都要）
-    # ⚠️ 必须显式用 TZ8，不能写 datetime.now()：
-    #    GitHub Actions 的 runner 是 UTC，裸的 now() 会比北京时间晚 8 小时
-    #    （2026-10-16 用户在飞书里看到 13:16 而实际是 21:16，提出来的）
-    lines = [f"推送时间：{datetime.now(TZ8):%Y年%m月%d日 %H:%M}（北京时间）", ""]
-    lines.append(f"标题：{item['title']}")
-
-    # 字幕组：显示的是**实际发布这个文件的组**。
-    # 之前这里显示的是「规则里配置的组」，导致兜底时会连着出现两个组名，
-    # 而且上面写着「字幕组：喵萌奶茶屋」下面又写「指定字幕组还没有」，
-    # 看着自相矛盾（2026-10-16 用户反馈）。
-    want_list = [g for g in (rule.get("group") or []) if not g.endswith("*")]
-    want = " / ".join(rule.get("group") or []) or "任意字幕组"
-    src = group_key(item, want_list) or "其它字幕组"
-    lines.append(f"字幕组：{src}")
-    # 只在真的换了组时才说明，且**必须说清是哪一集、实际用了谁**
-    # （2026-10-17 用户反馈：老写法「你指定的 X 这一集还没出」很容易被理解成
-    #   「整部番都没有」，而实际上只是**那一集**喵萌没做）
-    if item.get("_fallback") and src not in want_list:
-        epn = item.get("episode") or "这一集"
-        lines.append(f"※ 第 {epn} 集：发现其他组资源已满 {fallback_wait.WAIT_DAYS} 天，"
-                     f"仍未检测到「{'、'.join(want_list)}」版本；本条来自「{src}」。这不代表指定组停更。")
-
-    # 字幕形式（简日双语 / 简繁日内封 …）。
-    # 没标出来时**照样写出这一行**并说清为什么 ——
-    # 省略整行的话，你分不清是「脚本没解析出来」还是「这集本来就是生肉」。
-    # （2026-10-16 你问「为什么没标注」：实测 50 条里 37 条标不出，主要是 ABEMA 生肉）
-    if item.get("_variant"):
-        lines.append(f"字幕形式：{item['_variant']}")
-    else:
-        lines.append("字幕形式：未标注，请查看发布说明")
-
-    if rev > 1:
-        lines.append(f"版本：v{rev}（修正版）")
-
-    # 集数。原来解析不出时会退回用 magnet 的 btih 当键，显示出来就是一串哈希，
-    # 看着像乱码。现在明确说明是整季打包（2026-10-16 你问「为什么有的磁力没标集数」）。
-    ep = item.get("episode") or ""
-    if not ep:
-        lines.append("集数：合集（标题有合集标记，未识别范围）" if RE_BATCH_HINT.search(item["title"]) else "集数：暂未识别，请查看发布标题")
-    elif "-" in ep:
-        lines.append(f"集数：第 {ep} 集（合集/整季）")
-    elif ep == "合集":
-        lines.append("集数：合集（标题里没写具体范围）")
-    else:
-        lines.append(f"集数：第 {ep} 集")
-
-    if item.get("size"):
-        lines.append(f"大小：{item['size']}")
-    if item.get("pub_dt"):
-        lines.append(f"发布：{item['pub_dt']:%Y-%m-%d %H:%M}")
-    if item.get("link"):
-        lines.append(f"详情：{item['link']}")
-    if item.get("magnet"):
-        lines.append("磁力：")
-        lines.append(item["magnet"])
-    else:
-        lines.append("（本条 RSS 未附带磁力，请点详情页获取）")
-    if rule.get("note"):
-        lines.append(f"备注：{rule['note']}")
-    return title, "\n".join(lines)
+def build_push_content(item: dict, rule: dict, prefix: str, upgrade: bool=False) -> tuple[str, str]:
+    from watcher_core import presentation as _impl
+    return _impl.build_push_content(item, rule, prefix, upgrade, api=sys.modules[__name__])
 
 
 # --------------------------------------------------------------------------
@@ -280,129 +211,8 @@ def valid_feed(body: str | None) -> bool:
 
 
 def collect(cfg: dict) -> list[dict]:
-    """跑一轮抓取，返回所有命中的条目（已标注规则）。"""
-    s = cfg["settings"]
-    rules = [r for r in cfg["rules"] if r.get("enabled", True)]
-    base, feed_body = pick_base(cfg)
-    if base is None:
-        log.error("所有镜像都不可用，本轮跳过（下轮会重试）")
-        return health.CollectionResult(failed_sources=len(BASES))
-
-    successful_sources = 0
-    failed_sources = 0
-    timeout = int(s.get("request_timeout", 15))
-    retry = int(s.get("retry", 2))
-    proxy = (s.get("proxy") or "").strip()
-    all_items: dict[str, dict] = {}
-
-    # ---- 路径 1：全站最新流（主路径，保证不漏） ----
-    if s.get("watch_global_feed", True) and feed_body:
-        if valid_feed(feed_body):
-            successful_sources += 1
-        else:
-            failed_sources += 1
-        for it in parse_feed(feed_body):
-            it["from"] = {"feed"}
-            all_items[it["btih"]] = it
-
-    # ---- 路径 2：每条规则的关键词搜索（补漏 / 电脑睡过一觉后回溯） ----
-    # ⚠️ **站点每次搜索最多只返回 50 条，且没有分页参数**（page/p/start/offset 全试过）。
-    #    热门番十几个字幕组一叠加，50 条装不下 —— 实测「与你相恋到生命尽头」
-    #    单搜一次只拿到 8 个组，绿茶发布机那 14 条根本没进来。
-    #    所以对**长中文番名**额外搜几个切分变体，按 btih 合并
-    #    （命中的是不同排序/不同切片，合并后能翻出一倍多的结果：50 → 79~100 条）。
-    seen_kw: set[str] = set()
-
-    def _variants(kw: str) -> list[str]:
-        out = [kw]
-        if len(kw) >= 7 and re.search(r"[\u4e00-\u9fff]", kw):
-            out += [kw[:4], kw[-4:], kw[max(0, len(kw) // 2 - 2): len(kw) // 2 + 2]]
-        seen, uniq = set(), []
-        for k in out:
-            if k and k not in seen:
-                seen.add(k)
-                uniq.append(k)
-        return uniq[:4]
-
-    for rule in rules:
-        for kw in (rule.get("keywords") or []):
-            for q in _variants(kw):
-                if q in seen_kw:
-                    continue
-                seen_kw.add(q)
-                path = "/topics/rss/rss.xml?keyword=" + urllib.parse.quote(q)
-                body = http_get(base + path, timeout=timeout, retry=retry, proxy=proxy)
-                if body is None:
-                    # 只在这个 base 上失败时才尝试一次其它镜像
-                    for alt in BASES:
-                        if alt == base:
-                            continue
-                        body = http_get(alt + path, timeout=timeout, retry=1, proxy=proxy)
-                        if body:
-                            break
-                if valid_feed(body):
-                    successful_sources += 1
-                else:
-                    failed_sources += 1
-                got = parse_feed(body or "")
-                if not got and q == kw:
-                    log.info("关键词「%s」本轮返回 0 条（站点偶发空结果，下轮重试）", kw)
-                for it in got:
-                    if it["btih"] in all_items:
-                        all_items[it["btih"]]["from"].add("search")
-                    else:
-                        it["from"] = {"search"}
-                        all_items[it["btih"]] = it
-            time.sleep(0.5)  # 温柔一点，别把站点惹毛了
-
-    # ---- 规则匹配 ----
-    skip_trad = s.get("skip_traditional_only", True)
-    matched: list[dict] = []
-    for ri, rule in enumerate(rules):
-        rid = rule_id(rule, ri)
-        primary = list(rule.get("group") or [])
-        # 收集其他组候选；真正推送由逐集 7 天等待策略决定，不能据此认定弃番。
-        # 判定见 fallback_match() —— 必须标题里带完整番名，免得短关键词误伤别的番。
-        use_fallback = bool(primary) and rule.get("fallback_any_group", True)
-
-        for it in all_items.values():
-            if not episode_allowed(it.get("episode") or "", int(rule.get("from_episode") or 0)):
-                continue
-            if match_rule(it, rule):
-                fallback = False
-            elif use_fallback and fallback_match(it, rule):
-                fallback = True
-            else:
-                continue
-
-            # ⭐ **兜底判定和「字幕组」显示必须一致**（2026-10-17 用户反馈过矛盾文案）：
-            #   上面按「标题里有没有你的组名」判兜底，下面按「标题/author 归一后是谁」显示，
-            #   两套口径不一致就会出现「说没出、却又显示你的组名」。
-            #   只要归一后能认成你指定的组，就一律**不是兜底**。
-            if fallback and primary:
-                if group_key(it, primary) in primary:
-                    fallback = False
-
-            variant = extract_variant(it["title"])
-            if skip_trad and is_traditional_only(variant):
-                continue                      # 只要繁体的版本直接丢掉
-            m = dict(it)
-            m["_rule"] = rule
-            m["_rid"] = rid
-            m["_tier"] = get_variant_tier(it["title"], rule.get("variant_prefer") or [])
-            m["_variant"] = variant
-            m["_rev"] = get_revision(it["title"])
-            m["_seen"] = f"{m['_tier']}:{m['_rev']}"   # 存进 state 的格式
-            m["_fallback"] = fallback
-            matched.append(m)
-
-    # 同一条目可能被多条规则命中，去重
-    uniq: dict[tuple, dict] = {}
-    for m in matched:
-        key = (m["_rid"], m["btih"])
-        if key not in uniq:
-            uniq[key] = m
-    return health.CollectionResult(uniq.values(), successful_sources, failed_sources)
+    from watcher_core import collection as _impl
+    return _impl.collect(cfg, api=sys.modules[__name__])
 
 
 # --------------------------------------------------------------------------
@@ -468,197 +278,18 @@ def episode_allowed(ep: str, minimum: int) -> bool:
 
 
 def enqueue_notification(state: dict, rule_id: str, title: str, body: str) -> str:
-    """Persist only message content, never credentials, until delivery succeeds."""
-    key = hashlib.sha256((rule_id + "\0" + title + "\0" + body).encode()).hexdigest()
-    state.setdefault("pending_notifications", {}).setdefault(key, {
-        "rule_id": rule_id, "title": title, "body": body,
-    })
-    return key
+    from watcher_core import outbox as _impl
+    return _impl.enqueue_notification(state, rule_id, title, body, api=sys.modules[__name__])
 
 
-def deliver_pending(state: dict, settings: dict, only: str | None = None,
-                    rules: list[dict] | None = None) -> int:
-    pending = state.setdefault("pending_notifications", {})
-    active = None if rules is None else {r["id"] for r in rules if r.get("enabled", True)}
-    sent = attempts = 0
-    for key, message in list(pending.items()):
-        if only is not None and key != only:
-            continue
-        if active is not None and message["rule_id"] != "__health__" and message["rule_id"] not in active:
-            del pending[key]
-            save_state(state)
-            continue
-        if attempts:
-            time.sleep(max(0, int(settings.get("push_min_interval_seconds", 13))))
-        attempts += 1
-        # Persist the complete outbox before touching the external service.
-        save_state(state)
-        try:
-            ok, _ = send_notification(message["title"], message["body"], settings)
-        except Exception:
-            log.exception("Queued notification failed; retained for next cycle")
-            ok = False
-        if ok:
-            delivery = message.get("delivery")
-            if delivery:
-                state.setdefault("deliveries", {})[delivery["state_key"]] = {
-                    k: v for k, v in delivery.items() if k != "state_key"
-                }
-                state["deliveries"][delivery["state_key"]]["time"] = health.now()
-                state.setdefault("health", {})["last_delivery"] = health.now()
-            del pending[key]
-            sent += 1
-            # Never wait until the entire batch finishes to checkpoint a receipt.
-            save_state(state)
-        else:
-            log.warning("Queued notification retained for retry")
-    return sent
+def deliver_pending(state: dict, settings: dict, only: str | None=None, rules: list[dict] | None=None, budget=None) -> int:
+    from watcher_core import outbox as _impl
+    return _impl.deliver_pending(state, settings, only, rules, budget, api=sys.modules[__name__])
 
 
-def run_cycle(cfg: dict, state: dict, dry_run: bool = False) -> int:
-    settings = cfg["settings"]
-    prefix = settings.get("title_prefix") or "【新番速递】"
-    first_run = not state.get("initialized")
-    mode = (settings.get("first_run_mode") or "latest").lower()
-
-    pending_sent = 0
-    matched = collect(cfg)
-    if not dry_run:
-        transition = health.update(state, matched, settings.get("failure_alert_after", 3))
-        if transition:
-            key = enqueue_notification(state, "__health__", prefix + transition[0], transition[1])
-        if not getattr(matched, "available", True):
-            pending_sent += deliver_pending(state, settings, rules=cfg.get("rules"))
-            save_state(state)
-            log.error("本轮抓取失败，状态基线未推进")
-            return pending_sent
-    policy_state = copy.deepcopy(state) if dry_run else state
-    matched = suppress_fallbacks(matched, policy_state)
-    matched = fallback_wait.apply_wait(matched, policy_state, cfg.get("rules", []))
-    log.info("兜底等待期内 %d 个集号（逐集等待 7 天）",
-             sum(not e.get("ready", False) for e in policy_state.get("fallback_waiting", {}).values()))
-    if not dry_run:
-        pending_sent += deliver_pending(state, settings, rules=cfg.get("rules"))
-    if not dry_run:
-        note_unparsed([m for m in matched if not m.get("episode") and not RE_BATCH_HINT.search(m["title"])], state)
-    log.info("本轮共命中 %d 条（去重后）", len(matched))
-
-    # 按 (规则, 集数, 字幕组) 分组
-    # ⭐ **加了「字幕组」这一维**（2026-10-17）：规则里显式选了多个组时，
-    #   同一集要**每个组各推一份**，否则用户选了 N 个组只能拿到 1 个组的数据
-    #   （加番回溯那边已经这么改了，定时检查这边漏了）。
-    #   组名用 group_key 归一 —— 标题写[绿茶字幕组]、author 是「绿茶发布机」的情况
-    #   不归一就会算成两个不同的组。
-    groups: dict[tuple, list[dict]] = {}
-    for m in matched:
-        ep = m.get("episode") or m["btih"]
-        rule_groups = [g for g in (m["_rule"].get("group") or []) if not g.endswith("*")]
-        gk = group_key(m, rule_groups)
-        groups.setdefault((m["_rid"], ep, gk), []).append(m)
-
-    def date_key(m: dict) -> float:
-        return -(m["pub_dt"].timestamp() if m.get("pub_dt") else 0)
-
-    def ep_num(ep: str) -> int:
-        mm = re.match(r"^(\d+)", ep or "")
-        return int(mm.group(1)) if mm else 0
-
-    pushes: list[tuple[dict, bool, str]] = []   # (条目, 是否"更优版本"补推)
-
-    if first_run and mode != "all":
-        # 首次运行：每条规则只推"最新一集里最好的那个版本"，用来验证通路；
-        # 其余全部记为已读，避免开机狂刷历史消息
-        per_rule: dict[str, tuple[int, float, dict]] = {}
-        for (rid, ep, _gk), items in groups.items():
-            items.sort(key=sort_key)
-            best = items[0]
-            newest_ts = max((i["pub_dt"].timestamp() if i.get("pub_dt") else 0) for i in items)
-            key = (ep_num(ep), newest_ts)
-            cur = per_rule.get(rid)
-            if cur is None or key > (cur[0], cur[1]):
-                per_rule[rid] = (key[0], key[1], best)
-        if mode != "silent":
-            for rid, v in per_rule.items():
-                best = v[2]
-                ep = best.get("episode") or best["btih"]
-                wanted = [g for g in (best["_rule"].get("group") or []) if not g.endswith("*")]
-                gk = group_key(best, wanted)
-                pushes.append((best, False, f"{rid}|{ep}|{gk}" if gk else f"{rid}|{ep}"))
-    else:
-        # 按规则分组收集候选，顺便折叠：本轮如果同时在推「01-12 全集」，
-        # 就别再把它涵盖的 05~12 单集也推一遍（同一个番收两条消息很莫名其妙）
-        cand_by_rid: dict[str, list[tuple[str, dict, bool]]] = {}
-        for (rid, ep, gk), items in groups.items():
-            best = best_of(items)
-            # 多组规则要按「集数+组」分别记，否则 A 组记过一次，
-            # B 组这一集再出就会被当成「见过且没变好」而永远不推。
-            sk = f"{rid}|{ep}|{gk}" if gk else f"{rid}|{ep}"
-            prev = _seen_pair(state_store.previous_episode(state, rid, ep, gk, group_eq))
-            # 两种情况值得打扰你：字幕形式更好了，或者这一集出了修正版（v2 及以后）
-            if prev is not None and best["_tier"] >= prev[0] and best["_rev"] <= prev[1]:
-                continue
-            # prev 存在 = 是"更优版本/修正版"；不存在 = 这是第一次见到这一集
-            cand_by_rid.setdefault(rid, []).append((ep, best, prev is not None, sk, gk))
-
-        for cand in cand_by_rid.values():
-            # ⭐ **兜底组的资源，只有在这一集没有任何指定组版本时才推**
-            #    否则组A 已出了 14 集、兜底的组C 也出了 14 集，
-            #    你会收到两条同一集的消息 —— 那条组C 的纯属噪音。
-            has_primary = {ep for ep, b, *_ in cand if not b.get("_fallback")}
-            cand = [c for c in cand
-                    if not c[1].get("_fallback") or c[0] not in has_primary]
-            if not cand:
-                continue
-            # 折叠时按「这一条自己的组」分组 —— cand 里本来就带着 gk，
-            # 所以直接按 gk 分桶各自折叠，不要用标题里解析出来的组名
-            #（绿茶发布机标题写的是 [绿茶字幕组]，会跟绿茶字幕组混在一起）
-            keep: set[int] = set()
-            by_g: dict[str, list] = {}
-            for ep, b, _up, _sk, gk in cand:
-                by_g.setdefault(gk, []).append((ep, b))
-            for gk, items_g in by_g.items():
-                keep |= {id(x) for _, x in collapse_overlaps(items_g, lambda _it: gk)}
-            for ep, best, is_up, sk, gk in cand:
-                if id(best) in keep:
-                    pushes.append((best, is_up, sk))
-
-    if dry_run:
-        for best, is_upgrade, _sk in pushes:
-            title, body = build_push_content(best, best["_rule"], prefix, is_upgrade)
-            print("\n" + "=" * 70)
-            print(title)
-            print(body)
-        return len(pushes)
-
-    queued = []
-    for best, is_upgrade, sk in pushes:
-        rule = best["_rule"]
-        title, body = build_push_content(best, rule, prefix, is_upgrade)
-        key = enqueue_notification(state, best["_rid"], title, body)
-        state["pending_notifications"][key]["delivery"] = {
-            "state_key": sk, "group": group_key(best, rule.get("group") or []),
-            "fallback": bool(best.get("_fallback")), "episode_known": bool(best.get("episode")),
-        }
-        queued.append(key)
-
-    # Baselines and the corresponding outbox are saved together. A failed send
-    # retries its original queued content, even after the item drops out of RSS.
-    for (rid, ep, gk), items in groups.items():
-        sk = f"{rid}|{ep}|{gk}" if gk else f"{rid}|{ep}"
-        best = best_of(items)
-        prev = _seen_pair(state_store.previous_episode(state, rid, ep, gk, group_eq))
-        state.setdefault("episodes", {})[sk] = (f"{best['_tier']}:{best['_rev']}" if prev is None else
-            f"{min(prev[0], best['_tier'])}:{max(prev[1], best['_rev'])}")
-    state["initialized"] = True
-    save_state(state)
-
-    sent = pending_sent
-    gap = max(0, int(settings.get("push_min_interval_seconds", 13)))
-    for idx, key in enumerate(queued):
-        if (idx > 0 or pending_sent) and gap:
-            time.sleep(gap)
-        sent += deliver_pending(state, settings, only=key, rules=cfg.get("rules"))
-    return sent
+def run_cycle(cfg: dict, state: dict, dry_run: bool=False) -> int:
+    from watcher_core import cycle as _impl
+    return _impl.run_cycle(cfg, state, dry_run, api=sys.modules[__name__])
 
 
 # --------------------------------------------------------------------------

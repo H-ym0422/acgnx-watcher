@@ -1,6 +1,7 @@
 """A persisted, per-episode grace period for releases from other groups."""
 from datetime import datetime, timedelta, timezone
 import json
+from .release_identity import is_animation, primary_covers, covers
 
 WAIT_DAYS = 7
 
@@ -12,7 +13,10 @@ def now():
 def signature(rule):
     fields = ('keywords', 'group', 'season', 'include_any', 'exclude_any', 'from_episode',
               'allow_unmarked_season', 'variant_prefer', 'fallback_any_group')
-    return json.dumps({k: rule.get(k) for k in fields}, sort_keys=True, ensure_ascii=False)
+    value = {k: rule.get(k) for k in fields}
+    if rule.get('season_start_episode'):
+        value['season_start_episode'] = rule['season_start_episode']
+    return json.dumps(value, sort_keys=True, ensure_ascii=False)
 
 
 def rank(item):
@@ -21,7 +25,7 @@ def rank(item):
 
 
 def freeze(item):
-    fields = ('title', 'author', 'episode', 'btih', 'magnet', 'link', 'size',
+    fields = ('title', 'author', 'category', 'episode', 'btih', 'magnet', 'link', 'size',
               '_tier', '_rev', '_seen', '_variant', '_rid', '_fallback')
     value = {k: item[k] for k in fields if k in item}
     value['pub_dt'] = item['pub_dt'].isoformat() if item.get('pub_dt') else None
@@ -44,15 +48,16 @@ def apply_wait(items, state, rules, at=None):
     # Configuration changes invalidate the old choice and its old clock.
     for key, entry in list(waiting.items()):
         rule = active.get(key.split('|', 1)[0])
-        if not rule or entry['signature'] != signature(rule) or primary.get(key):
+        rid, ep = key.split('|', 1)
+        if not rule or entry['signature'] != signature(rule) or primary_covers(state, rid, ep) or not is_animation(entry['candidate']):
             del waiting[key]
 
-    result = [i for i in items if not i.get('_fallback')]
+    result = [i for i in items if not i.get('_fallback') and is_animation(i)]
     for item in items:
-        if not item.get('_fallback') or item['_rid'] not in active:
+        if not item.get('_fallback') or item['_rid'] not in active or not is_animation(item):
             continue
         key = f"{item['_rid']}|{item.get('episode') or item['btih']}"
-        if primary.get(key):
+        if primary_covers(state, item['_rid'], item.get('episode') or item['btih']):
             continue
         rule = active[item['_rid']]
         entry = waiting.setdefault(key, {'first_seen': at.isoformat(), 'signature': signature(rule),
@@ -64,7 +69,8 @@ def apply_wait(items, state, rules, at=None):
     for key, entry in waiting.items():
         rule = active[key.split('|', 1)[0]]
         entry['ready'] = at >= datetime.fromisoformat(entry['first_seen']) + timedelta(days=WAIT_DAYS)
-        if entry['ready']:
+        ambiguous = state.get('season_ambiguous', {}).get(key.split('|', 1)[0], [])
+        if entry['ready'] and not covers(ambiguous, key.split('|', 1)[1]):
             item = thaw(entry['candidate'], rule)
             item['_fallback_first_seen'] = entry['first_seen']
             result.append(item)
@@ -75,6 +81,7 @@ def apply_wait(items, state, rules, at=None):
         delivery = message.get('delivery') or {}
         if delivery.get('fallback'):
             episode_key = '|'.join(delivery['state_key'].split('|')[:2])
-            if primary.get(episode_key):
+            rid, ep = episode_key.split('|', 1)
+            if primary_covers(state, rid, ep) or rid not in active:
                 del pending[key]
     return result

@@ -27,9 +27,21 @@ python check_workflows.py --require-bash
 | watcher_core/configuration.py | 字段验证与原子配置写入 |
 | watcher_core/rules.py | 稳定 ID、重复规则检查、保留 ID 的修改 |
 | watcher_core/state_store.py | 状态版本、备份恢复与旧键兼容 |
-| watcher_core/health.py | 源可用性、连续失败与告警转移 |
+| watcher_core/health.py | 全局与单部番源可用性、故障／恢复转移 |
+| watcher_core/release_identity.py | 资源类型、编号证据、范围覆盖及旧键兼容 |
+| watcher_core/outbox_policy.py | 发送前按当前规则重新验证，季度不明时暂缓 |
+| watcher_core/remote_checkpoint.py | Actions main 的远端队列／收据检查点 |
+| watcher_core/send_budget.py | 重试与新通知共享发送数量和时间预算 |
+| watcher_core/collection.py | 双路抓取、逐规则源统计和季度证据 |
+| watcher_core/cycle.py | 一轮采集、筛选、等待和队列调度 |
+| watcher_core/outbox.py | 持久队列发送及逐条收据 |
+| watcher_core/presentation.py | 推送文案 |
+| watcher_core/discovery.py | 搜索、选组清单与规则构建 |
+| watcher_core/backfill.py | 初始化基线、回溯范围与历史通知 |
+| watcher_core/watchlist.py | 规则、源状态、待确认季度和送达记录展示 |
+| watcher_core/rule_cli.py | 加番／修改／暂停等命令编排 |
 
-主入口继续导出原解析函数，兼容原有 add_rule 与测试调用。
+主入口保留兼容函数，集中提供运行依赖；功能模块各自负责采集、队列、展示或命令编排。测试同时覆盖模块规则和真实入口组合，不依赖真实推送接口。故障测试包括大队列分批、远端失败时禁止发送、规则修改后的旧队列、别名／合集覆盖、漫画缓存清理、单部番告警与季度待确认。
 
 ## 云端部署
 

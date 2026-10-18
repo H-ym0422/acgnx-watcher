@@ -3,10 +3,12 @@ from datetime import datetime, timezone, timedelta
 
 
 class CollectionResult(list):
-    def __init__(self, items=(), successful_sources=0, failed_sources=0):
+    def __init__(self, items=(), successful_sources=0, failed_sources=0, rule_sources=None, ambiguous=None):
         super().__init__(items)
         self.successful_sources = successful_sources
         self.failed_sources = failed_sources
+        self.rule_sources = rule_sources or {}
+        self.ambiguous = ambiguous or {}
 
     @property
     def available(self):
@@ -38,3 +40,35 @@ def update(state, result, threshold):
         if was_alerted:
             return '抓取恢复', '已恢复有效 RSS 抓取，继续检查新资源。'
     return None
+
+
+def update_rules(state, result, rules, threshold):
+    records = state.setdefault('rule_health', {})
+    alerts = []
+    active = {r['id']: r for r in rules if r.get('enabled', True)}
+    for rid in list(records):
+        if rid not in active:
+            del records[rid]
+    for rid, rule in active.items():
+        source = getattr(result, 'rule_sources', {}).get(rid)
+        if source is None:
+            source = {'successful_sources': getattr(result, 'successful_sources', 1),
+                      'failed_sources': getattr(result, 'failed_sources', 0)}
+        record = records.setdefault(rid, {})
+        record.update(source, last_check=now())
+        ambiguous = getattr(result, 'ambiguous', {}).get(rid, [])
+        record['ambiguous_episodes'] = sorted(set(ambiguous))
+        if source['successful_sources'] == 0:
+            record['failures'] = record.get('failures', 0) + 1
+            record['status'] = 'failed'
+            if record['failures'] >= threshold and not record.get('alerted'):
+                record['alerted'] = True
+                alerts.append((rid, '单部番抓取异常', f"{rule.get('name', rid)}：连续 {record['failures']} 次该规则的全部搜索失败；其他番的成功不会掩盖此故障。"))
+        else:
+            recovering = record.pop('alerted', False)
+            record['failures'] = 0
+            record['status'] = 'needs_confirmation' if ambiguous else ('partial' if source['failed_sources'] else 'ok')
+            record['last_successful_check'] = record['last_check']
+            if recovering:
+                alerts.append((rid, '单部番抓取恢复', f"{rule.get('name', rid)}：该规则搜索已恢复。"))
+    return alerts
