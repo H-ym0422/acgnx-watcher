@@ -56,7 +56,7 @@ def validate_config(cfg):
             value = rule.get(field, 0)
             if type(value) is not int or not 0 <= value <= 9999:
                 raise ConfigError(f'{prefix}.{field}: 必须是 0..9999 的整数')
-        for field in ['enabled', 'fallback_any_group']:
+        for field in ['enabled', 'fallback_any_group', 'allow_unmarked_season']:
             if field in rule and type(rule[field]) is not bool:
                 raise ConfigError(f'{prefix}.{field}: 必须是布尔值')
     return cfg

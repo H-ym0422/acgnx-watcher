@@ -36,7 +36,15 @@ def edit(path, selector, changes):
         raise ValueError('规则未找到或匹配多条，请使用列表中的唯一 ID')
     rule = matches[0]
     original = identity(rule)
+    old_groups = rule.get('group') or []
+    old_label = ('/'.join(old_groups[:2]) + ('等' if len(old_groups) > 2 else '')) if old_groups else '任意字幕组'
+    suffix = f'（{old_label}）'
+    generated_name = rule.get('name', '').endswith(suffix)
     rule.update(changes)
+    if 'group' in changes and 'name' not in changes and generated_name:
+        groups = rule.get('group') or []
+        label = ('/'.join(groups[:2]) + ('等' if len(groups) > 2 else '')) if groups else '任意字幕组'
+        rule['name'] = rule['name'][:-len(suffix)] + f'（{label}）'
     if any(r is not rule and identity(r) == identity(rule) for r in cfg['rules']):
         raise ValueError('修改后与另一条规则重复，未保存')
     write_config(path, cfg)

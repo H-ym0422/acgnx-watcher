@@ -546,20 +546,12 @@ def _collapse_in_group(ordered: list[tuple[str, dict]]) -> list[tuple[str, dict]
     return out
 
 
-def season_ok(title: str, want: int) -> bool:
-    """标题是不是「第 want 季」。
-
-    ⚠️ **没标季号的必须放行**（2026-10-17 修）：
-    原来写的是「没标季号 = 第一季」—— 对第一季成立，对第三季就全错。
-    实测「药屋少女的呢喃 第三季」里喵萌的 11 条正片**标题里一个季号都没有**，
-    按老逻辑会以为它们是第一季，全部挡掉 → 整部番一条都推不出来。
-
-    现在：标了季号就按季号比；没标就放行
-    （标了别季的会被挡掉，不标的留下 —— 这才是安全的默认）。"""
-    got = extract_season(title)
-    if got is None:
+def season_ok(title: str, want: int, allow_unmarked: bool = False) -> bool:
+    """Require an explicit matching season unless the rule opts into uncertainty."""
+    if not want:
         return True
-    return got == int(want)
+    got = extract_season(title)
+    return bool(allow_unmarked) if got is None else got == int(want)
 
 
 # 不是正片的条目：主题曲 / 片尾曲 / 插曲原声 / PV / 预告。
