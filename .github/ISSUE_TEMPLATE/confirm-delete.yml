@@ -1,0 +1,32 @@
+name: 确认删除追番
+description: 从“我的番剧.md”对应行的删除入口进入，无需手写番名
+title: "确认删除 "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        请核对下方番名、季度和字幕组，确认后勾选复选框，再提交。
+        提交前不会删除。想取消时直接关闭当前页面。
+        此操作只删除选中的一条规则；同名番剧的其他规则保留。
+        如果下方没有自动填入内容，请返回“我的番剧.md”点击对应行的“删除”。
+  - type: textarea
+    id: target
+    attributes:
+      label: 删除对象
+      description: 由追番列表自动填入，请核对，不要修改。
+    validations:
+      required: true
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: 确认删除
+      options:
+        - label: 我确认删除这条追番规则，并清理其待发送消息和去重记录
+          required: true
+  - type: textarea
+    id: snapshot
+    attributes:
+      label: 删除校验信息
+      description: 由列表自动填入，请保留原样。
+    validations:
+      required: true

@@ -1,10 +1,14 @@
-name: 删番
-description: 不想看了，从监听列表里删掉
+name: 删番（手动填写 ID）
+description: 推荐从“我的番剧.md”点击删除；此入口兼容原指令
 title: "删番 "
 body:
   - type: markdown
     attributes:
       value: |
-        标题里「删番」后面**补上番名**就行，比如 `删番 碧蓝之海`。
-
-        正文不用填。提交后机器人会把删掉的规则回给你。
+        推荐返回仓库“我的番剧.md”，点击对应行的“删除”，在确认页勾选后提交。
+        使用此手动入口时，把标题改为“删番 唯一规则ID”。
+        请勿重复填写“删除”“帮我删除”等操作词。相同番名有多条规则时必须指定 ID。
+  - type: textarea
+    id: notes
+    attributes:
+      label: 备注（可留空）

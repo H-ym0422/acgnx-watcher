@@ -13,6 +13,38 @@ def normalized(value):
     return re.sub(r'[\s\W_]+', '', unicodedata.normalize('NFKC', value).casefold())
 
 
+def display_name(rule):
+    name = rule.get('name') or '?'
+    groups = rule.get('group') or []
+    group_label = ('/'.join(groups[:2]) + ('等' if len(groups) > 2 else '')) if groups else '任意字幕组'
+    suffix = f'（{group_label}）'
+    if name.endswith(suffix):
+        name = name[:-len(suffix)]
+    season = rule.get('season', 0)
+    if season and extract_season(name) != season:
+        digit = {1: '一', 2: '二', 3: '三', 4: '四', 5: '五', 6: '六', 7: '七', 8: '八', 9: '九', 10: '十'}
+        name += f' 第{digit.get(season, str(season))}季'
+    return name
+
+
+def target_label(rule):
+    return display_name(rule) + '（' + (' / '.join(rule.get('group') or []) or '任意字幕组') + '）'
+
+
+def select_rule(rules, selector, season=None):
+    exact = [r for r in rules if r['id'] == selector]
+    matches = exact or [r for r in rules if normalized(selector) and
+                        normalized(selector) in normalized(target_label(r))]
+    if season is not None:
+        matches = [r for r in matches if (r.get('season') or extract_season(r.get('name', '')) or 0) == season]
+    if not matches:
+        raise ValueError('没有找到对应追番，请从“我的番剧.md”点击删除，或使用列表中的唯一规则 ID')
+    if len(matches) != 1:
+        choices = '\n'.join(target_label(r) + ' / ' + r['id'] for r in matches)
+        raise ValueError('匹配到多条规则，未修改；请从“我的番剧.md”选择唯一 ID 对应的行：\n' + choices)
+    return matches[0]
+
+
 def identity(rule):
     names = rule.get('keywords') or rule.get('include_any') or [rule.get('name', '')]
     season = rule.get('season', 0)
@@ -36,11 +68,7 @@ def append(path, rule):
 
 def edit(path, selector, changes):
     cfg = json.loads(Path(path).read_text(encoding='utf-8'))
-    exact = [r for r in cfg.get('rules', []) if r['id'] == selector]
-    matches = exact or [r for r in cfg.get('rules', []) if selector in r.get('name', '')]
-    if len(matches) != 1:
-        raise ValueError('规则未找到或匹配多条，请使用列表中的唯一 ID')
-    rule = matches[0]
+    rule = select_rule(cfg.get('rules', []), selector)
     original = identity(rule)
     old_groups = rule.get('group') or []
     old_label = ('/'.join(old_groups[:2]) + ('等' if len(old_groups) > 2 else '')) if old_groups else '任意字幕组'

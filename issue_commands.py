@@ -12,7 +12,7 @@ import tempfile
 import urllib.request
 
 import add_rule as ar
-from watcher_core import natural_language, issue_natural
+from watcher_core import natural_language, issue_natural, delete_confirmation
 
 MARKER = re.compile(r"<!-- acgnx-survey:v1:([A-Za-z0-9_=-]+) -->")
 RESULT_PATH = Path(".issue-result.json")
@@ -104,14 +104,14 @@ def season_controls(body: str) -> list[str]:
 
 
 def command(title: str) -> tuple[str, str]:
-    title = title.strip()
+    title = natural_language.normalize_title(title)
     for mode, prefixes in (("add", ("加番", "添加", "新增", "追番")),
                            ("del", ("删番", "删除", "移除", "取消")),
                            ("pause", ("暂停",)), ("resume", ("恢复",)), ("edit", ("修改",)),
                            ("list", ("列表", "清单", "我的番"))):
         for prefix in prefixes:
             if title.startswith(prefix):
-                return mode, title[len(prefix):].strip()
+                return mode, title[len(prefix):].strip(" ：:")
     return "add", title
 
 
@@ -228,8 +228,10 @@ def fallback_controls(body):
 
 def handle(event: dict, event_name: str) -> dict:
     if (event.get('sender', {}).get('login') != event['repository']['owner']['login']
-            or event['issue'].get('pull_request')):
+            or 'pull_request' in event['issue']):
         raise ValueError('只有仓库所有者可以管理规则，且不处理 PR 评论')
+    if (event['issue'].get('title') or '').startswith('确认删除 '):
+        return delete_confirmation.handle(event, event_name, sys.modules[__name__])
     request = natural_language.parse(event['issue'].get('title') or '')
     if request is None:
         return handle_legacy(event, event_name)
