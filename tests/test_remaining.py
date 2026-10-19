@@ -56,7 +56,8 @@ class RuleAndStateTests(unittest.TestCase):
                     ar.main()
                 self.assertIn('existing|01|A', aw.load_state()['episodes'])
             text = ar.render_watchlist()
-            self.assertIn('existing', text)
+            self.assertIn('demo 第一季', text)
+            self.assertNotIn(' / existing', text)
             self.assertIn('最近检查', text)
         rule = json.loads(self.config.read_text())['rules'][0]
         self.assertEqual(rule['id'], 'existing')

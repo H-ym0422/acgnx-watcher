@@ -76,6 +76,8 @@ jobs:
                 ? '请按本条清单回复序号或组名；回复“刷新”重新获取清单。'
                 : result.step === 'query'
                   ? '本次仅查询，未修改订阅、未发送飞书通知；持续监听请用“帮我追……”新建 Issue。'
+                : result.step === 'deleted'
+                  ? '删除已保存，追番列表已更新。'
                 : result.ok
                   ? '请以上方输出确认规则保存与通知送达状态；待重试通知会由定时任务补发。'
                   : '未能完整执行，请按上方错误提示处理。';
@@ -85,3 +87,9 @@ jobs:
               owner: context.repo.owner, repo: context.repo.repo,
               issue_number: context.issue.number, body,
             });
+            if (ok && result.step !== 'survey') {
+              await github.rest.issues.update({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: context.issue.number, state: 'closed', state_reason: 'completed',
+              });
+            }
