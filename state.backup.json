@@ -163,13 +163,13 @@
   "state_version": 1,
   "pending_notifications": {},
   "health": {
-    "last_check": "2026-10-19T11:50:34+08:00",
+    "last_check": "2026-10-19T11:55:34+08:00",
     "matched": 134,
     "successful_sources": 14,
     "failed_sources": 0,
     "failures": 0,
     "status": "ok",
-    "last_successful_check": "2026-10-19T11:50:34+08:00",
+    "last_successful_check": "2026-10-19T11:55:34+08:00",
     "last_delivery": "2026-10-19T00:10:35+08:00"
   },
   "primary_episodes": {
@@ -243,58 +243,58 @@
     "kurumi-lvcha": {
       "successful_sources": 1,
       "failed_sources": 0,
-      "last_check": "2026-10-19T11:50:34+08:00",
+      "last_check": "2026-10-19T11:55:34+08:00",
       "ambiguous_episodes": [],
       "failures": 0,
       "status": "ok",
-      "last_successful_check": "2026-10-19T11:50:34+08:00"
+      "last_successful_check": "2026-10-19T11:55:34+08:00"
     },
     "anbu-nekomoe": {
       "successful_sources": 1,
       "failed_sources": 0,
-      "last_check": "2026-10-19T11:50:34+08:00",
+      "last_check": "2026-10-19T11:55:34+08:00",
       "ambiguous_episodes": [],
       "failures": 0,
       "status": "ok",
-      "last_successful_check": "2026-10-19T11:50:34+08:00"
+      "last_successful_check": "2026-10-19T11:55:34+08:00"
     },
     "seitokai-nekomoe": {
       "successful_sources": 2,
       "failed_sources": 0,
-      "last_check": "2026-10-19T11:50:34+08:00",
+      "last_check": "2026-10-19T11:55:34+08:00",
       "ambiguous_episodes": [],
       "failures": 0,
       "status": "ok",
-      "last_successful_check": "2026-10-19T11:50:34+08:00"
+      "last_successful_check": "2026-10-19T11:55:34+08:00"
     },
     "r1792222855": {
       "successful_sources": 4,
       "failed_sources": 0,
-      "last_check": "2026-10-19T11:50:34+08:00",
+      "last_check": "2026-10-19T11:55:34+08:00",
       "ambiguous_episodes": [
         "25-48"
       ],
       "failures": 0,
       "status": "needs_confirmation",
-      "last_successful_check": "2026-10-19T11:50:34+08:00"
+      "last_successful_check": "2026-10-19T11:55:34+08:00"
     },
     "r-abe3333a695445369ff39b5c5c9cf539": {
       "successful_sources": 1,
       "failed_sources": 0,
-      "last_check": "2026-10-19T11:50:34+08:00",
+      "last_check": "2026-10-19T11:55:34+08:00",
       "ambiguous_episodes": [],
       "failures": 0,
       "status": "ok",
-      "last_successful_check": "2026-10-19T11:50:34+08:00"
+      "last_successful_check": "2026-10-19T11:55:34+08:00"
     },
     "r-f2da5e76bf8a45adb493023e6d1b5b3e": {
       "successful_sources": 4,
       "failed_sources": 0,
-      "last_check": "2026-10-19T11:50:34+08:00",
+      "last_check": "2026-10-19T11:55:34+08:00",
       "ambiguous_episodes": [],
       "failures": 0,
       "status": "ok",
-      "last_successful_check": "2026-10-19T11:50:34+08:00"
+      "last_successful_check": "2026-10-19T11:55:34+08:00"
     }
   },
   "season_ambiguous": {
