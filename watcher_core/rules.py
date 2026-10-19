@@ -17,9 +17,10 @@ def display_name(rule):
     name = rule.get('name') or '?'
     groups = rule.get('group') or []
     group_label = ('/'.join(groups[:2]) + ('等' if len(groups) > 2 else '')) if groups else '任意字幕组'
-    suffix = f'（{group_label}）'
-    if name.endswith(suffix):
-        name = name[:-len(suffix)]
+    suffix = re.search(r'[（(]([^()（）]*)[）)]$', name)
+    group_labels = {normalized(g) for g in [*groups, group_label]}
+    if suffix and normalized(suffix[1]) in group_labels:
+        name = name[:suffix.start()].rstrip()
     season = rule.get('season', 0)
     if season and extract_season(name) != season:
         digit = {1: '一', 2: '二', 3: '三', 4: '四', 5: '五', 6: '六', 7: '七', 8: '八', 9: '九', 10: '十'}

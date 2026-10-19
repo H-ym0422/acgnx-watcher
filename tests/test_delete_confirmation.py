@@ -59,6 +59,8 @@ class DeleteConfirmationTests(unittest.TestCase):
         self.assertEqual(query['template'], ['confirm-delete.yml'])
         self.assertEqual(query['target'], [rules.target_label(self.one)])
         self.assertEqual(query['snapshot'], [dc.marker(self.one)])
+        self.assertEqual(query['title'], ['确认删除 ' + rules.target_label(self.one)])
+        self.assertNotIn('r-one', query['title'][0])
         self.assertNotIn('confirm', query)
         self.assertEqual(dc.delete_url(self.one, 'https://wrong'), '')
 
@@ -67,6 +69,41 @@ class DeleteConfirmationTests(unittest.TestCase):
             result = ic.handle(event(self.one), 'issues')
         cli.assert_called_once_with(['--del-id', 'r-one', '--no-push'])
         self.assertIn('青之箱 第二季（绿茶发布机）', result['text'])
+
+    def test_human_readable_confirmation_title(self):
+        e = event(self.one)
+        e['issue']['title'] = '确认删除 ' + rules.target_label(self.one)
+        with patch.object(ar.aw, 'load_config', return_value=self.config), patch.object(ic, 'run_cli', return_value={'ok': True, 'text': 'deleted'}):
+            result = ic.handle(e, 'issues')
+        self.assertEqual(result['step'], 'deleted')
+        self.assertNotIn('r-one', result['text'])
+
+    def test_legacy_group_alias_suffix_is_not_part_of_anime_name(self):
+        legacy = dict(self.one, name='青之箱（绿茶字幕组）', group=['绿茶字幕组', '绿茶发布机'])
+        self.assertEqual(rules.display_name(legacy), '青之箱 第二季')
+        self.assertEqual(rules.target_label(legacy), '青之箱 第二季（绿茶字幕组 / 绿茶发布机）')
+
+    def test_non_group_parentheses_are_preserved(self):
+        custom = dict(self.one, name='示例动画（特别篇）', season=0)
+        self.assertEqual(rules.display_name(custom), '示例动画（特别篇）')
+
+    def test_list_counts_anime_separately_from_rules(self):
+        with patch.object(ar.aw, 'load_config', return_value=self.config), patch.object(ar.aw, 'load_state', return_value={}):
+            text = ar.render_watchlist()
+        self.assertIn('已配置 1 部番，共 2 条规则', text)
+        self.assertIn('| 番剧 |', text)
+        self.assertNotIn(' / ID', text)
+
+    def test_deleted_rule_disappears_from_regenerated_document(self):
+        with tempfile.TemporaryDirectory() as directory:
+            config_path = Path(directory) / 'config.json'
+            config_path.write_text(json.dumps(self.config, ensure_ascii=False), encoding='utf8')
+            with patch.object(ar.aw, 'CONFIG_PATH', str(config_path)), patch.object(ar.aw, 'load_state', return_value={'episodes': {'r-one|01|绿茶发布机': '0:1'}}), patch.object(ar, 'purge_baseline', return_value=0), patch.object(ar, 'maybe_push'), patch.dict(os.environ, {'GITHUB_REPOSITORY': 'owner/repo'}), patch.object(sys, 'argv', ['add_rule.py', '--del-id', 'r-one', '--no-push']):
+                ar.main()
+            text = (Path(directory) / ar.WATCHLIST_NAME).read_text(encoding='utf8')
+            self.assertNotIn('绿茶发布机', text)
+            self.assertIn('绿茶字幕组', text)
+            self.assertEqual(text.count('[删除]('), 1)
 
     def test_unchecked_confirmation_does_not_delete(self):
         with patch.object(ar.aw, 'load_config', return_value=self.config), patch.object(ic, 'run_cli') as cli, self.assertRaisesRegex(ValueError, '尚未勾选'):
@@ -127,8 +164,9 @@ class DeleteConfirmationTests(unittest.TestCase):
         with patch.object(ar.aw, 'load_config', return_value=self.config), patch.object(ar.aw, 'load_state', return_value={}), patch.dict(os.environ, {'GITHUB_REPOSITORY': 'owner/repo'}):
             text = ar.render_watchlist()
         self.assertEqual(text.count('[删除]('), 2)
-        self.assertIn('青之箱 第二季 / r-one', text)
-        self.assertIn('青之箱 第二季 / r-two', text)
+        self.assertEqual(text.count('| 青之箱 第二季 · [删除]('), 2)
+        self.assertNotIn(' / r-one', text)
+        self.assertNotIn(' / r-two', text)
 
     def test_form_checkbox_is_required(self):
         import yaml

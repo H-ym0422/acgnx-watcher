@@ -13,6 +13,40 @@ import issue_commands as ic
 
 @unittest.skipUnless(shutil.which('node'), 'Node.js is required for Actions JS contract tests')
 class WorkflowContractTests(unittest.TestCase):
+    def test_issue_reply_archives_completed_operations_but_keeps_surveys_and_errors(self):
+        root = Path(__file__).resolve().parents[1]
+        workflow = yaml.safe_load((root / '.github/workflows/issue-rule.yml').read_text(encoding='utf-8'))
+        script = next(step['with']['script'] for step in workflow['jobs']['handle']['steps']
+                      if step.get('name') == '回复 Issue')
+        wrapper = '''
+const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
+const captured = {comments: [], updates: []};
+const result = RESULT;
+const github = {rest: {issues: {
+  createComment: async args => {captured.comments.push(args);},
+  update: async args => {captured.updates.push(args);}
+}}};
+const fakeRequire = name => ({existsSync: () => true, readFileSync: () => JSON.stringify(result)});
+new AsyncFunction('github', 'context', 'require', 'process', SCRIPT)(github,
+  {repo: {owner: 'owner', repo: 'repo'}, issue: {number: 7}}, fakeRequire,
+  {env: {PERSIST_OK: SAVED}})
+  .then(() => console.log(JSON.stringify(captured)))
+  .catch(error => {console.error(error); process.exit(1)});
+'''.replace('SCRIPT', json.dumps(script))
+        cases = [('deleted', True, True, True), ('done', True, True, True),
+                 ('query', True, True, True), ('survey', True, True, False),
+                 ('error', False, True, False), ('deleted', True, False, False)]
+        for step, ok, saved, archive in cases:
+            with self.subTest(step=step, saved=saved):
+                code = wrapper.replace('RESULT', json.dumps({'step': step, 'ok': ok, 'text': 'output'})).replace('SAVED', json.dumps(str(saved).lower()))
+                process = subprocess.run(['node', '-e', code], capture_output=True, text=True, encoding='utf8', check=True)
+                captured = json.loads(process.stdout)
+                self.assertEqual(len(captured['comments']), 1)
+                self.assertEqual(len(captured['updates']), int(archive))
+                if archive:
+                    self.assertEqual(captured['updates'][0]['state'], 'closed')
+                    self.assertEqual(captured['updates'][0]['issue_number'], 7)
+
     def test_actions_issue_preserves_every_backfill_mode_and_snapshot(self):
         root = Path(__file__).resolve().parents[1]
         workflow = yaml.safe_load((root / '.github/workflows/add-rule.yml').read_text(encoding='utf-8'))
