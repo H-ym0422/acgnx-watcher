@@ -95,7 +95,9 @@
     "r1792222855|03|黒ネズミたち": "999:1",
     "r1792222855|02|黒ネズミたち": "999:1",
     "seitokai-nekomoe|03|喵萌奶茶屋": "0:1",
-    "r1792222855|03|喵萌奶茶屋": "0:1"
+    "r1792222855|03|喵萌奶茶屋": "0:1",
+    "r-abe3333a695445369ff39b5c5c9cf539|01|绿茶发布机": "1:1",
+    "r-abe3333a695445369ff39b5c5c9cf539|02|绿茶发布机": "2:1"
   },
   "initialized": true,
   "unparsed": {
@@ -157,7 +159,14 @@
     }
   },
   "state_version": 1,
-  "pending_notifications": {},
+  "pending_notifications": {
+    "8b80d03ecdcedcf47ad49cd368bd0df9f4a2f225f65b14b6093c1b3efd6595df": {
+      "rule_id": "r-abe3333a695445369ff39b5c5c9cf539",
+      "title": "【新番速递】已加入监听：青之箱（绿茶发布机）",
+      "body": "字幕组：绿茶发布机\n标题需含：青之箱、青之箱 第二季、Ao no Hako S2\n只要第 1 集及以后（前面的已记为看过，不再提醒）\n\n📺 目前检索到第 2 集，覆盖 2 个集号（01~02）（不代表全季总集数）\n下面共 2 条磁力，按集数从小到大：\n\n[01] 绿茶发布机 magnet:?xt=urn:btih:1e74fedf3345b416c499efce34ec695c707f54b0&tr=http%3A%2F%2Fopentracker.acgnx.se%2Fannounce\n[02] 绿茶发布机 magnet:?xt=urn:btih:07b2a2a77b3ee511ed40a79959e7bebae53736f2&tr=http%3A%2F%2Fopentracker.acgnx.se%2Fannounce\n\n———\n以上是历史集，已经记下来了。以后只推新发布的集数，不会再重复推这些。",
+      "rule_signature": "{\"allow_unmarked_season\": null, \"exclude_any\": [], \"fallback_any_group\": true, \"from_episode\": 1, \"group\": [\"绿茶发布机\"], \"include_any\": [\"青之箱\", \"青之箱 第二季\", \"Ao no Hako S2\"], \"keywords\": [\"青之箱\"], \"season\": 2, \"variant_prefer\": [\"简日双语\", \"简繁日内封\", \"简日内嵌\", \"简体\", \"简\"]}"
+    }
+  },
   "health": {
     "last_check": "2026-10-19T11:25:29+08:00",
     "matched": 98,
@@ -183,9 +192,34 @@
     "r1792222855|01": true,
     "r1792222855|02": true,
     "seitokai-nekomoe|03": true,
-    "r1792222855|03": true
+    "r1792222855|03": true,
+    "r-abe3333a695445369ff39b5c5c9cf539|01": true,
+    "r-abe3333a695445369ff39b5c5c9cf539|02": true
   },
-  "fallback_waiting": {},
+  "fallback_waiting": {
+    "r-abe3333a695445369ff39b5c5c9cf539|03": {
+      "first_seen": "2026-10-19T03:28:20.041286+00:00",
+      "signature": "{\"allow_unmarked_season\": null, \"exclude_any\": [], \"fallback_any_group\": true, \"from_episode\": 1, \"group\": [\"绿茶发布机\"], \"include_any\": [\"青之箱\", \"青之箱 第二季\", \"Ao no Hako S2\"], \"keywords\": [\"青之箱\"], \"season\": 2, \"variant_prefer\": [\"简日双语\", \"简繁日内封\", \"简日内嵌\", \"简体\", \"简\"]}",
+      "candidate": {
+        "title": "【今晚月色真美】[青之箱 第二季 / アオのハコ Season 2 / Ao no Hako Season 2][03][WebRip][1080P][AVC-8bit][AAC][简日内嵌]",
+        "author": "今晚月色真美",
+        "category": "動畫",
+        "episode": "03",
+        "btih": "353bfe4adb385a835baf756de9b60361580edc6a",
+        "magnet": "magnet:?xt=urn:btih:353bfe4adb385a835baf756de9b60361580edc6a&tr=http%3A%2F%2Fopentracker.acgnx.se%2Fannounce",
+        "link": "https://share.acgnx.se/show-353bfe4adb385a835baf756de9b60361580edc6a.html",
+        "size": "487.1MB",
+        "_tier": 2,
+        "_rev": 1,
+        "_seen": "2:1",
+        "_variant": "简日内嵌",
+        "_rid": "r-abe3333a695445369ff39b5c5c9cf539",
+        "_fallback": true,
+        "pub_dt": "2026-10-19T02:34:01+08:00"
+      },
+      "ready": false
+    }
+  },
   "rule_health": {
     "kurumi-lvcha": {
       "successful_sources": 1,
@@ -226,13 +260,7 @@
       "last_successful_check": "2026-10-19T11:25:29+08:00"
     }
   },
-  "season_ambiguous": {
-    "r1792222855": [
-      "25-48",
-      "25-48",
-      "25-48"
-    ]
-  },
+  "season_ambiguous": {},
   "episode_maps": {
     "kurumi-lvcha": {},
     "anbu-nekomoe": {},
@@ -241,7 +269,8 @@
       "51": "03",
       "50": "02",
       "49": "01"
-    }
+    },
+    "r-abe3333a695445369ff39b5c5c9cf539": {}
   },
   "deliveries": {
     "seitokai-nekomoe|03|喵萌奶茶屋": {
