@@ -161,6 +161,7 @@ def rank_groups(items: list[dict]) -> list[dict]:
             ep = aw.extract_episode(i["title"])
             if ep:
                 g["eps"].add(ep)
+            g.setdefault('releases', []).append((ep, i))
             v = extract_variant(i["title"])
             if v:
                 g["vs"][v] = g["vs"].get(v, 0) + 1

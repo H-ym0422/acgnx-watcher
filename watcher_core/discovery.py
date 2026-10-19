@@ -1,5 +1,6 @@
 """Search releases and build stable group-selection surveys and rules."""
 from __future__ import annotations
+from .subtitle_summary import subtitle_lines
 
 
 def search(term: str, *, api) -> list[dict]:
@@ -48,9 +49,10 @@ def survey_text(term: str, limit: int=20, season: int=0, snapshot_path: str | No
     out = [head + '。回复这条 Issue 告诉我要哪个：', '']
     for (i, g) in enumerate(order[:limit], 1):
         last = f"{g['last']:%m-%d}" if g['last'] else '  -  '
-        vs = '、'.join(g['variants'][:4]) if g['variants'] else '未标注'
         out.append(f"`{i:>2}`  **{g['name']}**  ·  {g['n']} 条，最近 {last}")
-        out.append(f"\u3000\u3000覆盖 {g['cover']} · 类型 {vs}")
+        out.append(f"\u3000\u3000覆盖 {g['cover']}")
+        out.append('\u3000\u3000字幕形式（按集数，可选版本）：')
+        out.extend('\u3000\u3000' + line for line in subtitle_lines(g.get('releases', [])))
     if len(order) > limit:
         out.append(f'\u3000\u3000\u3000（还有 {len(order) - limit} 个，没列出来）')
     out += ['', '**回复格式**', '', '- 回复 `1` 或 `1,3` —— 用这几个字幕组', '- 回复 `绿茶字幕组` —— 直接写组名也行', '- 回复 `任意` —— 不挑组，谁先出就推谁']
@@ -87,10 +89,11 @@ def pick(term: str, want_all_groups: bool, forced_groups: list[str], extra_alias
     print('\n📺 在做这部番的字幕组（含覆盖集数和字幕类型）：')
     for (idx, g) in enumerate(order, 1):
         last = f"{g['last']:%m-%d}" if g['last'] else '  -  '
-        vs = '、'.join(g['variants'][:4]) if g['variants'] else '未标注'
         print(f"   [{idx:>2}] {g['name']:<26} {g['n']:>3} 条   最近 {last}")
         print(f"        覆盖 {g['cover']}")
-        print(f'        类型 {vs}')
+        print('        字幕形式（按集数，可选版本）：')
+        for line in subtitle_lines(g.get('releases', [])):
+            print('        ' + line)
     selected: list[str] = []
     if pick_indexes is not None:
         for p in pick_indexes:
