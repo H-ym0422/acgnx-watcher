@@ -20,12 +20,15 @@ class WorkflowContractTests(unittest.TestCase):
                       if step.get('name') == '回复 Issue')
         wrapper = '''
 const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
-const captured = {comments: [], updates: [], graphql: []};
+const captured = {comments: [], updates: [], graphql: [], auth: []};
 const result = RESULT;
-const github = {graphql: async (query, args) => {
+const github = {constructor: function(options) {
+  captured.auth.push(options.auth);
+  return {graphql: async (query, args) => {
   captured.graphql.push({query, args});
   if (FAIL_DELETE) throw new Error('permission denied');
   return {deleteIssue: {clientMutationId: null}};
+}};
 }, rest: {issues: {
   createComment: async args => {captured.comments.push(args);},
   update: async args => {captured.updates.push(args);}
@@ -55,7 +58,7 @@ new AsyncFunction('github', 'context', 'require', 'process', SCRIPT)(github,
                 self.assertEqual(len(captured['graphql']), int(call_delete))
                 if call_delete:
                     self.assertEqual(captured['graphql'][0]['args']['issueId'], 'I_7')
-                    self.assertEqual(captured['graphql'][0]['args']['headers']['authorization'], 'token test-only')
+                    self.assertEqual(captured['auth'], ['test-only'])
                 self.assertEqual(len(captured['updates']), int(archive))
                 if archive:
                     self.assertEqual(captured['updates'][0]['state'], 'closed')
