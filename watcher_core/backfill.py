@@ -1,5 +1,6 @@
 """Seed historical baselines and queue policy-aware historical notifications."""
 from __future__ import annotations
+from .subtitle_summary import subtitle_lines, variant_of
 
 
 def inspect_and_seed(rule: dict, from_ep: int=0, backfill_mode: str | None=None, *, api) -> list[tuple[str, dict]]:
@@ -129,7 +130,9 @@ def format_result(rule: dict, episodes: list[tuple[str, dict]], mode: str='all',
         lines += ['', f'已经发布的共 {len(episodes)} 集（按设置不推送），之后出新集会提醒。']
     elif mode == 'latest':
         (ep, item) = episodes[-1]
-        lines += ['', f'最新一集（第 {ep} 集）：', item.get('magnet') or '（无磁力，见详情页）', '', f'（这部分共 {len(episodes)} 集，其余按设置未推送）']
+        lines += ['', f'最新一集（第 {ep} 集）：', f'字幕组：{api._group_of(item) or "未识别"}',
+                  f'字幕形式：{variant_of(item)}', item.get('magnet') or '（无磁力，见详情页）',
+                  '', f'（这部分共 {len(episodes)} 集，其余按设置未推送）']
     else:
         rng = f'第 {nums[0]} ~ {nums[-1]} 集' if nums else f'{len(episodes)} 集'
         all_nums: set[int] = set()
@@ -148,11 +151,13 @@ def format_result(rule: dict, episodes: list[tuple[str, dict]], mode: str='all',
             lines += ['', f'📺 目前检索到第 {season_max} 集，覆盖 {got} 个集号{tail}（不代表全季总集数）', f'下面共 {len(episodes)} 条磁力，按集数从小到大：', '']
         else:
             lines += ['', f'📺 共 {len(episodes)} 条磁力，按集数从小到大：', '']
+        lines += ['字幕形式（对应下方资源）：', *subtitle_lines(episodes, api._group_of), '']
         for (ep, item) in episodes:
             tag = f'[{ep}]'
             g = api._group_of(item)
             if g:
                 tag += f' {g}'
+            tag += f' · {variant_of(item)}'
             lines.append(f"{tag} {item.get('magnet') or '（无磁力，见详情页）'}")
         lines += ['', '———', '以上是历史集，已经记下来了。以后只推新发布的集数，不会再重复推这些。']
     return (title, '\n'.join(lines), s)
