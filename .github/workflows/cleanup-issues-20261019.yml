@@ -1,0 +1,62 @@
+name: 清理历史 Issue（2026-10-19）
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/cleanup-issues-20261019.yml]
+permissions:
+  contents: read
+  issues: write
+concurrency:
+  group: acgnx-state-writer
+  cancel-in-progress: false
+jobs:
+  cleanup:
+    if: github.repository == 'H-ym0422/acgnx-watcher'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/github-script@v7
+        env:
+          ISSUE_DELETE_TOKEN: ${{ secrets.ACGNX_ISSUE_DELETE_TOKEN }}
+        with:
+          script: |
+            const token = process.env.ISSUE_DELETE_TOKEN;
+            if (!token) throw new Error('Missing ACGNX_ISSUE_DELETE_TOKEN');
+            const auth = {headers: {authorization: 'token ' + token}};
+            const viewer = await github.graphql('query { viewer { login } }', auth);
+            if (viewer.viewer.login.toLowerCase() !== context.repo.owner.toLowerCase()) throw new Error('Repository owner token required');
+            const expected = [
+              ['kurumi-lvcha', 'FX战士久留美'],
+              ['anbu-nekomoe', '某暗部的少女共栖'],
+              ['seitokai-nekomoe', '学生会有洞'],
+            ];
+            const file = await github.rest.repos.getContent({...context.repo, path: 'config.json', ref: 'main'});
+            const config = JSON.parse(Buffer.from(file.data.content, 'base64').toString('utf8'));
+            if (config.rules.length !== 3 || expected.some(([id]) => !config.rules.some(r => r.id === id && r.enabled))) throw new Error('Tracking rules changed; stop cleanup');
+            const targets = [{"number":71,"id":"I_kwDOVL_yQM8AAAABYLn1xA","title":"确认删除 药屋少女的呢喃 第三季（喵萌奶茶屋）"},{"number":70,"id":"I_kwDOVL_yQM8AAAABYLnVpg","title":"确认删除 青之箱 第二季（绿茶字幕组）"},{"number":69,"id":"I_kwDOVL_yQM8AAAABYLnJng","title":"确认删除 青之箱 第二季（绿茶发布机）"},{"number":68,"id":"I_kwDOVL_yQM8AAAABYLmMEA","title":"列表"},{"number":66,"id":"I_kwDOVL_yQM8AAAABYLgIgA","title":"列表"},{"number":64,"id":"I_kwDOVL_yQM8AAAABYLXtEg","title":"删除：青之箱"},{"number":63,"id":"I_kwDOVL_yQM8AAAABYLXBVw","title":"删除：帮我删除青之箱 第二季"},{"number":62,"id":"I_kwDOVL_yQM8AAAABYLVWFQ","title":"加番 青之箱"},{"number":60,"id":"I_kwDOVL_yQM8AAAABYLLT_A","title":"帮我追青之箱第二季，从第一集开始，字幕格式为简日双语或简体内嵌"},{"number":59,"id":"I_kwDOVL_yQM8AAAABYLIbPg","title":"帮我追青之箱第二季，从第一集开始"},{"number":57,"id":"I_kwDOVL_yQM8AAAABYCkV0g","title":"给我找药屋少女的呢喃第三季第三集之后的资源，字幕组为喵萌奶茶屋"},{"number":52,"id":"I_kwDOVL_yQM8AAAABYAmInw","title":"列表"},{"number":49,"id":"I_kwDOVL_yQM8AAAABX3B3Gg","title":"加番 药屋少女的呢喃 第三季"},{"number":48,"id":"I_kwDOVL_yQM8AAAABX3Btiw","title":"加番 药屋少女的呢喃 第三季"},{"number":47,"id":"I_kwDOVL_yQM8AAAABX2_f6Q","title":"加番 药屋少女的呢喃 第三季"},{"number":46,"id":"I_kwDOVL_yQM8AAAABX2_JuA","title":"删除 药屋少女的呢喃 第三季"},{"number":45,"id":"I_kwDOVL_yQM8AAAABX24akQ","title":"加番 药屋少女的呢喃 第三季"},{"number":44,"id":"I_kwDOVL_yQM8AAAABX24ERw","title":"删除 药屋少女的呢喃 第三季"},{"number":43,"id":"I_kwDOVL_yQM8AAAABX2yIOg","title":"加番 药屋少女的呢喃 第三季"},{"number":42,"id":"I_kwDOVL_yQM8AAAABX2FzQg","title":"删除 药屋少女的呢喃 第三季"},{"number":41,"id":"I_kwDOVL_yQM8AAAABX1-PRA","title":"加番 药屋少女的呢喃 第三季"},{"number":40,"id":"I_kwDOVL_yQM8AAAABX19_GA","title":"删除 药屋少女的呢喃"},{"number":39,"id":"I_kwDOVL_yQM8AAAABX1pENQ","title":"加番 药屋少女的呢喃 第三季"},{"number":38,"id":"I_kwDOVL_yQM8AAAABX1oUEw","title":"删除 与你相恋到生命尽头"},{"number":37,"id":"I_kwDOVL_yQM8AAAABXwA1rw","title":"添加 为美好的世界献上祝福 第一季"},{"number":36,"id":"I_kwDOVL_yQM8AAAABXwAUAg","title":"添加 为美好的世界献上祝福第一季"},{"number":35,"id":"I_kwDOVL_yQM8AAAABXv_WRA","title":"添加 无职转生第一季"},{"number":34,"id":"I_kwDOVL_yQM8AAAABXvbAqg","title":"添加 金牌得主"},{"number":33,"id":"I_kwDOVL_yQM8AAAABXvL9pQ","title":"加番 与你相恋到生命尽头"},{"number":32,"id":"I_kwDOVL_yQM8AAAABXvK7yw","title":"增加 与你相恋到生命尽头"},{"number":31,"id":"I_kwDOVL_yQM8AAAABXvHe6w","title":"加番 与你相恋到世界尽头"},{"number":30,"id":"I_kwDOVL_yQM8AAAABXvGXcQ","title":"增加 与你相恋到世界尽头"},{"number":29,"id":"I_kwDOVL_yQM8AAAABXvF7bA","title":"删除 金牌得主"},{"number":28,"id":"I_kwDOVL_yQM8AAAABXvFgAw","title":"删除 尼古喵喵"},{"number":27,"id":"I_kwDOVL_yQM8AAAABXuT2dg","title":"（已关闭·测试）删番 蓝色监狱"},{"number":26,"id":"I_kwDOVL_yQM8AAAABXuTN_Q","title":"（已关闭·测试）加番 蓝色监狱"},{"number":25,"id":"I_kwDOVL_yQM8AAAABXuRzOQ","title":"（已关闭·测试）删番 蓝色监狱"},{"number":24,"id":"I_kwDOVL_yQM8AAAABXuRghw","title":"（已关闭·测试）列表"},{"number":23,"id":"I_kwDOVL_yQM8AAAABXuRNrQ","title":"（已关闭·测试）删番 葬送的芙莉莲"},{"number":22,"id":"I_kwDOVL_yQM8AAAABXuQ7VQ","title":"（已关闭·测试）加番 蓝色监狱"},{"number":21,"id":"I_kwDOVL_yQM8AAAABXuQn9g","title":"（已关闭·测试）加番 葬送的芙莉莲"},{"number":20,"id":"I_kwDOVL_yQM8AAAABXuEktQ","title":"（已关闭·测试）加番 葬送的芙莉莲"},{"number":19,"id":"I_kwDOVL_yQM8AAAABXuESkw","title":"（已关闭·测试）列表"},{"number":18,"id":"I_kwDOVL_yQM8AAAABXt_wmQ","title":"（已关闭·测试）列表"},{"number":17,"id":"I_kwDOVL_yQM8AAAABXsHUcA","title":"（已关闭·测试）已读"},{"number":16,"id":"I_kwDOVL_yQM8AAAABXsHKmg","title":"（已关闭·测试）未读"},{"number":15,"id":"I_kwDOVL_yQM8AAAABXsGZ3Q","title":"（已关闭·测试）列表"},{"number":14,"id":"I_kwDOVL_yQM8AAAABXsGITA","title":"（已关闭·测试）已读"},{"number":13,"id":"I_kwDOVL_yQM8AAAABXsF2Qw","title":"（已关闭·测试）未读"},{"number":12,"id":"I_kwDOVL_yQM8AAAABXsEkhA","title":"（已关闭·测试）已读"},{"number":11,"id":"I_kwDOVL_yQM8AAAABXsEStA","title":"（已关闭·测试）未读"},{"number":10,"id":"I_kwDOVL_yQM8AAAABXrIp8w","title":"（已关闭·测试）加番 药师少女"},{"number":9,"id":"I_kwDOVL_yQM8AAAABXqnXVg","title":"（已关闭·测试）加番 无职转生"},{"number":8,"id":"I_kwDOVL_yQM8AAAABXqkiQg","title":"删除 碧蓝之海"},{"number":7,"id":"I_kwDOVL_yQM8AAAABXqhgIA","title":"（已关闭·测试）加番 尼古喵喵"},{"number":6,"id":"I_kwDOVL_yQM8AAAABXqYFUQ","title":"（已关闭·测试）尼古喵喵"},{"number":5,"id":"I_kwDOVL_yQM8AAAABXpze8g","title":"（已关闭·测试）加番 药师少女"},{"number":4,"id":"I_kwDOVL_yQM8AAAABXpyd-Q","title":"（已关闭·测试）加番 药师少女"},{"number":3,"id":"I_kwDOVL_yQM8AAAABXpXPsQ","title":"（已关闭·测试）两步加番验证"},{"number":2,"id":"I_kwDOVL_yQM8AAAABXo9CYg","title":"（已关闭）列表功能测试"},{"number":1,"id":"I_kwDOVL_yQM8AAAABXo2tdw","title":"（已关闭·测试）加番功能验证"}];
+            const existing = [];
+            for (const target of targets) {
+              try {
+                const {data} = await github.rest.issues.get({...context.repo, issue_number: target.number});
+                if (data.pull_request || data.node_id !== target.id || data.title !== target.title) throw new Error('Issue snapshot changed: ' + target.number);
+                existing.push(target);
+              } catch (error) {
+                if (error.status !== 404 && error.status !== 410) throw error;
+              }
+            }
+            const listed = await github.paginate(github.rest.issues.listForRepo, {...context.repo, state: 'all', per_page: 100});
+            for (const [id, name] of expected) {
+              const marker = '<!-- acgnx-active-rule:' + id + ' -->';
+              if (!listed.some(i => !i.pull_request && i.state === 'open' && i.body?.includes(marker))) {
+                await github.rest.issues.create({...context.repo, title: '追番｜' + name, body: marker + '\n\n当前正在追番。订阅、字幕组和删除入口以仓库《我的番剧》文档为准。\n\n[打开我的番剧](https://github.com/' + context.repo.owner + '/' + context.repo.repo + '/blob/main/我的番剧.md)'});
+              }
+            }
+            for (const target of existing) {
+              const result = await github.graphql('mutation($id: ID!) { deleteIssue(input: {issueId: $id}) { clientMutationId } }', {...auth, id: target.id});
+              if (!result?.deleteIssue) throw new Error('Deletion not confirmed: ' + target.number);
+              console.log('Permanently removed #' + target.number);
+            }
+            const remaining = (await github.paginate(github.rest.issues.listForRepo, {...context.repo, state: 'all', per_page: 100})).filter(i => !i.pull_request);
+            if (remaining.some(i => targets.some(t => t.id === i.node_id))) throw new Error('Historical issues remain');
+            console.log('Remaining issue count: ' + remaining.length);
+            await core.summary.addRaw('Removed historical operation records. Remaining issues: ' + remaining.map(i => '#' + i.number + ' ' + i.title).join(', ')).write();
