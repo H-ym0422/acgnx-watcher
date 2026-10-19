@@ -62,3 +62,11 @@ python check_workflows.py --require-bash
 功能改动与状态迁移需写清回滚限制。截图和示例不得包含 Webhook、Token 或其他密钥。
 
 许可证尚未由项目所有者选择，本轮不擅自授予第三方再分发许可。自用功能和仓库简介不依赖选择许可证；准备正式开源推广时再明确许可。
+
+## Issue 清理认证与一次性维护
+
+`issue-rule.yml` 在规则删除成功且状态保存成功后，使用 `ACGNX_ISSUE_DELETE_TOKEN` 创建独立的 Octokit 客户端执行 `deleteIssue`。不要仅覆盖默认客户端单次请求的 Authorization 请求头，其认证 hook 可能重新写入默认机器人身份。普通回复和归档继续使用默认机器人客户端，避免所有者评论再次触发 Issue 指令。
+
+`cleanup-issues-20261019.yml` 是已完成的一次性维护：验证所有者身份、三条当前规则及每条目标的编号、节点 ID 和标题；只清理固定的 61 条历史 Issue，排除 PR 与后来新增的 Issue。它与状态写入任务共用并发组，不修改 config/state、不发送飞书通知；不要扩展为默认扫描删除所有 Issues。
+
+追番记录 Issue 是整理时的入口，不替代 config.json 或自动生成的《我的番剧》。修改追番列表的固定说明需同时更新 `watcher_core/watchlist.py`，否则下次生成会覆盖手工文案。飞书应用发送支持不等于已实现撤回；当前没有自动撤回与界面自动化实现。
