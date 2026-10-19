@@ -20,28 +20,42 @@ class WorkflowContractTests(unittest.TestCase):
                       if step.get('name') == '回复 Issue')
         wrapper = '''
 const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
-const captured = {comments: [], updates: []};
+const captured = {comments: [], updates: [], graphql: []};
 const result = RESULT;
-const github = {rest: {issues: {
+const github = {graphql: async (query, args) => {
+  captured.graphql.push({query, args});
+  if (FAIL_DELETE) throw new Error('permission denied');
+  return {deleteIssue: {clientMutationId: null}};
+}, rest: {issues: {
   createComment: async args => {captured.comments.push(args);},
   update: async args => {captured.updates.push(args);}
 }}};
 const fakeRequire = name => ({existsSync: () => true, readFileSync: () => JSON.stringify(result)});
 new AsyncFunction('github', 'context', 'require', 'process', SCRIPT)(github,
-  {repo: {owner: 'owner', repo: 'repo'}, issue: {number: 7}}, fakeRequire,
-  {env: {PERSIST_OK: SAVED}})
+  {repo: {owner: 'owner', repo: 'repo'}, issue: {number: 7}, payload: {issue: {node_id: 'I_7'}}}, fakeRequire,
+  {env: {PERSIST_OK: SAVED, ISSUE_DELETE_TOKEN: OWNER_SECRET_VALUE}})
   .then(() => console.log(JSON.stringify(captured)))
   .catch(error => {console.error(error); process.exit(1)});
 '''.replace('SCRIPT', json.dumps(script))
-        cases = [('deleted', True, True, True), ('done', True, True, True),
-                 ('query', True, True, True), ('survey', True, True, False),
-                 ('error', False, True, False), ('deleted', True, False, False)]
-        for step, ok, saved, archive in cases:
-            with self.subTest(step=step, saved=saved):
-                code = wrapper.replace('RESULT', json.dumps({'step': step, 'ok': ok, 'text': 'output'})).replace('SAVED', json.dumps(str(saved).lower()))
+        cases = [('deleted', True, True, '', False, True, False),
+                 ('deleted', True, True, 'test-only', False, False, True),
+                 ('deleted', True, True, 'test-only', True, True, True),
+                 ('deleted', False, True, 'test-only', False, False, False),
+                 ('deleted', True, False, 'test-only', False, False, False),
+                 ('done', True, True, 'test-only', False, True, False),
+                 ('query', True, True, '', False, True, False),
+                 ('survey', True, True, '', False, False, False),
+                 ('error', False, True, '', False, False, False)]
+        for step, ok, saved, token, fail_delete, archive, call_delete in cases:
+            with self.subTest(step=step, saved=saved, fail_delete=fail_delete):
+                code = wrapper.replace('RESULT', json.dumps({'step': step, 'ok': ok, 'text': 'output'})).replace('SAVED', json.dumps(str(saved).lower())).replace('OWNER_SECRET_VALUE', json.dumps(token)).replace('FAIL_DELETE', json.dumps(fail_delete))
                 process = subprocess.run(['node', '-e', code], capture_output=True, text=True, encoding='utf8', check=True)
                 captured = json.loads(process.stdout)
-                self.assertEqual(len(captured['comments']), 1)
+                self.assertEqual(len(captured['comments']), 0 if step == 'deleted' and ok and saved else 1)
+                self.assertEqual(len(captured['graphql']), int(call_delete))
+                if call_delete:
+                    self.assertEqual(captured['graphql'][0]['args']['issueId'], 'I_7')
+                    self.assertEqual(captured['graphql'][0]['args']['headers']['authorization'], 'token test-only')
                 self.assertEqual(len(captured['updates']), int(archive))
                 if archive:
                     self.assertEqual(captured['updates'][0]['state'], 'closed')
