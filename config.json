@@ -127,34 +127,6 @@
       "season": 3
     },
     {
-      "id": "r-abe3333a695445369ff39b5c5c9cf539",
-      "name": "青之箱 第二季（绿茶发布机）",
-      "enabled": true,
-      "keywords": [
-        "青之箱"
-      ],
-      "include_any": [
-        "青之箱",
-        "青之箱 第二季",
-        "Ao no Hako S2"
-      ],
-      "exclude_any": [],
-      "group": [
-        "绿茶发布机"
-      ],
-      "variant_prefer": [
-        "简日双语",
-        "简繁日内封",
-        "简日内嵌",
-        "简体",
-        "简"
-      ],
-      "fallback_any_group": true,
-      "note": "",
-      "season": 2,
-      "from_episode": 1
-    },
-    {
       "id": "r-f2da5e76bf8a45adb493023e6d1b5b3e",
       "name": "青之箱 第二季（绿茶字幕组）",
       "enabled": true,
