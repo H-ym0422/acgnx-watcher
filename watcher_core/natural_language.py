@@ -80,6 +80,8 @@ def normalize_title(title):
 
 def parse(title):
     text = normalize_title(title)
+    if re.search(r'字幕(?:格式|形式|类型)\s*(?:为|是|[:：])', text):
+        raise ValueError('暂不支持在标题中设置字幕格式筛选，未添加或修改规则；请先查看逐集字幕类型再选组')
     polite = text.startswith('请')
     text = re.sub(r'^请(?:帮我)?', '帮我' if text.startswith('请帮我') else '', text)
     if text in ('我在追哪些番', '查看我的追番', '我的追番列表'):

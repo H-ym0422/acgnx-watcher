@@ -47,10 +47,11 @@ class DeleteConfirmationTests(unittest.TestCase):
         self.assertEqual((request.mode, request.term, request.season), ('del', '青之箱', 2))
 
     def test_unsupported_variant_clause_rejected_before_mutation(self):
-        with patch.object(ic, 'run_cli') as cli, self.assertRaisesRegex(ValueError, '字幕格式筛选'):
-            ic.handle({'sender': {'login': 'owner'}, 'repository': {'owner': {'login': 'owner'}},
-                       'issue': {'title': '帮我追青之箱第二季，从第一集开始，字幕格式为简日双语或简体内嵌', 'body': ''}}, 'issues')
-        cli.assert_not_called()
+        for prefix in ('帮我追', '加番 ', '请帮我追'):
+            with self.subTest(prefix=prefix), patch.object(ic, 'run_cli') as cli, self.assertRaisesRegex(ValueError, '字幕格式筛选'):
+                ic.handle({'sender': {'login': 'owner'}, 'repository': {'owner': {'login': 'owner'}},
+                           'issue': {'title': prefix + '青之箱第二季，从第一集开始，字幕格式为简日双语或简体内嵌', 'body': ''}}, 'issues')
+            cli.assert_not_called()
 
     def test_confirmation_url_prefills_target_and_snapshot_not_checkbox(self):
         url = dc.delete_url(self.one, 'owner/repo')
