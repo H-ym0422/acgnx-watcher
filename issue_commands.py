@@ -165,7 +165,10 @@ def handle_legacy(event: dict, event_name: str) -> dict:
     if mode == "del":
         if event_name == 'issue_comment':
             return {'ok': True, 'step': 'done', 'text': '删除指令仅在新 Issue 执行，未重复删除。'}
-        return run_cli(["--del-name", term, "--no-push"])
+        result = run_cli(["--del-name", term, "--no-push"])
+        if result.get('ok'):
+            result['step'] = 'deleted'
+        return result
     if mode in ("pause", "resume"):
         return run_cli(["--" + mode, term, "--no-push"])
     if mode == "edit":

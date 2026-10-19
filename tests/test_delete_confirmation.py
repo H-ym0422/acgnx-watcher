@@ -70,6 +70,14 @@ class DeleteConfirmationTests(unittest.TestCase):
         cli.assert_called_once_with(['--del-id', 'r-one', '--no-push'])
         self.assertIn('青之箱 第二季（绿茶发布机）', result['text'])
 
+    def test_manual_delete_is_also_silent(self):
+        e = event(self.one)
+        e['issue'].update(title='删番 r-one', body='')
+        with patch.object(ic, 'run_cli', return_value={'ok': True, 'step': 'done', 'text': 'deleted'}), patch.object(ar.aw, 'send_notification') as send:
+            result = ic.handle(e, 'issues')
+        self.assertEqual(result['step'], 'deleted')
+        send.assert_not_called()
+
     def test_human_readable_confirmation_title(self):
         e = event(self.one)
         e['issue']['title'] = '确认删除 ' + rules.target_label(self.one)
@@ -155,10 +163,11 @@ class DeleteConfirmationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             config_path = Path(directory) / 'config.json'
             config_path.write_text(json.dumps(self.config, ensure_ascii=False), encoding='utf8')
-            with patch.object(ar.aw, 'CONFIG_PATH', str(config_path)), patch.object(ar, 'purge_baseline', return_value=0) as purge, patch.object(ar, 'write_watchlist'), patch.object(ar, 'maybe_push'), patch.object(sys, 'argv', ['add_rule.py', '--del-id', 'r-one', '--no-push']):
+            with patch.object(ar.aw, 'CONFIG_PATH', str(config_path)), patch.object(ar, 'purge_baseline', return_value=0) as purge, patch.object(ar, 'write_watchlist'), patch.object(ar, 'maybe_push'), patch.object(ar.aw, 'send_notification') as send, patch.object(sys, 'argv', ['add_rule.py', '--del-id', 'r-one', '--no-push']):
                 ar.main()
             self.assertEqual(json.loads(config_path.read_text(encoding='utf8'))['rules'], [self.two])
             purge.assert_called_once_with(['r-one'])
+            send.assert_not_called()
 
     def test_watchlist_has_distinct_confirm_links(self):
         with patch.object(ar.aw, 'load_config', return_value=self.config), patch.object(ar.aw, 'load_state', return_value={}), patch.dict(os.environ, {'GITHUB_REPOSITORY': 'owner/repo'}):

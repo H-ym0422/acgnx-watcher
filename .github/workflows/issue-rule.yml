@@ -59,6 +59,7 @@ jobs:
         if: always()
         env:
           PERSIST_OK: ${{ steps.persist.outcome == 'success' }}
+          ISSUE_DELETE_TOKEN: ${{ secrets.ACGNX_ISSUE_DELETE_TOKEN }}
         uses: actions/github-script@v7
         with:
           script: |
@@ -69,6 +70,29 @@ jobs:
             }
             const saved = process.env.PERSIST_OK === 'true';
             const ok = result.ok && saved;
+            if (ok && result.step === 'deleted') {
+              const token = process.env.ISSUE_DELETE_TOKEN;
+              const issueId = context.payload?.issue?.node_id;
+              if (token && issueId) {
+                try {
+                  const deleted = await github.graphql(
+                    'mutation($issueId: ID!) { deleteIssue(input: {issueId: $issueId}) { clientMutationId } }',
+                    {issueId, headers: {authorization: 'token ' + token}},
+                  );
+                  if (!deleted?.deleteIssue) throw new Error('Deletion was not confirmed');
+                  return;
+                } catch {
+                  console.warn('规则已删除；Issue 永久清理未完成，请检查所有者令牌权限。');
+                }
+              } else {
+                console.warn('规则已删除；未配置 ACGNX_ISSUE_DELETE_TOKEN，删除记录仅关闭归档。');
+              }
+              await github.rest.issues.update({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: context.issue.number, state: 'closed', state_reason: 'completed',
+              });
+              return;
+            }
             const content = String(result.text || '(无输出)').slice(-12000).replace(/```/g, '~~~');
             const tail = !saved
               ? '仓库保存失败，请检查运行日志后重试；通知可能已发送。'
