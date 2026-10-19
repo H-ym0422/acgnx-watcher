@@ -22,8 +22,8 @@ jobs:
           script: |
             const token = process.env.ISSUE_DELETE_TOKEN;
             if (!token) throw new Error('Missing ACGNX_ISSUE_DELETE_TOKEN');
-            const auth = {headers: {authorization: 'token ' + token}};
-            const viewer = await github.graphql('query { viewer { login } }', auth);
+            const ownerGithub = new github.constructor({auth: token});
+            const viewer = await ownerGithub.graphql('query { viewer { login } }');
             if (viewer.viewer.login.toLowerCase() !== context.repo.owner.toLowerCase()) throw new Error('Repository owner token required');
             const expected = [
               ['kurumi-lvcha', 'FX战士久留美'],
@@ -52,7 +52,7 @@ jobs:
               }
             }
             for (const target of existing) {
-              const result = await github.graphql('mutation($id: ID!) { deleteIssue(input: {issueId: $id}) { clientMutationId } }', {...auth, id: target.id});
+              const result = await ownerGithub.graphql('mutation($id: ID!) { deleteIssue(input: {issueId: $id}) { clientMutationId } }', {id: target.id});
               if (!result?.deleteIssue) throw new Error('Deletion not confirmed: ' + target.number);
               console.log('Permanently removed #' + target.number);
             }

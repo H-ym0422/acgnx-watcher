@@ -75,9 +75,10 @@ jobs:
               const issueId = context.payload?.issue?.node_id;
               if (token && issueId) {
                 try {
-                  const deleted = await github.graphql(
+                  const ownerGithub = new github.constructor({auth: token});
+                  const deleted = await ownerGithub.graphql(
                     'mutation($issueId: ID!) { deleteIssue(input: {issueId: $issueId}) { clientMutationId } }',
-                    {issueId, headers: {authorization: 'token ' + token}},
+                    {issueId},
                   );
                   if (!deleted?.deleteIssue) throw new Error('Deletion was not confirmed');
                   return;
