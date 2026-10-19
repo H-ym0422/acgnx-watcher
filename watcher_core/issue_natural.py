@@ -1,6 +1,6 @@
 """Translate parsed requests to the existing command path after validation."""
 from copy import deepcopy
-from .rules import normalized
+from .rules import normalized, select_rule
 from .resource_query import query
 
 
@@ -34,13 +34,9 @@ def merge_body(request, body, api):
 
 def resolve_selector(request, api):
     rules = api.ar.aw.load_config()['rules']
-    exact = [r for r in rules if request.term == r['id']]
-    candidates = exact or [r for r in rules if normalized(request.term) in normalized(r.get('name', ''))]
-    if request.season is not None and not (exact and request.mode == 'edit'):
-        candidates = [r for r in candidates if r.get('season', 0) == request.season]
-    if len(candidates) != 1:
-        raise ValueError('规则未找到或匹配多条，请用“我的追番列表”查看唯一 ID 后重试')
-    return candidates[0]['id']
+    exact = any(r['id'] == request.term for r in rules)
+    season = None if (exact and request.mode == 'edit') else request.season
+    return select_rule(rules, request.term, season)['id']
 
 
 def handle(request, event, event_name, api):

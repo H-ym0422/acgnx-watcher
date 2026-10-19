@@ -67,8 +67,21 @@ PREFIXES = {
 }
 
 
-def parse(title):
+def normalize_title(title):
     text = title.strip()
+    match = re.match(r'^(删番|删除|暂停|恢复|修改)\s*[:：]\s*(.*)$', text)
+    if match:
+        rest = match[2].strip()
+        if re.match(r'^(?:帮我|给我)(?:删除|删掉|暂停|恢复|修改)', rest):
+            return rest
+        return match[1] + ' ' + rest
+    return text
+
+
+def parse(title):
+    text = normalize_title(title)
+    if re.search(r'字幕(?:格式|形式|类型)\s*(?:为|是|[:：])', text):
+        raise ValueError('暂不支持在标题中设置字幕格式筛选，未添加或修改规则；请先查看逐集字幕类型再选组')
     polite = text.startswith('请')
     text = re.sub(r'^请(?:帮我)?', '帮我' if text.startswith('请帮我') else '', text)
     if text in ('我在追哪些番', '查看我的追番', '我的追番列表'):
@@ -92,6 +105,8 @@ def parse(title):
             return None
     if re.search(r'(?:然后|并且|顺便|同时|并)\s*(?:帮我|给我)?(?:追|找|删除|暂停|恢复|订阅)', text):
         raise ValueError('每个 Issue 请只写一个操作')
+    if re.search(r'字幕(?:格式|形式|类型)', text):
+        raise ValueError('暂不支持在标题中设置字幕格式筛选，未添加或修改规则；请先查看逐集字幕类型再选组')
     request = Request(mode)
     text = text.strip(' ：:,，')
     # Extract explicit group clause before removing season and episode numbers.

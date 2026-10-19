@@ -24,6 +24,7 @@ def main(*, api) -> None:
     ap.add_argument('--exists', metavar='关键词', help='只检查这部番是不是已经在追了，在追就退出码 0、否则 1')
     ap.add_argument('--del', dest='delete', type=int, metavar='N', help='删除第 N 条规则')
     ap.add_argument('--del-name', metavar='关键词', help='删除名字里包含该关键词的规则（手机上传个词就能删，不用记序号）')
+    ap.add_argument('--del-id', metavar='ID', help='只删除精确匹配 ID 的规则')
     ap.add_argument('--yes', action='store_true', help='跳过确认直接写入')
     ap.add_argument('--no-push', action='store_true', help='就算在 git 仓库里也不自动推送')
     ap.add_argument('--season-start-episode', type=int, default=0, help='本季第 1 集对应的累计集号，0 表示未指定')
@@ -100,7 +101,7 @@ def main(*, api) -> None:
             rid = r.get('id') or ''
             eps = sorted((k.split('|', 1)[1] for k in st.get('episodes', {}) if k.startswith(rid + '|')), key=api.ep_sort_key)
             done = f'已记录到第 {eps[-1]} 集（共 {len(eps)} 集）' if eps else '还没记录'
-            print(f"[{i}] {r.get('name', '?')} | ID={rid} | 状态={('监听中' if r.get('enabled', True) else '已暂停')}")
+            print(f"[{i}] {api.rule_store.target_label(r)} | ID={rid} | 状态={('监听中' if r.get('enabled', True) else '已暂停')}")
             print(f"    字幕组={r.get('group') or '任意'}  关键词={r.get('keywords')}  {done}")
         print('-' * 70)
         print(f'（完整清单：跑 --render，或看仓库里的「{api.WATCHLIST_NAME}」）')
@@ -126,34 +127,29 @@ def main(*, api) -> None:
         print('\n这些条目的磁力还是能正常用，只是推送里会写「整季打包，没有单一集数」。')
         print('看到新写法就告诉我，补一条正则就能认出来。')
         return
-    if args.del_name:
+    if args.del_name or args.del_id:
         with open(api.aw.CONFIG_PATH, 'r', encoding='utf-8') as f:
             cfg = api.json.load(f)
         rules = cfg.get('rules', [])
-        hit = [i for (i, r) in enumerate(rules) if args.del_name == r.get('id')]
-        if not hit:
-            hit = [i for (i, r) in enumerate(rules) if args.del_name in (r.get('name') or '')]
-        if len(hit) > 1:
-            raise ValueError('匹配多条规则，未删除；请使用列表中的唯一规则 ID')
-        if not hit:
-            print(f'没找到名字包含「{args.del_name}」的规则。当前规则：')
-            for (i, r) in enumerate(rules, 1):
-                print(f"  [{i}] {r.get('name')}")
-            raise SystemExit(2)
+        selector = args.del_id or args.del_name
+        if args.del_id:
+            matches = [r for r in rules if r['id'] == args.del_id]
+            if len(matches) != 1:
+                raise ValueError('对应规则 ID 已不存在，未删除任何规则')
+            selected = matches[0]
+        else:
+            selected = api.rule_store.select_rule(rules, selector)
         api.shutil.copyfile(api.aw.CONFIG_PATH, api.aw.CONFIG_PATH + '.bak')
-        removed_ids = []
-        for i in reversed(hit):
-            print('已删除：', rules[i].get('name'))
-            removed_ids.append(rules[i].get('id') or '')
-            rules.pop(i)
+        print('已删除：', api.rule_store.target_label(selected))
+        rules.remove(selected)
         with open(api.aw.CONFIG_PATH, 'w', encoding='utf-8') as f:
             api.json.dump(cfg, f, ensure_ascii=False, indent=2)
-        n = api.purge_baseline(removed_ids)
+        n = api.purge_baseline([selected['id']])
         if n:
-            print(f'   （顺带清掉 {n} 条去重基线，不然重新加回来不会推送回溯）')
+            print(f'   （顺带清掉 {n} 条去重基线）')
         api.write_watchlist()
-        api.maybe_push(args.del_name, not args.no_push)
-        print(f'\n✅ 删掉 {len(hit)} 条规则。')
+        api.maybe_push(selector, not args.no_push)
+        print('\n✅ 删掉 1 条规则。')
         return
     if args.delete:
         with open(api.aw.CONFIG_PATH, 'r', encoding='utf-8') as f:
