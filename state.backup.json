@@ -120,13 +120,7 @@
     }
   },
   "state_version": 1,
-  "pending_notifications": {
-    "3242f0ebc54ac4ad567f08312c57bf588d778107b4a6261b0bfb870f1c30bfec": {
-      "rule_id": "__health__",
-      "title": "【新番速递】单部番抓取恢复",
-      "body": "学生会有洞（喵萌奶茶屋）：该规则搜索已恢复。"
-    }
-  },
+  "pending_notifications": {},
   "health": {
     "last_check": "2026-10-22T03:20:31+08:00",
     "matched": 81,
