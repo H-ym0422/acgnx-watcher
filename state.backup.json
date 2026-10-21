@@ -121,11 +121,6 @@
   },
   "state_version": 1,
   "pending_notifications": {
-    "0412f80606aa1ba00a0a0301536d070c10417651c79659d6b784952c1ce0a8e1": {
-      "rule_id": "__health__",
-      "title": "【新番速递】抓取异常",
-      "body": "连续 3 次未能取得有效 RSS；本轮没有推进初始化或去重基线。"
-    },
     "fda4d2e91aae9b5a13a502db2c52715854192bc9a34b3ec532da4e2dc7c6833a": {
       "rule_id": "__health__",
       "title": "【新番速递】单部番抓取异常",
