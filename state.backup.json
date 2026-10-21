@@ -120,13 +120,7 @@
     }
   },
   "state_version": 1,
-  "pending_notifications": {
-    "29ebf95425a05ef2b5e6fcae86501203befea25520e68af0d2dbe7458f67e3b3": {
-      "rule_id": "__health__",
-      "title": "【新番速递】单部番抓取异常",
-      "body": "学生会有洞（喵萌奶茶屋）：连续 3 次该规则的全部搜索失败；其他番的成功不会掩盖此故障。"
-    }
-  },
+  "pending_notifications": {},
   "health": {
     "last_check": "2026-10-22T02:50:29+08:00",
     "matched": 0,
