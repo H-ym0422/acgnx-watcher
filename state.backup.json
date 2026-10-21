@@ -121,11 +121,6 @@
   },
   "state_version": 1,
   "pending_notifications": {
-    "37fd08170dd06eb0089f3aafe752f0954022d47780cb54197d6c4faecc65b18a": {
-      "rule_id": "__health__",
-      "title": "【新番速递】单部番抓取恢复",
-      "body": "某暗部的少女共栖（喵萌奶茶屋）：该规则搜索已恢复。"
-    },
     "3242f0ebc54ac4ad567f08312c57bf588d778107b4a6261b0bfb870f1c30bfec": {
       "rule_id": "__health__",
       "title": "【新番速递】单部番抓取恢复",
