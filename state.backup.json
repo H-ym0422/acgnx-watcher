@@ -120,17 +120,37 @@
     }
   },
   "state_version": 1,
-  "pending_notifications": {},
+  "pending_notifications": {
+    "239caa612a90ed788ed9397396f0203e6376c23ba9307cba2890ac9b9cb97a20": {
+      "rule_id": "__health__",
+      "title": "【新番速递】抓取恢复",
+      "body": "已恢复有效 RSS 抓取，继续检查新资源。"
+    },
+    "642cf9e1d25cebdb8df2c3efaa1668d97425bd603db470e2ae0aad0fec4ac7b8": {
+      "rule_id": "__health__",
+      "title": "【新番速递】单部番抓取恢复",
+      "body": "FX战士久留美（绿茶字幕组）：该规则搜索已恢复。"
+    },
+    "37fd08170dd06eb0089f3aafe752f0954022d47780cb54197d6c4faecc65b18a": {
+      "rule_id": "__health__",
+      "title": "【新番速递】单部番抓取恢复",
+      "body": "某暗部的少女共栖（喵萌奶茶屋）：该规则搜索已恢复。"
+    },
+    "3242f0ebc54ac4ad567f08312c57bf588d778107b4a6261b0bfb870f1c30bfec": {
+      "rule_id": "__health__",
+      "title": "【新番速递】单部番抓取恢复",
+      "body": "学生会有洞（喵萌奶茶屋）：该规则搜索已恢复。"
+    }
+  },
   "health": {
-    "last_check": "2026-10-22T03:15:30+08:00",
-    "matched": 0,
-    "successful_sources": 0,
-    "failed_sources": 3,
-    "failures": 8,
-    "status": "failed",
-    "last_successful_check": "2026-10-22T02:35:32+08:00",
-    "last_delivery": "2026-10-19T13:20:28+08:00",
-    "alerted": true
+    "last_check": "2026-10-22T03:20:31+08:00",
+    "matched": 81,
+    "successful_sources": 5,
+    "failed_sources": 0,
+    "failures": 0,
+    "status": "ok",
+    "last_successful_check": "2026-10-22T03:20:31+08:00",
+    "last_delivery": "2026-10-19T13:20:28+08:00"
   },
   "primary_episodes": {
     "kurumi-lvcha|01": true,
@@ -156,34 +176,31 @@
   "fallback_waiting": {},
   "rule_health": {
     "kurumi-lvcha": {
-      "successful_sources": 0,
-      "failed_sources": 3,
-      "last_check": "2026-10-22T03:15:30+08:00",
+      "successful_sources": 1,
+      "failed_sources": 0,
+      "last_check": "2026-10-22T03:20:31+08:00",
       "ambiguous_episodes": [],
-      "failures": 8,
-      "status": "failed",
-      "last_successful_check": "2026-10-22T02:35:32+08:00",
-      "alerted": true
+      "failures": 0,
+      "status": "ok",
+      "last_successful_check": "2026-10-22T03:20:31+08:00"
     },
     "anbu-nekomoe": {
-      "successful_sources": 0,
-      "failed_sources": 3,
-      "last_check": "2026-10-22T03:15:30+08:00",
+      "successful_sources": 1,
+      "failed_sources": 0,
+      "last_check": "2026-10-22T03:20:31+08:00",
       "ambiguous_episodes": [],
-      "failures": 8,
-      "status": "failed",
-      "last_successful_check": "2026-10-22T02:35:32+08:00",
-      "alerted": true
+      "failures": 0,
+      "status": "ok",
+      "last_successful_check": "2026-10-22T03:20:31+08:00"
     },
     "seitokai-nekomoe": {
-      "successful_sources": 0,
-      "failed_sources": 3,
-      "last_check": "2026-10-22T03:15:30+08:00",
+      "successful_sources": 2,
+      "failed_sources": 0,
+      "last_check": "2026-10-22T03:20:31+08:00",
       "ambiguous_episodes": [],
-      "failures": 8,
-      "status": "failed",
-      "last_successful_check": "2026-10-22T02:35:32+08:00",
-      "alerted": true
+      "failures": 0,
+      "status": "ok",
+      "last_successful_check": "2026-10-22T03:20:31+08:00"
     }
   },
   "season_ambiguous": {},
