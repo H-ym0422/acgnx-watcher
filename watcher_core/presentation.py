@@ -8,6 +8,7 @@ def build_push_content(item: dict, rule: dict, prefix: str, upgrade: bool=False,
     name = rule.get('name') or item['title'][:60]
     rev = item.get('_rev', 1)
     if upgrade:
+        prefix = '【资源更新】'
         tag = '（修正版）' if rev > 1 else '（更优版本）'
     else:
         tag = ''

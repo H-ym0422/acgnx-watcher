@@ -91,7 +91,7 @@ class HealthSummaryTests(unittest.TestCase):
             for _ in range(6):
                 aw.run_cycle(cfg, self.state)
         self.assertEqual([call.args[0] for call in send.call_args_list],
-                         ['【新番速递】抓取异常', '【新番速递】抓取恢复'])
+                         ['【运行提醒】抓取异常', '【运行提醒】抓取恢复'])
         self.assertEqual(self.state['pending_notifications'], {})
         self.assertTrue(self.state['initialized'])
 
