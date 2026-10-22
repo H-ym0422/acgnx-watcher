@@ -13,7 +13,7 @@ def run_cycle(cfg: dict, state: dict, dry_run: bool=False, *, api) -> int:
     matched = api.collect(probe)
     if not dry_run:
         for title, body in api.health.update_alerts(state, matched, cfg.get('rules', []), settings.get('failure_alert_after', 3)):
-            api.enqueue_notification(state, '__health__', prefix + title, body)
+            api.enqueue_notification(state, '__health__', '【运行提醒】' + title, body)
         if not getattr(matched, 'available', True):
             pending_sent += api.deliver_pending(state, settings, rules=cfg.get('rules'), budget=budget)
             api.save_state(state)
