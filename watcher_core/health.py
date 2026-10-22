@@ -42,7 +42,7 @@ def update(state, result, threshold):
     return None
 
 
-def update_rules(state, result, rules, threshold):
+def update_rules(state, result, rules, threshold, notify=True):
     records = state.setdefault('rule_health', {})
     alerts = []
     active = {r['id']: r for r in rules if r.get('enabled', True)}
@@ -61,7 +61,7 @@ def update_rules(state, result, rules, threshold):
         if source['successful_sources'] == 0:
             record['failures'] = record.get('failures', 0) + 1
             record['status'] = 'failed'
-            if record['failures'] >= threshold and not record.get('alerted'):
+            if notify and record['failures'] >= threshold and not record.get('alerted'):
                 record['alerted'] = True
                 alerts.append((rid, '单部番抓取异常', f"{rule.get('name', rid)}：连续 {record['failures']} 次该规则的全部搜索失败；其他番的成功不会掩盖此故障。"))
         else:
@@ -72,3 +72,30 @@ def update_rules(state, result, rules, threshold):
             if recovering:
                 alerts.append((rid, '单部番抓取恢复', f"{rule.get('name', rid)}：该规则搜索已恢复。"))
     return alerts
+
+
+def update_alerts(state, result, rules, threshold):
+    transition = update(state, result, threshold)
+    available = getattr(result, 'available', True)
+    changes = update_rules(state, result, rules, threshold, notify=available)
+    active = [rule for rule in rules if rule.get('enabled', True)]
+    if not available:
+        if not transition:
+            return []
+        names = '、'.join(rule.get('name', rule['id']) for rule in active)
+        body = transition[1]
+        if names:
+            body += f'\n受影响番剧：{names}。'
+        return [(transition[0], body)]
+    if transition:
+        failed = [rule.get('name', rule['id']) for rule in active
+                  if state['rule_health'][rule['id']]['status'] == 'failed']
+        body = transition[1]
+        if failed:
+            body = '已恢复部分 RSS 抓取，继续检查可用资源。\n仍未恢复搜索的番剧：' + '、'.join(failed) + '。'
+        return [(transition[0], body)]
+    if len(changes) == 1:
+        return [(changes[0][1], changes[0][2])]
+    if changes:
+        return [('番剧抓取状态更新', '\n'.join(f'{title}：{body}' for _, title, body in changes))]
+    return []
