@@ -12,10 +12,7 @@ def run_cycle(cfg: dict, state: dict, dry_run: bool=False, *, api) -> int:
     probe = dict(cfg, _episode_maps=state.get('episode_maps', {}))
     matched = api.collect(probe)
     if not dry_run:
-        transition = api.health.update(state, matched, settings.get('failure_alert_after', 3))
-        if transition:
-            api.enqueue_notification(state, '__health__', prefix + transition[0], transition[1])
-        for (rid, title, body) in api.health.update_rules(state, matched, cfg.get('rules', []), settings.get('failure_alert_after', 3)):
+        for title, body in api.health.update_alerts(state, matched, cfg.get('rules', []), settings.get('failure_alert_after', 3)):
             api.enqueue_notification(state, '__health__', prefix + title, body)
         if not getattr(matched, 'available', True):
             pending_sent += api.deliver_pending(state, settings, rules=cfg.get('rules'), budget=budget)
