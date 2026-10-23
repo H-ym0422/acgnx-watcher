@@ -122,37 +122,7 @@
     }
   },
   "state_version": 1,
-  "pending_notifications": {
-    "7aac9f70856a1b42f1bfac90be8669913d52dc119c7799bc828e7a2d605eaf88": {
-      "rule_id": "anbu-nekomoe",
-      "title": "【新番速递】某暗部的少女共栖（喵萌奶茶屋）",
-      "body": "推送时间：2026年10月24日 05:25（北京时间）\n\n标题：【喵萌奶茶屋】★10月新番★[某暗部的少女共栖 / とある暗部の少女共棲 / Toaru Anbu no Item][03][1080p][简日双语]\n字幕组：喵萌奶茶屋\n字幕形式：简日双语\n集数：第 03 集\n大小：554.4MB\n发布：2026-10-24 05:22\n详情：https://share.acgnx.se/show-6ac540d6eb4bf7a16f4ac5055fa7a44e7d5b2465.html\n磁力：\nmagnet:?xt=urn:btih:6ac540d6eb4bf7a16f4ac5055fa7a44e7d5b2465&tr=http%3A%2F%2Fopentracker.acgnx.se%2Fannounce",
-      "source": {
-        "title": "【喵萌奶茶屋】★10月新番★[某暗部的少女共栖 / とある暗部の少女共棲 / Toaru Anbu no Item][03][1080p][简日双语]",
-        "author": "nekomoekissaten",
-        "category": "動畫",
-        "episode": "03",
-        "btih": "6ac540d6eb4bf7a16f4ac5055fa7a44e7d5b2465",
-        "magnet": "magnet:?xt=urn:btih:6ac540d6eb4bf7a16f4ac5055fa7a44e7d5b2465&tr=http%3A%2F%2Fopentracker.acgnx.se%2Fannounce",
-        "link": "https://share.acgnx.se/show-6ac540d6eb4bf7a16f4ac5055fa7a44e7d5b2465.html",
-        "size": "554.4MB",
-        "_tier": 0,
-        "_rev": 1,
-        "_seen": "0:1",
-        "_variant": "简日双语",
-        "_rid": "anbu-nekomoe",
-        "_fallback": false,
-        "pub_dt": "2026-10-24T05:22:00+08:00"
-      },
-      "rule_signature": "{\"allow_unmarked_season\": null, \"exclude_any\": [], \"fallback_any_group\": true, \"from_episode\": null, \"group\": [\"喵萌奶茶屋\", \"nekomoekissaten\"], \"include_any\": [\"暗部\"], \"keywords\": [\"暗部\"], \"season\": null, \"variant_prefer\": [\"简日双语\", \"简繁日内封\", \"简体\", \"简\"]}",
-      "delivery": {
-        "state_key": "anbu-nekomoe|03|喵萌奶茶屋",
-        "group": "喵萌奶茶屋",
-        "fallback": false,
-        "episode_known": true
-      }
-    }
-  },
+  "pending_notifications": {},
   "health": {
     "last_check": "2026-10-24T05:25:28+08:00",
     "matched": 82,
@@ -161,7 +131,7 @@
     "failures": 0,
     "status": "ok",
     "last_successful_check": "2026-10-24T05:25:28+08:00",
-    "last_delivery": "2026-10-23T09:50:32+08:00"
+    "last_delivery": "2026-10-24T05:25:33+08:00"
   },
   "primary_episodes": {
     "kurumi-lvcha|01": true,
@@ -253,6 +223,12 @@
       "fallback": false,
       "episode_known": true,
       "time": "2026-10-23T09:50:32+08:00"
+    },
+    "anbu-nekomoe|03|喵萌奶茶屋": {
+      "group": "喵萌奶茶屋",
+      "fallback": false,
+      "episode_known": true,
+      "time": "2026-10-24T05:25:33+08:00"
     }
   }
 }
