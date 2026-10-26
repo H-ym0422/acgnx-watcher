@@ -125,13 +125,13 @@
   "state_version": 1,
   "pending_notifications": {},
   "health": {
-    "last_check": "2026-10-26T11:30:28+08:00",
+    "last_check": "2026-10-26T11:35:25+08:00",
     "matched": 89,
     "successful_sources": 5,
     "failed_sources": 0,
     "failures": 0,
     "status": "ok",
-    "last_successful_check": "2026-10-26T11:30:28+08:00",
+    "last_successful_check": "2026-10-26T11:35:25+08:00",
     "last_delivery": "2026-10-25T23:45:32+08:00"
   },
   "primary_episodes": {
@@ -163,29 +163,29 @@
     "kurumi-lvcha": {
       "successful_sources": 1,
       "failed_sources": 0,
-      "last_check": "2026-10-26T11:30:28+08:00",
+      "last_check": "2026-10-26T11:35:25+08:00",
       "ambiguous_episodes": [],
       "failures": 0,
       "status": "ok",
-      "last_successful_check": "2026-10-26T11:30:28+08:00"
+      "last_successful_check": "2026-10-26T11:35:25+08:00"
     },
     "anbu-nekomoe": {
       "successful_sources": 1,
       "failed_sources": 0,
-      "last_check": "2026-10-26T11:30:28+08:00",
+      "last_check": "2026-10-26T11:35:25+08:00",
       "ambiguous_episodes": [],
       "failures": 0,
       "status": "ok",
-      "last_successful_check": "2026-10-26T11:30:28+08:00"
+      "last_successful_check": "2026-10-26T11:35:25+08:00"
     },
     "seitokai-nekomoe": {
       "successful_sources": 2,
       "failed_sources": 0,
-      "last_check": "2026-10-26T11:30:28+08:00",
+      "last_check": "2026-10-26T11:35:25+08:00",
       "ambiguous_episodes": [],
       "failures": 0,
       "status": "ok",
-      "last_successful_check": "2026-10-26T11:30:28+08:00"
+      "last_successful_check": "2026-10-26T11:35:25+08:00"
     }
   },
   "season_ambiguous": {},
