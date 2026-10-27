@@ -123,13 +123,7 @@
     }
   },
   "state_version": 1,
-  "pending_notifications": {
-    "7d42f05d35e9dcc339a5ceeeb2e1a762aaa374fb2239159d04915c1324b4e084": {
-      "rule_id": "__health__",
-      "title": "【运行提醒】抓取恢复",
-      "body": "已恢复有效 RSS 抓取，继续检查新资源。"
-    }
-  },
+  "pending_notifications": {},
   "health": {
     "last_check": "2026-10-27T12:30:27+08:00",
     "matched": 91,
