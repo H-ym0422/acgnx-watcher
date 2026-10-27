@@ -123,13 +123,7 @@
     }
   },
   "state_version": 1,
-  "pending_notifications": {
-    "d5c8c71d992a4413f36d0cdd9b9646d116c820e92643236815d50ebad2816206": {
-      "rule_id": "__health__",
-      "title": "【运行提醒】抓取异常",
-      "body": "连续 3 次未能取得有效 RSS；本轮没有推进初始化或去重基线。\n受影响番剧：FX战士久留美（绿茶字幕组）、某暗部的少女共栖（喵萌奶茶屋）、学生会有洞（喵萌奶茶屋）。"
-    }
-  },
+  "pending_notifications": {},
   "health": {
     "last_check": "2026-10-27T08:40:14+08:00",
     "matched": 0,
