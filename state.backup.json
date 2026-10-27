@@ -123,17 +123,22 @@
     }
   },
   "state_version": 1,
-  "pending_notifications": {},
+  "pending_notifications": {
+    "7d42f05d35e9dcc339a5ceeeb2e1a762aaa374fb2239159d04915c1324b4e084": {
+      "rule_id": "__health__",
+      "title": "【运行提醒】抓取恢复",
+      "body": "已恢复有效 RSS 抓取，继续检查新资源。"
+    }
+  },
   "health": {
-    "last_check": "2026-10-27T18:40:38+08:00",
-    "matched": 0,
-    "successful_sources": 0,
-    "failed_sources": 3,
-    "failures": 11,
-    "status": "failed",
-    "last_successful_check": "2026-10-27T17:45:29+08:00",
-    "last_delivery": "2026-10-25T23:45:32+08:00",
-    "alerted": true
+    "last_check": "2026-10-27T18:45:27+08:00",
+    "matched": 91,
+    "successful_sources": 5,
+    "failed_sources": 0,
+    "failures": 0,
+    "status": "ok",
+    "last_successful_check": "2026-10-27T18:45:27+08:00",
+    "last_delivery": "2026-10-25T23:45:32+08:00"
   },
   "primary_episodes": {
     "kurumi-lvcha|01": true,
@@ -162,31 +167,31 @@
   "fallback_waiting": {},
   "rule_health": {
     "kurumi-lvcha": {
-      "successful_sources": 0,
-      "failed_sources": 3,
-      "last_check": "2026-10-27T18:40:38+08:00",
+      "successful_sources": 1,
+      "failed_sources": 0,
+      "last_check": "2026-10-27T18:45:27+08:00",
       "ambiguous_episodes": [],
-      "failures": 11,
-      "status": "failed",
-      "last_successful_check": "2026-10-27T17:45:29+08:00"
+      "failures": 0,
+      "status": "ok",
+      "last_successful_check": "2026-10-27T18:45:27+08:00"
     },
     "anbu-nekomoe": {
-      "successful_sources": 0,
-      "failed_sources": 3,
-      "last_check": "2026-10-27T18:40:38+08:00",
+      "successful_sources": 1,
+      "failed_sources": 0,
+      "last_check": "2026-10-27T18:45:27+08:00",
       "ambiguous_episodes": [],
-      "failures": 11,
-      "status": "failed",
-      "last_successful_check": "2026-10-27T17:45:29+08:00"
+      "failures": 0,
+      "status": "ok",
+      "last_successful_check": "2026-10-27T18:45:27+08:00"
     },
     "seitokai-nekomoe": {
-      "successful_sources": 0,
-      "failed_sources": 3,
-      "last_check": "2026-10-27T18:40:38+08:00",
+      "successful_sources": 2,
+      "failed_sources": 0,
+      "last_check": "2026-10-27T18:45:27+08:00",
       "ambiguous_episodes": [],
-      "failures": 11,
-      "status": "failed",
-      "last_successful_check": "2026-10-27T17:45:29+08:00"
+      "failures": 0,
+      "status": "ok",
+      "last_successful_check": "2026-10-27T18:45:27+08:00"
     }
   },
   "season_ambiguous": {},
