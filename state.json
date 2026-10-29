@@ -125,13 +125,13 @@
   "state_version": 1,
   "pending_notifications": {},
   "health": {
-    "last_check": "2026-10-30T02:35:31+08:00",
-    "matched": 91,
+    "last_check": "2026-10-30T02:40:32+08:00",
+    "matched": 92,
     "successful_sources": 5,
     "failed_sources": 0,
     "failures": 0,
     "status": "ok",
-    "last_successful_check": "2026-10-30T02:35:31+08:00",
+    "last_successful_check": "2026-10-30T02:40:32+08:00",
     "last_delivery": "2026-10-25T23:45:32+08:00"
   },
   "primary_episodes": {
@@ -163,21 +163,21 @@
       "first_seen": "2026-10-29T12:35:30.570880+00:00",
       "signature": "{\"allow_unmarked_season\": null, \"exclude_any\": [], \"fallback_any_group\": true, \"from_episode\": null, \"group\": [\"绿茶字幕组\", \"绿茶发布机\"], \"include_any\": [\"久留美\"], \"keywords\": [\"久留美\"], \"season\": null, \"variant_prefer\": [\"简繁日内封\", \"简日内嵌\", \"简日双语\", \"简体\", \"简\"]}",
       "candidate": {
-        "title": "[黒ネズミたち] FX 戰士久留美 / FX Senshi Kurumi-chan - 05 (ABEMA 1920x1080 AVC AAC MKV)",
-        "author": "TrySail",
+        "title": "[ToonsHub] FX战士久留美 / FX Fighter Kurumi-chan - 05 [AMZN][1080P][CHS&CHT&JP&EN][MKV]",
+        "author": "華盟RIP鏡像",
         "category": "動畫",
         "episode": "05",
-        "btih": "30b01be959d84502cd1ab20db2a0cb10bffe7c30",
-        "magnet": "magnet:?xt=urn:btih:30b01be959d84502cd1ab20db2a0cb10bffe7c30",
-        "link": "https://share.acgnx.se/show-30b01be959d84502cd1ab20db2a0cb10bffe7c30.html",
-        "size": "713.8MB",
+        "btih": "c9b8bd9be2317bdb7809d83eca97fc668b29fb44",
+        "magnet": "magnet:?xt=urn:btih:c9b8bd9be2317bdb7809d83eca97fc668b29fb44",
+        "link": "https://share.acgnx.se/show-c9b8bd9be2317bdb7809d83eca97fc668b29fb44.html",
+        "size": "679.3MB",
         "_tier": 999,
         "_rev": 1,
         "_seen": "999:1",
-        "_variant": "",
+        "_variant": "CHS&CHT&JP&EN",
         "_rid": "kurumi-lvcha",
         "_fallback": true,
-        "pub_dt": "2026-10-29T23:13:43+08:00"
+        "pub_dt": "2026-10-30T02:02:12+08:00"
       },
       "ready": false
     }
@@ -186,29 +186,29 @@
     "kurumi-lvcha": {
       "successful_sources": 1,
       "failed_sources": 0,
-      "last_check": "2026-10-30T02:35:31+08:00",
+      "last_check": "2026-10-30T02:40:32+08:00",
       "ambiguous_episodes": [],
       "failures": 0,
       "status": "ok",
-      "last_successful_check": "2026-10-30T02:35:31+08:00"
+      "last_successful_check": "2026-10-30T02:40:32+08:00"
     },
     "anbu-nekomoe": {
       "successful_sources": 1,
       "failed_sources": 0,
-      "last_check": "2026-10-30T02:35:31+08:00",
+      "last_check": "2026-10-30T02:40:32+08:00",
       "ambiguous_episodes": [],
       "failures": 0,
       "status": "ok",
-      "last_successful_check": "2026-10-30T02:35:31+08:00"
+      "last_successful_check": "2026-10-30T02:40:32+08:00"
     },
     "seitokai-nekomoe": {
       "successful_sources": 2,
       "failed_sources": 0,
-      "last_check": "2026-10-30T02:35:31+08:00",
+      "last_check": "2026-10-30T02:40:32+08:00",
       "ambiguous_episodes": [],
       "failures": 0,
       "status": "ok",
-      "last_successful_check": "2026-10-30T02:35:31+08:00"
+      "last_successful_check": "2026-10-30T02:40:32+08:00"
     }
   },
   "season_ambiguous": {},
