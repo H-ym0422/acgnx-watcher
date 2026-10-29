@@ -125,13 +125,13 @@
   "state_version": 1,
   "pending_notifications": {},
   "health": {
-    "last_check": "2026-10-29T23:24:09+08:00",
-    "matched": 36,
-    "successful_sources": 2,
-    "failed_sources": 3,
+    "last_check": "2026-10-29T23:25:29+08:00",
+    "matched": 91,
+    "successful_sources": 5,
+    "failed_sources": 0,
     "failures": 0,
-    "status": "partial",
-    "last_successful_check": "2026-10-29T23:24:09+08:00",
+    "status": "ok",
+    "last_successful_check": "2026-10-29T23:25:29+08:00",
     "last_delivery": "2026-10-25T23:45:32+08:00"
   },
   "primary_episodes": {
@@ -186,29 +186,29 @@
     "kurumi-lvcha": {
       "successful_sources": 1,
       "failed_sources": 0,
-      "last_check": "2026-10-29T23:24:09+08:00",
+      "last_check": "2026-10-29T23:25:29+08:00",
       "ambiguous_episodes": [],
       "failures": 0,
       "status": "ok",
-      "last_successful_check": "2026-10-29T23:24:09+08:00"
+      "last_successful_check": "2026-10-29T23:25:29+08:00"
     },
     "anbu-nekomoe": {
-      "successful_sources": 0,
-      "failed_sources": 1,
-      "last_check": "2026-10-29T23:24:09+08:00",
+      "successful_sources": 1,
+      "failed_sources": 0,
+      "last_check": "2026-10-29T23:25:29+08:00",
       "ambiguous_episodes": [],
-      "failures": 1,
-      "status": "failed",
-      "last_successful_check": "2026-10-29T23:21:56+08:00"
+      "failures": 0,
+      "status": "ok",
+      "last_successful_check": "2026-10-29T23:25:29+08:00"
     },
     "seitokai-nekomoe": {
-      "successful_sources": 0,
-      "failed_sources": 2,
-      "last_check": "2026-10-29T23:24:09+08:00",
+      "successful_sources": 2,
+      "failed_sources": 0,
+      "last_check": "2026-10-29T23:25:29+08:00",
       "ambiguous_episodes": [],
-      "failures": 2,
-      "status": "failed",
-      "last_successful_check": "2026-10-29T23:17:30+08:00"
+      "failures": 0,
+      "status": "ok",
+      "last_successful_check": "2026-10-29T23:25:29+08:00"
     }
   },
   "season_ambiguous": {},
