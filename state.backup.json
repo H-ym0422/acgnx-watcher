@@ -123,13 +123,7 @@
     }
   },
   "state_version": 1,
-  "pending_notifications": {
-    "5535bca4d9afe5d8766b06e6200e01715b3ba879408d4c1ae890c6c3726a87c1": {
-      "rule_id": "__health__",
-      "title": "【运行提醒】番剧搜索状态更新",
-      "body": "单部番搜索恢复：FX战士久留美（绿茶字幕组）：RSS 搜索已恢复。\n单部番搜索恢复：某暗部的少女共栖（喵萌奶茶屋）：RSS 搜索已恢复。\n单部番搜索恢复：学生会有洞（喵萌奶茶屋）：RSS 搜索已恢复。\n最新资源流仍可用；以上为关键词搜索状态，不代表整个网站不可用。"
-    }
-  },
+  "pending_notifications": {},
   "health": {
     "last_check": "2026-10-31T00:05:33+08:00",
     "matched": 92,
