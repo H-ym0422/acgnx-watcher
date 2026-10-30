@@ -5,7 +5,7 @@ ACGNX 新番发布实时监听器
 =========================================================================
 数据源：末日動漫資源庫 (Project AcgnX Torrent)
     最新发布流   https://share.acgnx.cc/rss.xml
-    关键词搜索   https://share.acgnx.cc/topics/rss/rss.xml?keyword=xxx
+    关键词搜索   https://share.acgnx.cc/rss.xml?keyword=xxx
 
 为什么用 .cc 而不是 .se：
     官方主域名 share.acgnx.se 在国内已被 DNS 污染（解析到 Facebook 的 IP），

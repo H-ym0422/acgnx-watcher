@@ -3,12 +3,14 @@ from datetime import datetime, timezone, timedelta
 
 
 class CollectionResult(list):
-    def __init__(self, items=(), successful_sources=0, failed_sources=0, rule_sources=None, ambiguous=None):
+    def __init__(self, items=(), successful_sources=0, failed_sources=0, rule_sources=None, ambiguous=None,
+                 global_feed_available=False):
         super().__init__(items)
         self.successful_sources = successful_sources
         self.failed_sources = failed_sources
         self.rule_sources = rule_sources or {}
         self.ambiguous = ambiguous or {}
+        self.global_feed_available = global_feed_available
 
     @property
     def available(self):
@@ -63,14 +65,14 @@ def update_rules(state, result, rules, threshold, notify=True):
             record['status'] = 'failed'
             if notify and record['failures'] >= threshold and not record.get('alerted'):
                 record['alerted'] = True
-                alerts.append((rid, '单部番抓取异常', f"{rule.get('name', rid)}：连续 {record['failures']} 次该规则的全部搜索失败；其他番的成功不会掩盖此故障。"))
+                alerts.append((rid, '单部番搜索异常', f"{rule.get('name', rid)}：连续 {record['failures']} 次未取得有效 RSS 搜索结果；查询、选组及历史补抓受影响，新集检索可能不完整。"))
         else:
             recovering = record.pop('alerted', False)
             record['failures'] = 0
             record['status'] = 'needs_confirmation' if ambiguous else ('partial' if source['failed_sources'] else 'ok')
             record['last_successful_check'] = record['last_check']
             if recovering:
-                alerts.append((rid, '单部番抓取恢复', f"{rule.get('name', rid)}：该规则搜索已恢复。"))
+                alerts.append((rid, '单部番搜索恢复', f"{rule.get('name', rid)}：RSS 搜索已恢复。"))
     return alerts
 
 
@@ -95,7 +97,13 @@ def update_alerts(state, result, rules, threshold):
             body = '已恢复部分 RSS 抓取，继续检查可用资源。\n仍未恢复搜索的番剧：' + '、'.join(failed) + '。'
         return [(transition[0], body)]
     if len(changes) == 1:
-        return [(changes[0][1], changes[0][2])]
+        body = changes[0][2]
+        if getattr(result, 'global_feed_available', False):
+            body += '\n最新资源流仍可用；搜索失败不代表字幕组没有更新。'
+        return [(changes[0][1], body)]
     if changes:
-        return [('番剧抓取状态更新', '\n'.join(f'{title}：{body}' for _, title, body in changes))]
+        body = '\n'.join(f'{title}：{body}' for _, title, body in changes)
+        if getattr(result, 'global_feed_available', False):
+            body += '\n最新资源流仍可用；以上为关键词搜索状态，不代表整个网站不可用。'
+        return [('番剧搜索状态更新', body)]
     return []

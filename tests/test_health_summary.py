@@ -43,10 +43,10 @@ class HealthSummaryTests(unittest.TestCase):
         for _ in range(2):
             self.assertEqual(self.update(self.result(('a',))), [])
         alerts = self.update(self.result(('a',)))
-        self.assertEqual(alerts[0][0], '单部番抓取异常')
+        self.assertEqual(alerts[0][0], '单部番搜索异常')
         self.assertIn('番剧甲', alerts[0][1])
         self.assertEqual(self.update(self.result(('a',))), [])
-        self.assertEqual(self.update(self.result())[0][0], '单部番抓取恢复')
+        self.assertEqual(self.update(self.result())[0][0], '单部番搜索恢复')
 
     def test_multiple_rule_failures_and_recoveries_are_merged(self):
         for _ in range(2):
@@ -67,14 +67,14 @@ class HealthSummaryTests(unittest.TestCase):
         self.assertIn('仍未恢复搜索的番剧：番剧甲', alerts[0][1])
         self.assertEqual(self.state['rule_health']['a']['status'], 'failed')
         self.assertEqual(self.update(self.result(('a',))), [])
-        self.assertEqual(self.update(self.result())[0][0], '单部番抓取恢复')
+        self.assertEqual(self.update(self.result())[0][0], '单部番搜索恢复')
 
     def test_brief_global_outage_does_not_hide_independent_failure(self):
         for _ in range(2):
             self.update(self.result(('a',)))
         self.assertEqual(self.update(self.outage()), [])
         alerts = self.update(self.result(('a',)))
-        self.assertEqual(alerts[0][0], '单部番抓取异常')
+        self.assertEqual(alerts[0][0], '单部番搜索异常')
 
     def test_legacy_alerted_rules_do_not_fan_out_on_global_recovery(self):
         for _ in range(3):

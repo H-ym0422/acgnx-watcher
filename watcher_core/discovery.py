@@ -1,6 +1,7 @@
 """Search releases and build stable group-selection surveys and rules."""
 from __future__ import annotations
 from .subtitle_summary import subtitle_lines
+from .rss_search import fetch_search_feed
 
 
 def search(term: str, *, api) -> list[dict]:
@@ -19,12 +20,18 @@ def search(term: str, *, api) -> list[dict]:
         print('❌ 所有镜像都连不上，检查一下网络。')
         return []
     merged: dict[str, dict] = {}
+    successful_queries = 0
     for kw in api._search_variants(term):
-        path = '/topics/rss/rss.xml?keyword=' + api.urllib.parse.quote(kw)
-        for it in api.aw.parse_feed(api.aw.http_get(base + path, timeout=15, retry=2) or ''):
+        body = fetch_search_feed(base, kw, api=api.aw)
+        if body is None:
+            continue
+        successful_queries += 1
+        for it in api.aw.parse_feed(body):
             merged.setdefault(it['btih'], it)
         if len(merged) >= 400:
             break
+    if not successful_queries:
+        raise RuntimeError('RSS 搜索接口不可用，无法查询资源或生成字幕组清单；这不代表没有资源，请稍后重试')
     return list(merged.values())
 
 
