@@ -123,15 +123,21 @@
     }
   },
   "state_version": 1,
-  "pending_notifications": {},
+  "pending_notifications": {
+    "b0e42273d08d32ef3809bb72bbe3586f143e292908b0d9fea75b0bbc81a49a60": {
+      "rule_id": "__health__",
+      "title": "【运行提醒】番剧抓取状态更新",
+      "body": "单部番抓取异常：FX战士久留美（绿茶字幕组）：连续 3 次该规则的全部搜索失败；其他番的成功不会掩盖此故障。\n单部番抓取异常：某暗部的少女共栖（喵萌奶茶屋）：连续 3 次该规则的全部搜索失败；其他番的成功不会掩盖此故障。\n单部番抓取异常：学生会有洞（喵萌奶茶屋）：连续 3 次该规则的全部搜索失败；其他番的成功不会掩盖此故障。"
+    }
+  },
   "health": {
-    "last_check": "2026-10-30T17:10:40+08:00",
+    "last_check": "2026-10-30T17:15:38+08:00",
     "matched": 3,
     "successful_sources": 1,
     "failed_sources": 4,
     "failures": 0,
     "status": "partial",
-    "last_successful_check": "2026-10-30T17:10:40+08:00",
+    "last_successful_check": "2026-10-30T17:15:38+08:00",
     "last_delivery": "2026-10-25T23:45:32+08:00"
   },
   "primary_episodes": {
@@ -186,29 +192,32 @@
     "kurumi-lvcha": {
       "successful_sources": 0,
       "failed_sources": 1,
-      "last_check": "2026-10-30T17:10:40+08:00",
+      "last_check": "2026-10-30T17:15:38+08:00",
       "ambiguous_episodes": [],
-      "failures": 2,
+      "failures": 3,
       "status": "failed",
-      "last_successful_check": "2026-10-30T17:00:27+08:00"
+      "last_successful_check": "2026-10-30T17:00:27+08:00",
+      "alerted": true
     },
     "anbu-nekomoe": {
       "successful_sources": 0,
       "failed_sources": 1,
-      "last_check": "2026-10-30T17:10:40+08:00",
+      "last_check": "2026-10-30T17:15:38+08:00",
       "ambiguous_episodes": [],
-      "failures": 2,
+      "failures": 3,
       "status": "failed",
-      "last_successful_check": "2026-10-30T17:00:27+08:00"
+      "last_successful_check": "2026-10-30T17:00:27+08:00",
+      "alerted": true
     },
     "seitokai-nekomoe": {
       "successful_sources": 0,
       "failed_sources": 2,
-      "last_check": "2026-10-30T17:10:40+08:00",
+      "last_check": "2026-10-30T17:15:38+08:00",
       "ambiguous_episodes": [],
-      "failures": 2,
+      "failures": 3,
       "status": "failed",
-      "last_successful_check": "2026-10-30T17:00:27+08:00"
+      "last_successful_check": "2026-10-30T17:00:27+08:00",
+      "alerted": true
     }
   },
   "season_ambiguous": {},
