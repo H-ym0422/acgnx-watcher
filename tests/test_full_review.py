@@ -262,7 +262,7 @@ class MonitoringTests(unittest.TestCase):
         self.assertEqual(health.update_rules(state, result, rules, 2), [])
         recovered = health.CollectionResult(successful_sources=2, rule_sources={
             'a': {'successful_sources': 1, 'failed_sources': 0}, 'b': {'successful_sources': 1, 'failed_sources': 0}})
-        self.assertEqual(health.update_rules(state, recovered, rules, 2)[0][1], '单部番抓取恢复')
+        self.assertEqual(health.update_rules(state, recovered, rules, 2)[0][1], '单部番搜索恢复')
         self.assertEqual(health.update_rules(state, recovered, rules, 2), [])
 
     def test_ambiguous_quarter_is_visible_in_rule_health(self):

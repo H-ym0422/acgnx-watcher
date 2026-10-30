@@ -35,6 +35,7 @@ python check_workflows.py --require-bash
 | watcher_core/outbox_policy.py | 发送前按当前规则重新验证，季度不明时暂缓 |
 | watcher_core/remote_checkpoint.py | Actions main 的远端队列／收据检查点 |
 | watcher_core/send_budget.py | 重试与新通知共享发送数量和时间预算 |
+| watcher_core/rss_search.py | 新旧关键词 RSS 入口、镜像切换和响应有效性校验 |
 | watcher_core/collection.py | 双路抓取、逐规则源统计和季度证据 |
 | watcher_core/cycle.py | 一轮采集、筛选、等待和队列调度 |
 | watcher_core/outbox.py | 持久队列发送及逐条收据 |

@@ -1,5 +1,6 @@
 """Fetch RSS sources, match rules and report per-rule source health."""
 from __future__ import annotations
+from .rss_search import fetch_search_feed
 
 
 def collect(cfg: dict, *, api) -> list[dict]:
@@ -12,6 +13,7 @@ def collect(cfg: dict, *, api) -> list[dict]:
         return api.health.CollectionResult(failed_sources=len(api.BASES))
     successful_sources = 0
     failed_sources = 0
+    global_feed_available = False
     timeout = int(s.get('request_timeout', 15))
     retry = int(s.get('retry', 2))
     proxy = (s.get('proxy') or '').strip()
@@ -19,6 +21,7 @@ def collect(cfg: dict, *, api) -> list[dict]:
     if s.get('watch_global_feed', True) and feed_body:
         if api.valid_feed(feed_body):
             successful_sources += 1
+            global_feed_available = True
         else:
             failed_sources += 1
         for it in api.parse_feed(feed_body):
@@ -46,22 +49,16 @@ def collect(cfg: dict, *, api) -> list[dict]:
                 if q in seen_kw:
                     continue
                 seen_kw.add(q)
-                path = '/topics/rss/rss.xml?keyword=' + api.urllib.parse.quote(q)
-                body = api.http_get(base + path, timeout=timeout, retry=retry, proxy=proxy)
-                if body is None:
-                    for alt in api.BASES:
-                        if alt == base:
-                            continue
-                        body = api.http_get(alt + path, timeout=timeout, retry=1, proxy=proxy)
-                        if body:
-                            break
+                body = fetch_search_feed(base, q, timeout, retry, proxy, api=api)
                 query_health[q] = api.valid_feed(body)
                 if api.valid_feed(body):
                     successful_sources += 1
                 else:
                     failed_sources += 1
                 got = api.parse_feed(body or '')
-                if not got and q == kw:
+                if body is None:
+                    api.log.warning('关键词「%s」RSS 搜索失败：未获得有效订阅，不能视为没有资源', q)
+                elif not got and q == kw:
                     api.log.info('关键词「%s」本轮返回 0 条（站点偶发空结果，下轮重试）', kw)
                 for it in got:
                     if it['btih'] in all_items:
@@ -118,4 +115,5 @@ def collect(cfg: dict, *, api) -> list[dict]:
     for r in rules:
         if not rule_queries.get(r['id']):
             per_rule[r['id']] = {'successful_sources': successful_sources, 'failed_sources': failed_sources}
-    return api.health.CollectionResult(uniq.values(), successful_sources, failed_sources, per_rule, ambiguous)
+    return api.health.CollectionResult(uniq.values(), successful_sources, failed_sources, per_rule, ambiguous,
+                                       global_feed_available=global_feed_available)
