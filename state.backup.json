@@ -123,15 +123,21 @@
     }
   },
   "state_version": 1,
-  "pending_notifications": {},
+  "pending_notifications": {
+    "5535bca4d9afe5d8766b06e6200e01715b3ba879408d4c1ae890c6c3726a87c1": {
+      "rule_id": "__health__",
+      "title": "【运行提醒】番剧搜索状态更新",
+      "body": "单部番搜索恢复：FX战士久留美（绿茶字幕组）：RSS 搜索已恢复。\n单部番搜索恢复：某暗部的少女共栖（喵萌奶茶屋）：RSS 搜索已恢复。\n单部番搜索恢复：学生会有洞（喵萌奶茶屋）：RSS 搜索已恢复。\n最新资源流仍可用；以上为关键词搜索状态，不代表整个网站不可用。"
+    }
+  },
   "health": {
-    "last_check": "2026-10-31T00:00:40+08:00",
-    "matched": 1,
-    "successful_sources": 1,
-    "failed_sources": 4,
+    "last_check": "2026-10-31T00:05:33+08:00",
+    "matched": 92,
+    "successful_sources": 5,
+    "failed_sources": 0,
     "failures": 0,
-    "status": "partial",
-    "last_successful_check": "2026-10-31T00:00:40+08:00",
+    "status": "ok",
+    "last_successful_check": "2026-10-31T00:05:33+08:00",
     "last_delivery": "2026-10-25T23:45:32+08:00"
   },
   "primary_episodes": {
@@ -184,34 +190,31 @@
   },
   "rule_health": {
     "kurumi-lvcha": {
-      "successful_sources": 0,
-      "failed_sources": 1,
-      "last_check": "2026-10-31T00:00:40+08:00",
+      "successful_sources": 1,
+      "failed_sources": 0,
+      "last_check": "2026-10-31T00:05:33+08:00",
       "ambiguous_episodes": [],
-      "failures": 84,
-      "status": "failed",
-      "last_successful_check": "2026-10-30T17:00:27+08:00",
-      "alerted": true
+      "failures": 0,
+      "status": "ok",
+      "last_successful_check": "2026-10-31T00:05:33+08:00"
     },
     "anbu-nekomoe": {
-      "successful_sources": 0,
-      "failed_sources": 1,
-      "last_check": "2026-10-31T00:00:40+08:00",
+      "successful_sources": 1,
+      "failed_sources": 0,
+      "last_check": "2026-10-31T00:05:33+08:00",
       "ambiguous_episodes": [],
-      "failures": 84,
-      "status": "failed",
-      "last_successful_check": "2026-10-30T17:00:27+08:00",
-      "alerted": true
+      "failures": 0,
+      "status": "ok",
+      "last_successful_check": "2026-10-31T00:05:33+08:00"
     },
     "seitokai-nekomoe": {
-      "successful_sources": 0,
-      "failed_sources": 2,
-      "last_check": "2026-10-31T00:00:40+08:00",
+      "successful_sources": 2,
+      "failed_sources": 0,
+      "last_check": "2026-10-31T00:05:33+08:00",
       "ambiguous_episodes": [],
-      "failures": 84,
-      "status": "failed",
-      "last_successful_check": "2026-10-30T17:00:27+08:00",
-      "alerted": true
+      "failures": 0,
+      "status": "ok",
+      "last_successful_check": "2026-10-31T00:05:33+08:00"
     }
   },
   "season_ambiguous": {},
