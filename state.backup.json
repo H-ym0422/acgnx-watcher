@@ -59,7 +59,7 @@
     "kurumi-lvcha|01|TSDM字幕组": "2:1",
     "seitokai-nekomoe|03|黒ネズミたち": "999:1",
     "seitokai-nekomoe|03|喵萌奶茶屋": "0:1",
-    "kurumi-lvcha|04|绿茶字幕组": "1:1",
+    "kurumi-lvcha|04|绿茶字幕组": "0:1",
     "anbu-nekomoe|03|喵萌奶茶屋": "0:1",
     "seitokai-nekomoe|04|喵萌奶茶屋": "0:1"
   },
@@ -123,15 +123,45 @@
     }
   },
   "state_version": 1,
-  "pending_notifications": {},
+  "pending_notifications": {
+    "300fdb2bd88181f1849c51e3cd91f003568dbdc6bc53049d6a36993c16c7ac6a": {
+      "rule_id": "kurumi-lvcha",
+      "title": "【资源更新】（更优版本）FX战士久留美（绿茶字幕组）",
+      "body": "推送时间：2026年10月31日 09:35（北京时间）\n\n标题：[绿茶字幕组] FX战士久留美 / FX Senshi Kurumi-chan [04][WebRip][1080p][简繁日内封]\n字幕组：绿茶字幕组\n字幕形式：简繁日内封\n集数：第 04 集\n大小：451.6MB\n发布：2026-10-31 09:27\n详情：https://share.acgnx.se/show-9715a7cf235e4f89aa6963d70608f557ef2c4cec.html\n磁力：\nmagnet:?xt=urn:btih:9715a7cf235e4f89aa6963d70608f557ef2c4cec",
+      "source": {
+        "title": "[绿茶字幕组] FX战士久留美 / FX Senshi Kurumi-chan [04][WebRip][1080p][简繁日内封]",
+        "author": "绿茶发布机",
+        "category": "動畫",
+        "episode": "04",
+        "btih": "9715a7cf235e4f89aa6963d70608f557ef2c4cec",
+        "magnet": "magnet:?xt=urn:btih:9715a7cf235e4f89aa6963d70608f557ef2c4cec",
+        "link": "https://share.acgnx.se/show-9715a7cf235e4f89aa6963d70608f557ef2c4cec.html",
+        "size": "451.6MB",
+        "_tier": 0,
+        "_rev": 1,
+        "_seen": "0:1",
+        "_variant": "简繁日内封",
+        "_rid": "kurumi-lvcha",
+        "_fallback": false,
+        "pub_dt": "2026-10-31T09:27:55+08:00"
+      },
+      "rule_signature": "{\"allow_unmarked_season\": null, \"exclude_any\": [], \"fallback_any_group\": true, \"from_episode\": null, \"group\": [\"绿茶字幕组\", \"绿茶发布机\"], \"include_any\": [\"久留美\"], \"keywords\": [\"久留美\"], \"season\": null, \"variant_prefer\": [\"简繁日内封\", \"简日内嵌\", \"简日双语\", \"简体\", \"简\"]}",
+      "delivery": {
+        "state_key": "kurumi-lvcha|04|绿茶字幕组",
+        "group": "绿茶字幕组",
+        "fallback": false,
+        "episode_known": true
+      }
+    }
+  },
   "health": {
-    "last_check": "2026-10-31T09:30:30+08:00",
-    "matched": 94,
+    "last_check": "2026-10-31T09:35:30+08:00",
+    "matched": 95,
     "successful_sources": 5,
     "failed_sources": 0,
     "failures": 0,
     "status": "ok",
-    "last_successful_check": "2026-10-31T09:30:30+08:00",
+    "last_successful_check": "2026-10-31T09:35:30+08:00",
     "last_delivery": "2026-10-25T23:45:32+08:00"
   },
   "primary_episodes": {
@@ -208,29 +238,29 @@
     "kurumi-lvcha": {
       "successful_sources": 1,
       "failed_sources": 0,
-      "last_check": "2026-10-31T09:30:30+08:00",
+      "last_check": "2026-10-31T09:35:30+08:00",
       "ambiguous_episodes": [],
       "failures": 0,
       "status": "ok",
-      "last_successful_check": "2026-10-31T09:30:30+08:00"
+      "last_successful_check": "2026-10-31T09:35:30+08:00"
     },
     "anbu-nekomoe": {
       "successful_sources": 1,
       "failed_sources": 0,
-      "last_check": "2026-10-31T09:30:30+08:00",
+      "last_check": "2026-10-31T09:35:30+08:00",
       "ambiguous_episodes": [],
       "failures": 0,
       "status": "ok",
-      "last_successful_check": "2026-10-31T09:30:30+08:00"
+      "last_successful_check": "2026-10-31T09:35:30+08:00"
     },
     "seitokai-nekomoe": {
       "successful_sources": 2,
       "failed_sources": 0,
-      "last_check": "2026-10-31T09:30:30+08:00",
+      "last_check": "2026-10-31T09:35:30+08:00",
       "ambiguous_episodes": [],
       "failures": 0,
       "status": "ok",
-      "last_successful_check": "2026-10-31T09:30:30+08:00"
+      "last_successful_check": "2026-10-31T09:35:30+08:00"
     }
   },
   "season_ambiguous": {},
