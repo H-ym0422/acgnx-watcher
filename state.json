@@ -125,37 +125,7 @@
     }
   },
   "state_version": 1,
-  "pending_notifications": {
-    "84b61ef44c473f4e821fb9c843121312caab3e055a6cb3a4710f9cbad4e9efbb": {
-      "rule_id": "seitokai-nekomoe",
-      "title": "【新番速递】学生会有洞（喵萌奶茶屋）",
-      "body": "推送时间：2026年11月02日 00:40（北京时间）\n\n标题：【喵萌奶茶屋】★10月新番★[学生会也有洞 / Seitokai ni mo Ana wa Aru!][05][1080p][简日双语]\n字幕组：喵萌奶茶屋\n字幕形式：简日双语\n集数：第 05 集\n大小：385.2MB\n发布：2026-11-02 00:38\n详情：https://share.acgnx.se/show-863e6969443dfc5151e55287381f3ea6eda6ce64.html\n磁力：\nmagnet:?xt=urn:btih:863e6969443dfc5151e55287381f3ea6eda6ce64",
-      "source": {
-        "title": "【喵萌奶茶屋】★10月新番★[学生会也有洞 / Seitokai ni mo Ana wa Aru!][05][1080p][简日双语]",
-        "author": "nekomoekissaten",
-        "category": "動畫",
-        "episode": "05",
-        "btih": "863e6969443dfc5151e55287381f3ea6eda6ce64",
-        "magnet": "magnet:?xt=urn:btih:863e6969443dfc5151e55287381f3ea6eda6ce64",
-        "link": "https://share.acgnx.se/show-863e6969443dfc5151e55287381f3ea6eda6ce64.html",
-        "size": "385.2MB",
-        "_tier": 0,
-        "_rev": 1,
-        "_seen": "0:1",
-        "_variant": "简日双语",
-        "_rid": "seitokai-nekomoe",
-        "_fallback": false,
-        "pub_dt": "2026-11-02T00:38:08+08:00"
-      },
-      "rule_signature": "{\"allow_unmarked_season\": null, \"exclude_any\": [], \"fallback_any_group\": true, \"from_episode\": null, \"group\": [\"喵萌奶茶屋\", \"nekomoekissaten\"], \"include_any\": [\"学生会有洞\", \"也有洞\", \"seitokainimoana\"], \"keywords\": [\"Seitokai\", \"学生会\"], \"season\": null, \"variant_prefer\": [\"简日双语\", \"简繁日内封\", \"简体\", \"简\"]}",
-      "delivery": {
-        "state_key": "seitokai-nekomoe|05|喵萌奶茶屋",
-        "group": "喵萌奶茶屋",
-        "fallback": false,
-        "episode_known": true
-      }
-    }
-  },
+  "pending_notifications": {},
   "health": {
     "last_check": "2026-11-02T00:40:27+08:00",
     "matched": 96,
@@ -164,7 +134,7 @@
     "failures": 0,
     "status": "ok",
     "last_successful_check": "2026-11-02T00:40:27+08:00",
-    "last_delivery": "2026-10-31T18:45:34+08:00"
+    "last_delivery": "2026-11-02T00:40:32+08:00"
   },
   "primary_episodes": {
     "kurumi-lvcha|01": true,
@@ -306,6 +276,12 @@
       "fallback": false,
       "episode_known": true,
       "time": "2026-10-31T18:45:34+08:00"
+    },
+    "seitokai-nekomoe|05|喵萌奶茶屋": {
+      "group": "喵萌奶茶屋",
+      "fallback": false,
+      "episode_known": true,
+      "time": "2026-11-02T00:40:32+08:00"
     }
   }
 }
