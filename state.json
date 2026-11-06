@@ -126,37 +126,7 @@
     }
   },
   "state_version": 1,
-  "pending_notifications": {
-    "3abfedc6f7519bd34767e0968eca2d75243924140b2cad2c5ac9fa1671ce4257": {
-      "rule_id": "anbu-nekomoe",
-      "title": "【新番速递】某暗部的少女共栖（喵萌奶茶屋）",
-      "body": "推送时间：2026年11月07日 07:15（北京时间）\n\n标题：[NEST] 某暗部的少女共栖 / とある暗部の少女共棲 / A Certain Dark Item - 04 [CR WEB-DL 1080p AVC AAC][简繁日内封]\n字幕组：NEST\n※ 第 04 集：发现其他组资源已满 7 天，仍未检测到「喵萌奶茶屋、nekomoekissaten」版本；本条来自「NEST」。这不代表指定组停更。\n字幕形式：简繁日内封\n集数：第 04 集\n大小：1.4GB\n发布：2026-10-31 19:37\n详情：https://share.acgnx.se/show-5808ff6c7106395b814e01337c6209b1cff5fa52.html\n磁力：\nmagnet:?xt=urn:btih:5808ff6c7106395b814e01337c6209b1cff5fa52",
-      "source": {
-        "title": "[NEST] 某暗部的少女共栖 / とある暗部の少女共棲 / A Certain Dark Item - 04 [CR WEB-DL 1080p AVC AAC][简繁日内封]",
-        "author": "華盟RIP鏡像",
-        "category": "動畫",
-        "episode": "04",
-        "btih": "5808ff6c7106395b814e01337c6209b1cff5fa52",
-        "magnet": "magnet:?xt=urn:btih:5808ff6c7106395b814e01337c6209b1cff5fa52",
-        "link": "https://share.acgnx.se/show-5808ff6c7106395b814e01337c6209b1cff5fa52.html",
-        "size": "1.4GB",
-        "_tier": 1,
-        "_rev": 1,
-        "_seen": "1:1",
-        "_variant": "简繁日内封",
-        "_rid": "anbu-nekomoe",
-        "_fallback": true,
-        "pub_dt": "2026-10-31T19:37:39+08:00"
-      },
-      "rule_signature": "{\"allow_unmarked_season\": null, \"exclude_any\": [], \"fallback_any_group\": true, \"from_episode\": null, \"group\": [\"喵萌奶茶屋\", \"nekomoekissaten\"], \"include_any\": [\"暗部\"], \"keywords\": [\"暗部\"], \"season\": null, \"variant_prefer\": [\"简日双语\", \"简繁日内封\", \"简体\", \"简\"]}",
-      "delivery": {
-        "state_key": "anbu-nekomoe|04|NEST",
-        "group": "NEST",
-        "fallback": true,
-        "episode_known": true
-      }
-    }
-  },
+  "pending_notifications": {},
   "health": {
     "last_check": "2026-11-07T07:15:29+08:00",
     "matched": 96,
@@ -165,7 +135,7 @@
     "failures": 0,
     "status": "ok",
     "last_successful_check": "2026-11-07T07:15:29+08:00",
-    "last_delivery": "2026-11-02T00:40:32+08:00"
+    "last_delivery": "2026-11-07T07:15:33+08:00"
   },
   "primary_episodes": {
     "kurumi-lvcha|01": true,
@@ -357,6 +327,12 @@
       "fallback": false,
       "episode_known": true,
       "time": "2026-11-02T00:40:32+08:00"
+    },
+    "anbu-nekomoe|04|NEST": {
+      "group": "NEST",
+      "fallback": true,
+      "episode_known": true,
+      "time": "2026-11-07T07:15:33+08:00"
     }
   }
 }
