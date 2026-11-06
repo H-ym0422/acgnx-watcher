@@ -127,11 +127,11 @@
   "state_version": 1,
   "pending_notifications": {},
   "health": {
-    "last_check": "2026-11-06T21:00:24+08:00",
+    "last_check": "2026-11-06T21:05:24+08:00",
     "matched": 0,
     "successful_sources": 0,
     "failed_sources": 3,
-    "failures": 1,
+    "failures": 2,
     "status": "failed",
     "last_successful_check": "2026-11-06T20:55:28+08:00",
     "last_delivery": "2026-11-02T00:40:32+08:00"
@@ -212,27 +212,27 @@
     "kurumi-lvcha": {
       "successful_sources": 0,
       "failed_sources": 3,
-      "last_check": "2026-11-06T21:00:24+08:00",
+      "last_check": "2026-11-06T21:05:24+08:00",
       "ambiguous_episodes": [],
-      "failures": 1,
+      "failures": 2,
       "status": "failed",
       "last_successful_check": "2026-11-06T20:55:28+08:00"
     },
     "anbu-nekomoe": {
       "successful_sources": 0,
       "failed_sources": 3,
-      "last_check": "2026-11-06T21:00:24+08:00",
+      "last_check": "2026-11-06T21:05:24+08:00",
       "ambiguous_episodes": [],
-      "failures": 1,
+      "failures": 2,
       "status": "failed",
       "last_successful_check": "2026-11-06T20:55:28+08:00"
     },
     "seitokai-nekomoe": {
       "successful_sources": 0,
       "failed_sources": 3,
-      "last_check": "2026-11-06T21:00:24+08:00",
+      "last_check": "2026-11-06T21:05:24+08:00",
       "ambiguous_episodes": [],
-      "failures": 1,
+      "failures": 2,
       "status": "failed",
       "last_successful_check": "2026-11-06T20:55:28+08:00"
     }
