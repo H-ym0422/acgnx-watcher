@@ -62,9 +62,10 @@
     "kurumi-lvcha|04|绿茶字幕组": "0:1",
     "anbu-nekomoe|03|喵萌奶茶屋": "0:1",
     "seitokai-nekomoe|04|喵萌奶茶屋": "0:1",
-    "kurumi-lvcha|05|绿茶字幕组": "1:1",
+    "kurumi-lvcha|05|绿茶字幕组": "0:1",
     "seitokai-nekomoe|05|喵萌奶茶屋": "0:1",
-    "anbu-nekomoe|04|NEST": "1:1"
+    "anbu-nekomoe|04|NEST": "1:1",
+    "kurumi-lvcha|06|绿茶字幕组": "1:1"
   },
   "initialized": true,
   "unparsed": {
@@ -126,15 +127,74 @@
     }
   },
   "state_version": 1,
-  "pending_notifications": {},
+  "pending_notifications": {
+    "4f5c44a88a73ea69f49515ee34e42e4460d0fd91e8e5572d873b0db736c800bb": {
+      "rule_id": "kurumi-lvcha",
+      "title": "【资源更新】（更优版本）FX战士久留美（绿茶字幕组）",
+      "body": "推送时间：2026年11月07日 18:50（北京时间）\n\n标题：[绿茶字幕组] FX战士久留美 / FX Senshi Kurumi-chan [05][WebRip][1080p][简繁日内封]\n字幕组：绿茶字幕组\n字幕形式：简繁日内封\n集数：第 05 集\n大小：514.4MB\n发布：2026-11-07 18:43\n详情：https://share.acgnx.se/show-46d9bc08101cf89d74c1148977b5f9f5801366bd.html\n磁力：\nmagnet:?xt=urn:btih:46d9bc08101cf89d74c1148977b5f9f5801366bd",
+      "source": {
+        "title": "[绿茶字幕组] FX战士久留美 / FX Senshi Kurumi-chan [05][WebRip][1080p][简繁日内封]",
+        "author": "绿茶发布机",
+        "category": "動畫",
+        "episode": "05",
+        "btih": "46d9bc08101cf89d74c1148977b5f9f5801366bd",
+        "magnet": "magnet:?xt=urn:btih:46d9bc08101cf89d74c1148977b5f9f5801366bd",
+        "link": "https://share.acgnx.se/show-46d9bc08101cf89d74c1148977b5f9f5801366bd.html",
+        "size": "514.4MB",
+        "_tier": 0,
+        "_rev": 1,
+        "_seen": "0:1",
+        "_variant": "简繁日内封",
+        "_rid": "kurumi-lvcha",
+        "_fallback": false,
+        "pub_dt": "2026-11-07T18:43:44+08:00"
+      },
+      "rule_signature": "{\"allow_unmarked_season\": null, \"exclude_any\": [], \"fallback_any_group\": true, \"from_episode\": null, \"group\": [\"绿茶字幕组\", \"绿茶发布机\"], \"include_any\": [\"久留美\"], \"keywords\": [\"久留美\"], \"season\": null, \"variant_prefer\": [\"简繁日内封\", \"简日内嵌\", \"简日双语\", \"简体\", \"简\"]}",
+      "delivery": {
+        "state_key": "kurumi-lvcha|05|绿茶字幕组",
+        "group": "绿茶字幕组",
+        "fallback": false,
+        "episode_known": true
+      }
+    },
+    "551e399a892905d2e39cc84119d5c841aa877f48c934d02c5c5fdc712bc07055": {
+      "rule_id": "kurumi-lvcha",
+      "title": "【新番速递】FX战士久留美（绿茶字幕组）",
+      "body": "推送时间：2026年11月07日 18:50（北京时间）\n\n标题：[绿茶字幕组] FX战士久留美 / FX Senshi Kurumi-chan [06][WebRip][1080p][简日内嵌]\n字幕组：绿茶字幕组\n字幕形式：简日内嵌\n集数：第 06 集\n大小：465MB\n发布：2026-11-07 18:43\n详情：https://share.acgnx.se/show-2fdf3410979006dd6c648ceea1c5087a7ecdcee2.html\n磁力：\nmagnet:?xt=urn:btih:2fdf3410979006dd6c648ceea1c5087a7ecdcee2",
+      "source": {
+        "title": "[绿茶字幕组] FX战士久留美 / FX Senshi Kurumi-chan [06][WebRip][1080p][简日内嵌]",
+        "author": "绿茶发布机",
+        "category": "動畫",
+        "episode": "06",
+        "btih": "2fdf3410979006dd6c648ceea1c5087a7ecdcee2",
+        "magnet": "magnet:?xt=urn:btih:2fdf3410979006dd6c648ceea1c5087a7ecdcee2",
+        "link": "https://share.acgnx.se/show-2fdf3410979006dd6c648ceea1c5087a7ecdcee2.html",
+        "size": "465MB",
+        "_tier": 1,
+        "_rev": 1,
+        "_seen": "1:1",
+        "_variant": "简日内嵌",
+        "_rid": "kurumi-lvcha",
+        "_fallback": false,
+        "pub_dt": "2026-11-07T18:43:34+08:00"
+      },
+      "rule_signature": "{\"allow_unmarked_season\": null, \"exclude_any\": [], \"fallback_any_group\": true, \"from_episode\": null, \"group\": [\"绿茶字幕组\", \"绿茶发布机\"], \"include_any\": [\"久留美\"], \"keywords\": [\"久留美\"], \"season\": null, \"variant_prefer\": [\"简繁日内封\", \"简日内嵌\", \"简日双语\", \"简体\", \"简\"]}",
+      "delivery": {
+        "state_key": "kurumi-lvcha|06|绿茶字幕组",
+        "group": "绿茶字幕组",
+        "fallback": false,
+        "episode_known": true
+      }
+    }
+  },
   "health": {
-    "last_check": "2026-11-07T18:45:31+08:00",
-    "matched": 98,
+    "last_check": "2026-11-07T18:50:28+08:00",
+    "matched": 99,
     "successful_sources": 5,
     "failed_sources": 0,
     "failures": 0,
     "status": "ok",
-    "last_successful_check": "2026-11-07T18:45:31+08:00",
+    "last_successful_check": "2026-11-07T18:50:28+08:00",
     "last_delivery": "2026-11-07T07:15:33+08:00"
   },
   "primary_episodes": {
@@ -161,7 +221,8 @@
     "anbu-nekomoe|03": true,
     "seitokai-nekomoe|04": true,
     "kurumi-lvcha|05": true,
-    "seitokai-nekomoe|05": true
+    "seitokai-nekomoe|05": true,
+    "kurumi-lvcha|06": true
   },
   "fallback_waiting": {
     "anbu-nekomoe|04": {
@@ -185,28 +246,6 @@
         "pub_dt": "2026-10-31T19:37:39+08:00"
       },
       "ready": true
-    },
-    "kurumi-lvcha|06": {
-      "first_seen": "2026-11-05T12:40:30.397262+00:00",
-      "signature": "{\"allow_unmarked_season\": null, \"exclude_any\": [], \"fallback_any_group\": true, \"from_episode\": null, \"group\": [\"绿茶字幕组\", \"绿茶发布机\"], \"include_any\": [\"久留美\"], \"keywords\": [\"久留美\"], \"season\": null, \"variant_prefer\": [\"简繁日内封\", \"简日内嵌\", \"简日双语\", \"简体\", \"简\"]}",
-      "candidate": {
-        "title": "[LoliHouse] FX战士久留美 / FX Senshi Kurumi-chan - 06 [WebRip 1080p HEVC-10bit AAC][简繁内封字幕]",
-        "author": "LoliHouse",
-        "category": "動畫",
-        "episode": "06",
-        "btih": "d01fe5d8ab8c613166f6d131918e49d921da7725",
-        "magnet": "magnet:?xt=urn:btih:d01fe5d8ab8c613166f6d131918e49d921da7725",
-        "link": "https://share.acgnx.se/show-d01fe5d8ab8c613166f6d131918e49d921da7725.html",
-        "size": "111.6MB",
-        "_tier": 4,
-        "_rev": 1,
-        "_seen": "4:1",
-        "_variant": "简繁内封字幕",
-        "_rid": "kurumi-lvcha",
-        "_fallback": true,
-        "pub_dt": "2026-11-07T14:45:00+08:00"
-      },
-      "ready": false
     },
     "anbu-nekomoe|05": {
       "first_seen": "2026-11-06T18:35:30.347523+00:00",
@@ -235,29 +274,29 @@
     "kurumi-lvcha": {
       "successful_sources": 1,
       "failed_sources": 0,
-      "last_check": "2026-11-07T18:45:31+08:00",
+      "last_check": "2026-11-07T18:50:28+08:00",
       "ambiguous_episodes": [],
       "failures": 0,
       "status": "ok",
-      "last_successful_check": "2026-11-07T18:45:31+08:00"
+      "last_successful_check": "2026-11-07T18:50:28+08:00"
     },
     "anbu-nekomoe": {
       "successful_sources": 1,
       "failed_sources": 0,
-      "last_check": "2026-11-07T18:45:31+08:00",
+      "last_check": "2026-11-07T18:50:28+08:00",
       "ambiguous_episodes": [],
       "failures": 0,
       "status": "ok",
-      "last_successful_check": "2026-11-07T18:45:31+08:00"
+      "last_successful_check": "2026-11-07T18:50:28+08:00"
     },
     "seitokai-nekomoe": {
       "successful_sources": 2,
       "failed_sources": 0,
-      "last_check": "2026-11-07T18:45:31+08:00",
+      "last_check": "2026-11-07T18:50:28+08:00",
       "ambiguous_episodes": [],
       "failures": 0,
       "status": "ok",
-      "last_successful_check": "2026-11-07T18:45:31+08:00"
+      "last_successful_check": "2026-11-07T18:50:28+08:00"
     }
   },
   "season_ambiguous": {},
