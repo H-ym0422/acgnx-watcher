@@ -142,8 +142,6 @@
     "kurumi-lvcha|01": true,
     "kurumi-lvcha|02": true,
     "kurumi-lvcha|03": true,
-    "anbu-nekomoe|02": true,
-    "anbu-nekomoe|01": true,
     "seitokai-nekomoe|02": true,
     "seitokai-nekomoe|01": true,
     "r1792222855|49": true,
@@ -159,58 +157,12 @@
     "r-f2da5e76bf8a45adb493023e6d1b5b3e|01": true,
     "r-f2da5e76bf8a45adb493023e6d1b5b3e|02": true,
     "kurumi-lvcha|04": true,
-    "anbu-nekomoe|03": true,
     "seitokai-nekomoe|04": true,
     "kurumi-lvcha|05": true,
     "seitokai-nekomoe|05": true,
     "kurumi-lvcha|06": true
   },
-  "fallback_waiting": {
-    "anbu-nekomoe|04": {
-      "first_seen": "2026-10-30T23:10:29.859843+00:00",
-      "signature": "{\"allow_unmarked_season\": null, \"exclude_any\": [], \"fallback_any_group\": true, \"from_episode\": null, \"group\": [\"喵萌奶茶屋\", \"nekomoekissaten\"], \"include_any\": [\"暗部\"], \"keywords\": [\"暗部\"], \"season\": null, \"variant_prefer\": [\"简日双语\", \"简繁日内封\", \"简体\", \"简\"]}",
-      "candidate": {
-        "title": "[NEST] 某暗部的少女共栖 / とある暗部の少女共棲 / A Certain Dark Item - 04 [CR WEB-DL 1080p AVC AAC][简繁日内封]",
-        "author": "華盟RIP鏡像",
-        "category": "動畫",
-        "episode": "04",
-        "btih": "5808ff6c7106395b814e01337c6209b1cff5fa52",
-        "magnet": "magnet:?xt=urn:btih:5808ff6c7106395b814e01337c6209b1cff5fa52",
-        "link": "https://share.acgnx.se/show-5808ff6c7106395b814e01337c6209b1cff5fa52.html",
-        "size": "1.4GB",
-        "_tier": 1,
-        "_rev": 1,
-        "_seen": "1:1",
-        "_variant": "简繁日内封",
-        "_rid": "anbu-nekomoe",
-        "_fallback": true,
-        "pub_dt": "2026-10-31T19:37:39+08:00"
-      },
-      "ready": true
-    },
-    "anbu-nekomoe|05": {
-      "first_seen": "2026-11-06T18:35:30.347523+00:00",
-      "signature": "{\"allow_unmarked_season\": null, \"exclude_any\": [], \"fallback_any_group\": true, \"from_episode\": null, \"group\": [\"喵萌奶茶屋\", \"nekomoekissaten\"], \"include_any\": [\"暗部\"], \"keywords\": [\"暗部\"], \"season\": null, \"variant_prefer\": [\"简日双语\", \"简繁日内封\", \"简体\", \"简\"]}",
-      "candidate": {
-        "title": "[NEST] 某暗部的少女共栖 / とある暗部の少女共棲 / A Certain Dark Item - 05 [CR WEB-DL 1080p AVC AAC][简繁日内封]",
-        "author": "華盟RIP鏡像",
-        "category": "動畫",
-        "episode": "05",
-        "btih": "08672f452c1f6156f74fa18705446047de0908a3",
-        "magnet": "magnet:?xt=urn:btih:08672f452c1f6156f74fa18705446047de0908a3",
-        "link": "https://share.acgnx.se/show-08672f452c1f6156f74fa18705446047de0908a3.html",
-        "size": "1.4GB",
-        "_tier": 1,
-        "_rev": 1,
-        "_seen": "1:1",
-        "_variant": "简繁日内封",
-        "_rid": "anbu-nekomoe",
-        "_fallback": true,
-        "pub_dt": "2026-11-07T19:41:36+08:00"
-      },
-      "ready": false
-    }
-  },
+  "fallback_waiting": {},
   "rule_health": {
     "kurumi-lvcha": {
       "successful_sources": 1,
