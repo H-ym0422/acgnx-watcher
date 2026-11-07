@@ -129,13 +129,13 @@
   "state_version": 1,
   "pending_notifications": {},
   "health": {
-    "last_check": "2026-11-08T01:00:26+08:00",
-    "matched": 99,
+    "last_check": "2026-11-08T01:05:28+08:00",
+    "matched": 101,
     "successful_sources": 5,
     "failed_sources": 0,
     "failures": 0,
     "status": "ok",
-    "last_successful_check": "2026-11-08T01:00:26+08:00",
+    "last_successful_check": "2026-11-08T01:05:28+08:00",
     "last_delivery": "2026-11-07T18:50:46+08:00"
   },
   "primary_episodes": {
@@ -272,35 +272,57 @@
         "pub_dt": "2026-10-31T19:37:39+08:00"
       },
       "ready": false
+    },
+    "seitokai-nekomoe|06": {
+      "first_seen": "2026-11-07T17:05:28.026330+00:00",
+      "signature": "{\"allow_unmarked_season\": null, \"exclude_any\": [], \"fallback_any_group\": true, \"from_episode\": null, \"group\": [\"喵萌奶茶屋\", \"nekomoekissaten\"], \"include_any\": [\"学生会有洞\", \"也有洞\", \"seitokainimoana\"], \"keywords\": [\"Seitokai\", \"学生会\"], \"season\": null, \"variant_prefer\": [\"简日双语\", \"简繁日内封\", \"简体\", \"简\"]}",
+      "candidate": {
+        "title": "[黒ネズミたち] 學生會也有洞！ / Seitokai ni mo Ana wa Aru! - 06 (B-Global 1920x1080 HEVC AAC MKV)",
+        "author": "TrySail",
+        "category": "動畫",
+        "episode": "06",
+        "btih": "b1d0b8400c4bd24261bc952ea31bca5b72f318de",
+        "magnet": "magnet:?xt=urn:btih:b1d0b8400c4bd24261bc952ea31bca5b72f318de",
+        "link": "https://share.acgnx.se/show-b1d0b8400c4bd24261bc952ea31bca5b72f318de.html",
+        "size": "351.9MB",
+        "_tier": 999,
+        "_rev": 1,
+        "_seen": "999:1",
+        "_variant": "",
+        "_rid": "seitokai-nekomoe",
+        "_fallback": true,
+        "pub_dt": "2026-11-08T01:00:55+08:00"
+      },
+      "ready": false
     }
   },
   "rule_health": {
     "kurumi-lvcha": {
       "successful_sources": 1,
       "failed_sources": 0,
-      "last_check": "2026-11-08T01:00:26+08:00",
+      "last_check": "2026-11-08T01:05:28+08:00",
       "ambiguous_episodes": [],
       "failures": 0,
       "status": "ok",
-      "last_successful_check": "2026-11-08T01:00:26+08:00"
+      "last_successful_check": "2026-11-08T01:05:28+08:00"
     },
     "anbu-nekomoe": {
       "successful_sources": 1,
       "failed_sources": 0,
-      "last_check": "2026-11-08T01:00:26+08:00",
+      "last_check": "2026-11-08T01:05:28+08:00",
       "ambiguous_episodes": [],
       "failures": 0,
       "status": "ok",
-      "last_successful_check": "2026-11-08T01:00:26+08:00"
+      "last_successful_check": "2026-11-08T01:05:28+08:00"
     },
     "seitokai-nekomoe": {
       "successful_sources": 2,
       "failed_sources": 0,
-      "last_check": "2026-11-08T01:00:26+08:00",
+      "last_check": "2026-11-08T01:05:28+08:00",
       "ambiguous_episodes": [],
       "failures": 0,
       "status": "ok",
-      "last_successful_check": "2026-11-08T01:00:26+08:00"
+      "last_successful_check": "2026-11-08T01:05:28+08:00"
     }
   },
   "season_ambiguous": {},
