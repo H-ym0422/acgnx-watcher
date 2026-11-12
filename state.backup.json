@@ -131,37 +131,7 @@
     }
   },
   "state_version": 1,
-  "pending_notifications": {
-    "91558b5bad03bad6d32e48cca6b3363c0cd9dc74ab95b7011e6ab3e7aea58ba6": {
-      "rule_id": "kurumi-lvcha",
-      "title": "【新番速递】FX战士久留美（绿茶字幕组）",
-      "body": "推送时间：2026年11月13日 05:15（北京时间）\n\n标题：[绿茶字幕组] FX战士久留美 / FX Senshi Kurumi-chan [07][WebRip][1080p][简日内嵌]\n字幕组：绿茶字幕组\n字幕形式：简日内嵌\n集数：第 07 集\n大小：410.3MB\n发布：2026-11-13 05:10\n详情：https://share.acgnx.se/show-a33e45f0c55c1df517b58134d3a3ed68f8179f1e.html\n磁力：\nmagnet:?xt=urn:btih:a33e45f0c55c1df517b58134d3a3ed68f8179f1e",
-      "source": {
-        "title": "[绿茶字幕组] FX战士久留美 / FX Senshi Kurumi-chan [07][WebRip][1080p][简日内嵌]",
-        "author": "绿茶发布机",
-        "category": "動畫",
-        "episode": "07",
-        "btih": "a33e45f0c55c1df517b58134d3a3ed68f8179f1e",
-        "magnet": "magnet:?xt=urn:btih:a33e45f0c55c1df517b58134d3a3ed68f8179f1e",
-        "link": "https://share.acgnx.se/show-a33e45f0c55c1df517b58134d3a3ed68f8179f1e.html",
-        "size": "410.3MB",
-        "_tier": 1,
-        "_rev": 1,
-        "_seen": "1:1",
-        "_variant": "简日内嵌",
-        "_rid": "kurumi-lvcha",
-        "_fallback": false,
-        "pub_dt": "2026-11-13T05:10:31+08:00"
-      },
-      "rule_signature": "{\"allow_unmarked_season\": null, \"exclude_any\": [], \"fallback_any_group\": true, \"from_episode\": null, \"group\": [\"绿茶字幕组\", \"绿茶发布机\"], \"include_any\": [\"久留美\"], \"keywords\": [\"久留美\"], \"season\": null, \"variant_prefer\": [\"简繁日内封\", \"简日内嵌\", \"简日双语\", \"简体\", \"简\"]}",
-      "delivery": {
-        "state_key": "kurumi-lvcha|07|绿茶字幕组",
-        "group": "绿茶字幕组",
-        "fallback": false,
-        "episode_known": true
-      }
-    }
-  },
+  "pending_notifications": {},
   "health": {
     "last_check": "2026-11-13T05:15:28+08:00",
     "matched": 96,
@@ -170,7 +140,7 @@
     "failures": 0,
     "status": "ok",
     "last_successful_check": "2026-11-13T05:15:28+08:00",
-    "last_delivery": "2026-11-09T02:35:34+08:00"
+    "last_delivery": "2026-11-13T05:15:33+08:00"
   },
   "primary_episodes": {
     "kurumi-lvcha|01": true,
@@ -330,6 +300,12 @@
       "fallback": false,
       "episode_known": true,
       "time": "2026-11-09T02:35:34+08:00"
+    },
+    "kurumi-lvcha|07|绿茶字幕组": {
+      "group": "绿茶字幕组",
+      "fallback": false,
+      "episode_known": true,
+      "time": "2026-11-13T05:15:33+08:00"
     }
   }
 }
