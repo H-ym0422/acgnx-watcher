@@ -133,13 +133,13 @@
   "state_version": 1,
   "pending_notifications": {},
   "health": {
-    "last_check": "2026-11-13T23:55:37+08:00",
-    "matched": 95,
+    "last_check": "2026-11-14T00:00:29+08:00",
+    "matched": 96,
     "successful_sources": 5,
     "failed_sources": 0,
     "failures": 0,
     "status": "ok",
-    "last_successful_check": "2026-11-13T23:55:37+08:00",
+    "last_successful_check": "2026-11-14T00:00:29+08:00",
     "last_delivery": "2026-11-13T05:15:33+08:00"
   },
   "primary_episodes": {
@@ -173,34 +173,57 @@
     "seitokai-nekomoe|06": true,
     "kurumi-lvcha|07": true
   },
-  "fallback_waiting": {},
+  "fallback_waiting": {
+    "anbu-nekomoe|06": {
+      "first_seen": "2026-11-13T16:00:29.990148+00:00",
+      "signature": "{\"allow_unmarked_season\": null, \"exclude_any\": [], \"fallback_any_group\": true, \"from_episode\": null, \"group\": [\"NEST\"], \"include_any\": [\"暗部\"], \"keywords\": [\"暗部\"], \"season\": null, \"variant_prefer\": [\"简日双语\", \"简繁日内封\", \"简体\", \"简\"]}",
+      "candidate": {
+        "title": "[Nix-Raws] 某暗部的少女共栖 / 暗部共生少女 / とある暗部の少女共栖 / Toaru Anbu no Shoujo Kyousei S01E06 [CR WEB-DL 1080p AVC AAC][简繁内封]",
+        "author": "MioBT鏡像",
+        "category": "RAW",
+        "episode": "06",
+        "btih": "30c2883efacb3279bd0f35f7d3856ddb814ea716",
+        "magnet": "magnet:?xt=urn:btih:30c2883efacb3279bd0f35f7d3856ddb814ea716",
+        "link": "https://share.acgnx.se/show-30c2883efacb3279bd0f35f7d3856ddb814ea716.html",
+        "size": "851.8MB",
+        "_tier": 3,
+        "_rev": 1,
+        "_seen": "3:1",
+        "_variant": "简繁内封",
+        "_rid": "anbu-nekomoe",
+        "_fallback": true,
+        "pub_dt": "2026-11-13T23:40:07+08:00"
+      },
+      "ready": false
+    }
+  },
   "rule_health": {
     "kurumi-lvcha": {
       "successful_sources": 1,
       "failed_sources": 0,
-      "last_check": "2026-11-13T23:55:37+08:00",
+      "last_check": "2026-11-14T00:00:29+08:00",
       "ambiguous_episodes": [],
       "failures": 0,
       "status": "ok",
-      "last_successful_check": "2026-11-13T23:55:37+08:00"
+      "last_successful_check": "2026-11-14T00:00:29+08:00"
     },
     "anbu-nekomoe": {
       "successful_sources": 1,
       "failed_sources": 0,
-      "last_check": "2026-11-13T23:55:37+08:00",
+      "last_check": "2026-11-14T00:00:29+08:00",
       "ambiguous_episodes": [],
       "failures": 0,
       "status": "ok",
-      "last_successful_check": "2026-11-13T23:55:37+08:00"
+      "last_successful_check": "2026-11-14T00:00:29+08:00"
     },
     "seitokai-nekomoe": {
       "successful_sources": 2,
       "failed_sources": 0,
-      "last_check": "2026-11-13T23:55:37+08:00",
+      "last_check": "2026-11-14T00:00:29+08:00",
       "ambiguous_episodes": [],
       "failures": 0,
       "status": "ok",
-      "last_successful_check": "2026-11-13T23:55:37+08:00"
+      "last_successful_check": "2026-11-14T00:00:29+08:00"
     }
   },
   "season_ambiguous": {},
