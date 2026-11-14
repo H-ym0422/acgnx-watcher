@@ -69,7 +69,8 @@
     "anbu-nekomoe|05|NEST": "1:1",
     "anbu-nekomoe|03|NEST": "1:1",
     "seitokai-nekomoe|06|喵萌奶茶屋": "0:1",
-    "kurumi-lvcha|07|绿茶字幕组": "1:1"
+    "kurumi-lvcha|07|绿茶字幕组": "1:1",
+    "anbu-nekomoe|06|NEST": "1:1"
   },
   "initialized": true,
   "unparsed": {
@@ -131,15 +132,45 @@
     }
   },
   "state_version": 1,
-  "pending_notifications": {},
+  "pending_notifications": {
+    "de08d7be922697eba7e5de69b536ca2672d6c9d78f31e901c20448b60821e542": {
+      "rule_id": "anbu-nekomoe",
+      "title": "【新番速递】某暗部的少女共栖（喵萌奶茶屋）",
+      "body": "推送时间：2026年11月15日 01:05（北京时间）\n\n标题：[NEST] 某暗部的少女共栖 / とある暗部の少女共棲 / A Certain Dark Item - 06 [CR WEB-DL 1080p AVC AAC][简繁日内封]\n字幕组：NEST\n字幕形式：简繁日内封\n集数：第 06 集\n大小：1.4GB\n发布：2026-11-15 00:45\n详情：https://share.acgnx.se/show-b8d27ba5523cbb0de1d2764af3867cd107ac1d94.html\n磁力：\nmagnet:?xt=urn:btih:b8d27ba5523cbb0de1d2764af3867cd107ac1d94",
+      "source": {
+        "title": "[NEST] 某暗部的少女共栖 / とある暗部の少女共棲 / A Certain Dark Item - 06 [CR WEB-DL 1080p AVC AAC][简繁日内封]",
+        "author": "華盟RIP鏡像",
+        "category": "動畫",
+        "episode": "06",
+        "btih": "b8d27ba5523cbb0de1d2764af3867cd107ac1d94",
+        "magnet": "magnet:?xt=urn:btih:b8d27ba5523cbb0de1d2764af3867cd107ac1d94",
+        "link": "https://share.acgnx.se/show-b8d27ba5523cbb0de1d2764af3867cd107ac1d94.html",
+        "size": "1.4GB",
+        "_tier": 1,
+        "_rev": 1,
+        "_seen": "1:1",
+        "_variant": "简繁日内封",
+        "_rid": "anbu-nekomoe",
+        "_fallback": false,
+        "pub_dt": "2026-11-15T00:45:05+08:00"
+      },
+      "rule_signature": "{\"allow_unmarked_season\": null, \"exclude_any\": [], \"fallback_any_group\": true, \"from_episode\": null, \"group\": [\"NEST\"], \"include_any\": [\"暗部\"], \"keywords\": [\"暗部\"], \"season\": null, \"variant_prefer\": [\"简日双语\", \"简繁日内封\", \"简体\", \"简\"]}",
+      "delivery": {
+        "state_key": "anbu-nekomoe|06|NEST",
+        "group": "NEST",
+        "fallback": false,
+        "episode_known": true
+      }
+    }
+  },
   "health": {
-    "last_check": "2026-11-15T01:00:26+08:00",
-    "matched": 95,
+    "last_check": "2026-11-15T01:05:29+08:00",
+    "matched": 97,
     "successful_sources": 5,
     "failed_sources": 0,
     "failures": 0,
     "status": "ok",
-    "last_successful_check": "2026-11-15T01:00:26+08:00",
+    "last_successful_check": "2026-11-15T01:05:29+08:00",
     "last_delivery": "2026-11-13T05:15:33+08:00"
   },
   "primary_episodes": {
@@ -171,28 +202,29 @@
     "anbu-nekomoe|01": true,
     "anbu-nekomoe|03": true,
     "seitokai-nekomoe|06": true,
-    "kurumi-lvcha|07": true
+    "kurumi-lvcha|07": true,
+    "anbu-nekomoe|06": true
   },
   "fallback_waiting": {
-    "anbu-nekomoe|06": {
-      "first_seen": "2026-11-13T16:00:29.990148+00:00",
-      "signature": "{\"allow_unmarked_season\": null, \"exclude_any\": [], \"fallback_any_group\": true, \"from_episode\": null, \"group\": [\"NEST\"], \"include_any\": [\"暗部\"], \"keywords\": [\"暗部\"], \"season\": null, \"variant_prefer\": [\"简日双语\", \"简繁日内封\", \"简体\", \"简\"]}",
+    "seitokai-nekomoe|07": {
+      "first_seen": "2026-11-14T17:05:29.579593+00:00",
+      "signature": "{\"allow_unmarked_season\": null, \"exclude_any\": [], \"fallback_any_group\": true, \"from_episode\": null, \"group\": [\"喵萌奶茶屋\", \"nekomoekissaten\"], \"include_any\": [\"学生会有洞\", \"也有洞\", \"seitokainimoana\"], \"keywords\": [\"Seitokai\", \"学生会\"], \"season\": null, \"variant_prefer\": [\"简日双语\", \"简繁日内封\", \"简体\", \"简\"]}",
       "candidate": {
-        "title": "【喵萌奶茶屋】★10月新番★[某暗部的少女共栖 / とある暗部の少女共棲 / Toaru Anbu no Item][06][1080p][简日双语]",
-        "author": "nekomoekissaten",
+        "title": "[黒ネズミたち] 學生會也有洞！ / Seitokai ni mo Ana wa Aru! - 07 (B-Global 1920x1080 HEVC AAC MKV)",
+        "author": "TrySail",
         "category": "動畫",
-        "episode": "06",
-        "btih": "d22084839adee4b2b07b06e49bedf0167b9d878d",
-        "magnet": "magnet:?xt=urn:btih:d22084839adee4b2b07b06e49bedf0167b9d878d",
-        "link": "https://share.acgnx.se/show-d22084839adee4b2b07b06e49bedf0167b9d878d.html",
-        "size": "467.7MB",
-        "_tier": 0,
+        "episode": "07",
+        "btih": "d4544ebd4b5c1e67527151b8ffd0510bfbe099c1",
+        "magnet": "magnet:?xt=urn:btih:d4544ebd4b5c1e67527151b8ffd0510bfbe099c1",
+        "link": "https://share.acgnx.se/show-d4544ebd4b5c1e67527151b8ffd0510bfbe099c1.html",
+        "size": "361.9MB",
+        "_tier": 999,
         "_rev": 1,
-        "_seen": "0:1",
-        "_variant": "简日双语",
-        "_rid": "anbu-nekomoe",
+        "_seen": "999:1",
+        "_variant": "",
+        "_rid": "seitokai-nekomoe",
         "_fallback": true,
-        "pub_dt": "2026-11-14T05:23:00+08:00"
+        "pub_dt": "2026-11-15T01:00:58+08:00"
       },
       "ready": false
     }
@@ -201,29 +233,29 @@
     "kurumi-lvcha": {
       "successful_sources": 1,
       "failed_sources": 0,
-      "last_check": "2026-11-15T01:00:26+08:00",
+      "last_check": "2026-11-15T01:05:29+08:00",
       "ambiguous_episodes": [],
       "failures": 0,
       "status": "ok",
-      "last_successful_check": "2026-11-15T01:00:26+08:00"
+      "last_successful_check": "2026-11-15T01:05:29+08:00"
     },
     "anbu-nekomoe": {
       "successful_sources": 1,
       "failed_sources": 0,
-      "last_check": "2026-11-15T01:00:26+08:00",
+      "last_check": "2026-11-15T01:05:29+08:00",
       "ambiguous_episodes": [],
       "failures": 0,
       "status": "ok",
-      "last_successful_check": "2026-11-15T01:00:26+08:00"
+      "last_successful_check": "2026-11-15T01:05:29+08:00"
     },
     "seitokai-nekomoe": {
       "successful_sources": 2,
       "failed_sources": 0,
-      "last_check": "2026-11-15T01:00:26+08:00",
+      "last_check": "2026-11-15T01:05:29+08:00",
       "ambiguous_episodes": [],
       "failures": 0,
       "status": "ok",
-      "last_successful_check": "2026-11-15T01:00:26+08:00"
+      "last_successful_check": "2026-11-15T01:05:29+08:00"
     }
   },
   "season_ambiguous": {},
