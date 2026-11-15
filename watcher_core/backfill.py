@@ -2,6 +2,8 @@
 from __future__ import annotations
 from .subtitle_summary import subtitle_lines, variant_of
 from .rules import display_name
+from .outbox import resource_receipt
+from .subscription_state import sync_group_selections
 
 
 def inspect_and_seed(rule: dict, from_ep: int=0, backfill_mode: str | None=None, *, api) -> list[tuple[str, dict]]:
@@ -19,11 +21,12 @@ def inspect_and_seed(rule: dict, from_ep: int=0, backfill_mode: str | None=None,
     if not getattr(matched, 'available', True):
         raise RuntimeError('抓取失败，未建立初始化基线，请检查网络后重试')
     st = api.aw.load_state()
+    policy_rules = [r for r in cfg.get('rules', []) if r['id'] != rule['id']] + [rule]
+    sync_group_selections(st, policy_rules)
     api.aw.release_identity.reconcile_state(st, [rule], matched)
     st['season_ambiguous'] = getattr(matched, 'ambiguous', {})
     matched = api.aw.suppress_fallbacks(matched, st)
     observed = list(matched)
-    policy_rules = [r for r in cfg.get('rules', []) if r['id'] != rule['id']] + [rule]
     matched = [i for i in api.aw.fallback_wait.apply_wait(matched, st, policy_rules) if i['_rid'] == rule['id']]
     want_g = [g for g in rule.get('group') or [] if not g.endswith('*')]
     api._want_groups = want_g
@@ -51,7 +54,11 @@ def inspect_and_seed(rule: dict, from_ep: int=0, backfill_mode: str | None=None,
         if backfill_mode is not None:
             (title, body, _settings) = api.format_result(rule, ordered, backfill_mode, from_ep)
             queued = api.aw.enqueue_notification(st, rule['id'], title, body)
-            st['pending_notifications'][queued]['rule_signature'] = api.aw.fallback_wait.signature(rule)
+            message = st['pending_notifications'][queued]
+            message['rule_signature'] = api.aw.fallback_wait.signature(rule)
+            receipt = backfill_receipt(rule, ordered, backfill_mode, api=api)
+            if receipt:
+                message['summary_delivery'] = receipt
         api.aw.save_state(st)
         return ordered
     if not matched:
@@ -103,9 +110,21 @@ def inspect_and_seed(rule: dict, from_ep: int=0, backfill_mode: str | None=None,
     return finish(ordered)
 
 
+def backfill_receipt(rule, episodes, mode, *, api):
+    if not episodes or mode == 'none':
+        return None
+    ep, item = episodes[-1]
+    wanted = [g for g in rule.get('group') or [] if not g.endswith('*')]
+    group = api.aw.group_key(item, wanted)
+    key = f"{rule['id']}|{ep}|{group}" if group else f"{rule['id']}|{ep}"
+    variant = item.get('_variant') or api.aw.extract_variant(item.get('title', ''))
+    return resource_receipt(dict(item, _variant=variant, episode=item.get('episode', ep)), key)
+
+
 def notify_result(rule: dict, episodes: list[tuple[str, dict]], mode: str='all', from_ep: int=0, *, api) -> bool:
     (title, body, settings) = api.format_result(rule, episodes, mode, from_ep)
-    return api.queue_result(rule, title, body, settings)
+    return api.queue_result(rule, title, body, settings,
+                            receipt=backfill_receipt(rule, episodes, mode, api=api))
 
 
 def format_result(rule: dict, episodes: list[tuple[str, dict]], mode: str='all', from_ep: int=0, *, api) -> tuple[str, str, dict]:
@@ -164,10 +183,13 @@ def format_result(rule: dict, episodes: list[tuple[str, dict]], mode: str='all',
     return (title, '\n'.join(lines), s)
 
 
-def queue_result(rule: dict, title: str, body: str, settings: dict, *, api) -> bool:
+def queue_result(rule: dict, title: str, body: str, settings: dict, *, receipt=None, api) -> bool:
     state = api.aw.load_state()
     key = api.aw.enqueue_notification(state, rule['id'], title, body)
-    state['pending_notifications'][key]['rule_signature'] = api.aw.fallback_wait.signature(rule)
+    message = state['pending_notifications'][key]
+    message['rule_signature'] = api.aw.fallback_wait.signature(rule)
+    if receipt:
+        message['summary_delivery'] = receipt
     api.aw.save_state(state)
     delivered = bool(api.aw.deliver_pending(state, settings, only=key, rules=[rule]))
     api.aw.save_state(state)

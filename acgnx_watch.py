@@ -186,9 +186,9 @@ def save_state(st: dict) -> None:
 # --------------------------------------------------------------------------
 # 推送
 # --------------------------------------------------------------------------
-def build_push_content(item: dict, rule: dict, prefix: str, upgrade: bool=False) -> tuple[str, str]:
+def build_push_content(item: dict, rule: dict, prefix: str, update: str='') -> tuple[str, str]:
     from watcher_core import presentation as _impl
-    return _impl.build_push_content(item, rule, prefix, upgrade, api=sys.modules[__name__])
+    return _impl.build_push_content(item, rule, prefix, update, api=sys.modules[__name__])
 
 
 # --------------------------------------------------------------------------

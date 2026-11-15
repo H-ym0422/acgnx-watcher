@@ -1,6 +1,13 @@
 """Persist and deliver notifications using current rules and a shared budget."""
 from __future__ import annotations
 
+from .parsing import actual_group
+
+
+def resource_receipt(item, state_key):
+    return {'state_key': state_key, 'group': actual_group(item), 'fallback': bool(item.get('_fallback')),
+            'episode_known': bool(item.get('episode')), 'variant': item.get('_variant') or ''}
+
 
 def enqueue_notification(state: dict, rule_id: str, title: str, body: str, *, api) -> str:
     """Persist only message content, never credentials, until delivery succeeds."""
@@ -40,11 +47,14 @@ def deliver_pending(state: dict, settings: dict, only: str | None=None, rules: l
             api.log.exception('Queued notification failed; retained for next cycle')
             ok = False
         if ok:
-            delivery = message.get('delivery')
+            delivery = message.get('delivery') or message.get('summary_delivery')
             if delivery:
-                state.setdefault('deliveries', {})[delivery['state_key']] = {k: v for (k, v) in delivery.items() if k != 'state_key'}
-                state['deliveries'][delivery['state_key']]['time'] = api.health.now()
-                state.setdefault('health', {})['last_delivery'] = api.health.now()
+                if 'variant' not in delivery and message.get('source'):
+                    delivery = resource_receipt(message['source'], delivery['state_key'])
+                sent_at = api.health.now()
+                state.setdefault('deliveries', {})[delivery['state_key']] = {
+                    **{k: v for k, v in delivery.items() if k != 'state_key'}, 'time': sent_at}
+                state.setdefault('health', {})['last_delivery'] = sent_at
             del pending[key]
             sent += 1
             api.save_state(state)

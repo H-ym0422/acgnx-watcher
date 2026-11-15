@@ -265,9 +265,9 @@ def format_result(rule: dict, episodes: list[tuple[str, dict]], mode: str='all',
     return _impl.format_result(rule, episodes, mode, from_ep, api=sys.modules[__name__])
 
 
-def queue_result(rule: dict, title: str, body: str, settings: dict) -> bool:
+def queue_result(rule: dict, title: str, body: str, settings: dict, *, receipt=None) -> bool:
     from watcher_core import backfill as _impl
-    return _impl.queue_result(rule, title, body, settings, api=sys.modules[__name__])
+    return _impl.queue_result(rule, title, body, settings, receipt=receipt, api=sys.modules[__name__])
 
 
 WATCHLIST_NAME = "我的番剧.md"

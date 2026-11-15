@@ -199,8 +199,8 @@ def main(*, api) -> None:
     if not api.append_rule(rule):
         return
     episodes = api.inspect_and_seed(rule, from_ep=args.from_episode, backfill_mode=args.backfill if args.notify else None)
-    api.write_watchlist()
     if args.notify:
         api.notify_result(rule, episodes, args.backfill, from_ep=args.from_episode)
+    api.write_watchlist()
     api.maybe_push(term, not args.no_push)
     print('\n🎉 完成。想微调就编辑 config.json 里这条规则（字段含义见 README.md）。')
