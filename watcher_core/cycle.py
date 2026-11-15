@@ -1,6 +1,9 @@
 """Coordinate one collection, selection, outbox and state cycle."""
 from __future__ import annotations
 
+from .outbox import resource_receipt
+from .subscription_state import sync_group_selections
+
 
 def run_cycle(cfg: dict, state: dict, dry_run: bool=False, *, api) -> int:
     settings = cfg['settings']
@@ -9,21 +12,23 @@ def run_cycle(cfg: dict, state: dict, dry_run: bool=False, *, api) -> int:
     mode = (settings.get('first_run_mode') or 'latest').lower()
     budget = api.SendBudget(settings.get('max_pushes_per_cycle', 12), settings.get('send_budget_seconds', 240))
     pending_sent = 0
-    probe = dict(cfg, _episode_maps=state.get('episode_maps', {}))
+    policy_state = api.copy.deepcopy(state) if dry_run else state
+    rules = cfg.get('rules', [])
+    sync_group_selections(policy_state, rules)
+    probe = dict(cfg, _episode_maps=policy_state.get('episode_maps', {}))
     matched = api.collect(probe)
     if not dry_run:
-        for title, body in api.health.update_alerts(state, matched, cfg.get('rules', []), settings.get('failure_alert_after', 3)):
+        for title, body in api.health.update_alerts(state, matched, rules, settings.get('failure_alert_after', 3)):
             api.enqueue_notification(state, '__health__', '【运行提醒】' + title, body)
         if not getattr(matched, 'available', True):
             pending_sent += api.deliver_pending(state, settings, rules=cfg.get('rules'), budget=budget)
             api.save_state(state)
             api.log.error('本轮抓取失败，状态基线未推进')
             return pending_sent
-    policy_state = api.copy.deepcopy(state) if dry_run else state
     policy_state['season_ambiguous'] = getattr(matched, 'ambiguous', {})
-    api.release_identity.reconcile_state(policy_state, cfg.get('rules', []), matched)
+    api.release_identity.reconcile_state(policy_state, rules, matched)
     matched = api.suppress_fallbacks(matched, policy_state)
-    matched = api.fallback_wait.apply_wait(matched, policy_state, cfg.get('rules', []))
+    matched = api.fallback_wait.apply_wait(matched, policy_state, rules)
     api.log.info('兜底等待期内 %d 个集号（逐集等待 7 天）', sum((not e.get('ready', False) for e in policy_state.get('fallback_waiting', {}).values())))
     if not dry_run:
         pending_sent += api.deliver_pending(state, settings, rules=cfg.get('rules'), budget=budget)
@@ -43,7 +48,7 @@ def run_cycle(cfg: dict, state: dict, dry_run: bool=False, *, api) -> int:
     def ep_num(ep: str) -> int:
         mm = api.re.match('^(\\d+)', ep or '')
         return int(mm.group(1)) if mm else 0
-    pushes: list[tuple[dict, bool, str]] = []
+    pushes: list[tuple[dict, str, str]] = []
     if first_run and mode != 'all':
         per_rule: dict[str, tuple[int, float, dict]] = {}
         for ((rid, ep, _gk), items) in groups.items():
@@ -60,16 +65,22 @@ def run_cycle(cfg: dict, state: dict, dry_run: bool=False, *, api) -> int:
                 ep = best.get('episode') or best['btih']
                 wanted = [g for g in best['_rule'].get('group') or [] if not g.endswith('*')]
                 gk = api.group_key(best, wanted)
-                pushes.append((best, False, f'{rid}|{ep}|{gk}' if gk else f'{rid}|{ep}'))
+                pushes.append((best, '', f'{rid}|{ep}|{gk}' if gk else f'{rid}|{ep}'))
     else:
-        cand_by_rid: dict[str, list[tuple[str, dict, bool]]] = {}
+        cand_by_rid: dict[str, list[tuple[str, dict, str, str, str]]] = {}
         for ((rid, ep, gk), items) in groups.items():
             best = api.best_of(items)
             sk = f'{rid}|{ep}|{gk}' if gk else f'{rid}|{ep}'
-            prev = api._seen_pair(api.state_store.previous_episode(state, rid, ep, gk, api.group_eq))
+            prev = api._seen_pair(api.state_store.previous_episode(policy_state, rid, ep, gk, api.group_eq))
             if prev is not None and best['_tier'] >= prev[0] and (best['_rev'] <= prev[1]):
                 continue
-            cand_by_rid.setdefault(rid, []).append((ep, best, prev is not None, sk, gk))
+            updates = []
+            if prev is not None:
+                if best['_rev'] > prev[1]:
+                    updates.append('修正版')
+                if best['_tier'] < prev[0]:
+                    updates.append('更优字幕')
+            cand_by_rid.setdefault(rid, []).append((ep, best, '·'.join(updates), sk, gk))
         for cand in cand_by_rid.values():
             has_primary = {ep for (ep, b, *_) in cand if not b.get('_fallback')}
             cand = [c for c in cand if not c[1].get('_fallback') or c[0] not in has_primary]
@@ -81,24 +92,24 @@ def run_cycle(cfg: dict, state: dict, dry_run: bool=False, *, api) -> int:
                 by_g.setdefault(gk, []).append((ep, b))
             for (gk, items_g) in by_g.items():
                 keep |= {id(x) for (_, x) in api.collapse_overlaps(items_g, lambda _it: gk)}
-            for (ep, best, is_up, sk, gk) in cand:
+            for (ep, best, update, sk, gk) in cand:
                 if id(best) in keep:
-                    pushes.append((best, is_up, sk))
+                    pushes.append((best, update, sk))
     if dry_run:
-        for (best, is_upgrade, _sk) in pushes:
-            (title, body) = api.build_push_content(best, best['_rule'], prefix, is_upgrade)
+        for (best, update, _sk) in pushes:
+            (title, body) = api.build_push_content(best, best['_rule'], prefix, update)
             print('\n' + '=' * 70)
             print(title)
             print(body)
         return len(pushes)
     queued = []
-    for (best, is_upgrade, sk) in pushes:
+    for (best, update, sk) in pushes:
         rule = best['_rule']
-        (title, body) = api.build_push_content(best, rule, prefix, is_upgrade)
+        (title, body) = api.build_push_content(best, rule, prefix, update)
         key = api.enqueue_notification(state, best['_rid'], title, body)
         state['pending_notifications'][key]['source'] = api.fallback_wait.freeze(best)
         state['pending_notifications'][key]['rule_signature'] = api.fallback_wait.signature(rule)
-        state['pending_notifications'][key]['delivery'] = {'state_key': sk, 'group': api.group_key(best, rule.get('group') or []), 'fallback': bool(best.get('_fallback')), 'episode_known': bool(best.get('episode'))}
+        state['pending_notifications'][key]['delivery'] = resource_receipt(best, sk)
         queued.append(key)
     for ((rid, ep, gk), items) in groups.items():
         sk = f'{rid}|{ep}|{gk}' if gk else f'{rid}|{ep}'

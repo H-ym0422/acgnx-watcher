@@ -21,7 +21,7 @@ class ReleaseNotificationTests(unittest.TestCase):
             '_rev': 2, '_fallback': True,
         }
         rule = {'name': '示例动画（特别篇）（喵萌奶茶屋）', 'group': ['喵萌奶茶屋']}
-        title, body = aw.build_push_content(release, rule, '【新番速递】', True)
+        title, body = aw.build_push_content(release, rule, '【新番速递】', '修正版')
         self.assertEqual(title, '【资源更新】（修正版）示例动画（特别篇） 第06集（NEST）')
         self.assertIn('已等满 7 天，仍未检测到「喵萌奶茶屋」', body)
 

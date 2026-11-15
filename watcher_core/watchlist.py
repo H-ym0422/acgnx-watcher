@@ -4,6 +4,28 @@ from .rules import display_name
 from .delete_confirmation import delete_url
 
 
+def last_delivery(deliveries, rid):
+    found = max(((k, v) for k, v in deliveries.items() if k.startswith(rid + '|')),
+                key=lambda entry: entry[1]['time'], default=None)
+    if found is None:
+        return '暂无记录'
+    key, receipt = found
+    episode = key.split('|', 2)[1]
+    if not receipt.get('episode_known'):
+        label = '集数待确认'
+    elif episode == '合集':
+        label = episode
+    elif '-' in episode:
+        label = f'第 {episode} 集（合集）'
+    else:
+        label = f'第 {episode} 集'
+    variant = receipt.get('variant') or ('字幕形式未标注' if 'variant' in receipt else '字幕形式未记录')
+    fields = [receipt['time'], label, receipt.get('group') or '字幕组未识别', variant]
+    if receipt.get('fallback'):
+        fields.append('兜底')
+    return ' · '.join(fields)
+
+
 def render_watchlist(*, api) -> str:
     """把当前在追的番渲染成一份 Markdown 清单。返回正文。"""
     cfg = api.aw.load_config()
@@ -39,9 +61,7 @@ def render_watchlist(*, api) -> str:
             notes.append(f"只收第 {r['season']} 季")
         if r.get('note'):
             notes.append(r['note'][:24])
-        deliveries = [v for (k, v) in st.get('deliveries', {}).items() if k.startswith(rid + '|')]
-        last = max(deliveries, key=lambda v: v['time']) if deliveries else None
-        delivery_text = last['time'] + ' / ' + ('兜底' if last['fallback'] else '指定组/任意组') + (' / 集数待确认' if not last['episode_known'] else '') if last else '尚无记录'
+        delivery_text = last_delivery(st.get('deliveries', {}), rid)
         safe = lambda value: str(value).replace('|', '\\|').replace('\n', ' ')
         url = delete_url(r, repository)
         label = name + (f' · [删除]({url})' if url else '')
