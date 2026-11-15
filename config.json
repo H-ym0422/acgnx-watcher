@@ -24,7 +24,7 @@
   "rules": [
     {
       "id": "kurumi-lvcha",
-      "name": "FX战士久留美（绿茶字幕组）",
+      "name": "FX战士久留美",
       "enabled": true,
       "keywords": [
         "久留美"
@@ -49,7 +49,7 @@
     },
     {
       "id": "anbu-nekomoe",
-      "name": "某暗部的少女共栖（喵萌奶茶屋）",
+      "name": "某暗部的少女共栖",
       "enabled": true,
       "keywords": [
         "暗部"
@@ -72,7 +72,7 @@
     },
     {
       "id": "seitokai-nekomoe",
-      "name": "学生会有洞（喵萌奶茶屋）",
+      "name": "学生会有洞",
       "enabled": true,
       "keywords": [
         "Seitokai",

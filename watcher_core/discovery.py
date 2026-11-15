@@ -165,7 +165,7 @@ def pick(term: str, want_all_groups: bool, forced_groups: list[str], extra_alias
     print(f'\n🏷️  自动认出的译名（共 {len(aliases)} 个，覆盖选中组 {hit}/{len(pool)} 条标题）：')
     for a in aliases:
         print(f'     · {a}')
-    rule = {'id': 'r-' + api.uuid.uuid4().hex, 'name': f"{term}（{('任意字幕组' if not selected else '/'.join(selected[:2]) + ('等' if len(selected) > 2 else ''))}）", 'enabled': True, 'keywords': [term], 'include_any': aliases, 'exclude_any': [], 'group': selected, 'variant_prefer': list(api.DEFAULT_PREFER), 'fallback_any_group': bool(fallback), 'note': ''}
+    rule = {'id': 'r-' + api.uuid.uuid4().hex, 'name': term, 'enabled': True, 'keywords': [term], 'include_any': aliases, 'exclude_any': [], 'group': selected, 'variant_prefer': list(api.DEFAULT_PREFER), 'fallback_any_group': bool(fallback), 'note': ''}
     if season and int(season) > 0:
         rule['season'] = int(season)
         print(f'\n🎬 已设为「只收第 {season} 季」—— 标题里标了别的季号的会被丢掉')

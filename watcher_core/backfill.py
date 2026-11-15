@@ -1,6 +1,7 @@
 """Seed historical baselines and queue policy-aware historical notifications."""
 from __future__ import annotations
 from .subtitle_summary import subtitle_lines, variant_of
+from .rules import display_name
 
 
 def inspect_and_seed(rule: dict, from_ep: int=0, backfill_mode: str | None=None, *, api) -> list[tuple[str, dict]]:
@@ -115,7 +116,7 @@ def format_result(rule: dict, episodes: list[tuple[str, dict]], mode: str='all',
     cfg = api.aw.load_config()
     s = cfg['settings']
     prefix = s.get('title_prefix') or '【新番速递】'
-    title = f"{prefix}已加入监听：{rule['name']}"[:120]
+    title = ' '.join(f"{prefix}已加入监听：{display_name(rule)}".split())[:120]
     lines = [f"字幕组：{(' / '.join(rule['group']) if rule['group'] else '任意字幕组')}"]
     if rule.get('include_any'):
         lines.append(f"标题需含：{'、'.join(rule['include_any'])}")

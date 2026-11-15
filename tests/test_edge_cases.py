@@ -12,15 +12,16 @@ from watcher_core.matching import match_rule, fallback_match
 
 
 class RuleEdges(unittest.TestCase):
-    def test_edit_updates_generated_group_suffix_without_changing_anime_title(self):
+    def test_edit_separates_legacy_group_suffix_from_anime_title(self):
         with tempfile.TemporaryDirectory(dir=Path.cwd()) as tmp:
             path = Path(tmp) / 'config.json'
             rule = {'id': 'r', 'name': '动画（特别篇）（A/B等）', 'group': ['A', 'B', 'C']}
             path.write_text(json.dumps({'rules': [rule]}), encoding='utf8')
-            for groups, suffix in [(['D'], 'D'), ([], '任意字幕组')]:
+            for groups in [['D'], []]:
                 rules.edit(path, 'r', {'group': groups})
                 current = json.loads(path.read_text(encoding='utf8'))['rules'][0]
-                self.assertEqual(current['name'], f'动画（特别篇）（{suffix}）')
+                self.assertEqual(current['name'], '动画（特别篇）')
+                self.assertEqual(current['group'], groups)
                 self.assertEqual(current['id'], 'r')
 
     def test_custom_name_is_preserved(self):
