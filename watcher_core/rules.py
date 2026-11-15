@@ -13,14 +13,19 @@ def normalized(value):
     return re.sub(r'[\s\W_]+', '', unicodedata.normalize('NFKC', value).casefold())
 
 
-def display_name(rule):
-    name = rule.get('name') or '?'
+def base_name(rule):
+    name = (rule.get('name') or '').strip()
     groups = rule.get('group') or []
     group_label = ('/'.join(groups[:2]) + ('等' if len(groups) > 2 else '')) if groups else '任意字幕组'
     suffix = re.search(r'[（(]([^()（）]*)[）)]$', name)
-    group_labels = {normalized(g) for g in [*groups, group_label]}
+    group_labels = {normalized(g) for g in [*groups, group_label, '任意字幕组']}
     if suffix and normalized(suffix[1]) in group_labels:
         name = name[:suffix.start()].rstrip()
+    return name
+
+
+def display_name(rule, default='?'):
+    name = base_name(rule) or default
     season = rule.get('season', 0)
     if season and extract_season(name) != season:
         digit = {1: '一', 2: '二', 3: '三', 4: '四', 5: '五', 6: '六', 7: '七', 8: '八', 9: '九', 10: '十'}
@@ -71,15 +76,10 @@ def edit(path, selector, changes):
     cfg = json.loads(Path(path).read_text(encoding='utf-8'))
     rule = select_rule(cfg.get('rules', []), selector)
     original = identity(rule)
-    old_groups = rule.get('group') or []
-    old_label = ('/'.join(old_groups[:2]) + ('等' if len(old_groups) > 2 else '')) if old_groups else '任意字幕组'
-    suffix = f'（{old_label}）'
-    generated_name = rule.get('name', '').endswith(suffix)
+    name = base_name(rule)
     rule.update(changes)
-    if 'group' in changes and 'name' not in changes and generated_name:
-        groups = rule.get('group') or []
-        label = ('/'.join(groups[:2]) + ('等' if len(groups) > 2 else '')) if groups else '任意字幕组'
-        rule['name'] = rule['name'][:-len(suffix)] + f'（{label}）'
+    if 'group' in changes and 'name' not in changes and name:
+        rule['name'] = name
     if any(r is not rule and identity(r) == identity(rule) for r in cfg['rules']):
         raise ValueError('修改后与另一条规则重复，未保存')
     write_config(path, cfg)
