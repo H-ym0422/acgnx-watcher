@@ -133,16 +133,23 @@
     }
   },
   "state_version": 1,
-  "pending_notifications": {},
+  "pending_notifications": {
+    "da7cbad154ed52f98bb9276691fb99bc4f990e447d3eafa54faced226e6399fe": {
+      "rule_id": "__health__",
+      "title": "【运行提醒】抓取异常",
+      "body": "连续 3 次未能取得有效 RSS；本轮没有推进初始化或去重基线。\n受影响番剧：FX战士久留美、某暗部的少女共栖、学生会有洞。"
+    }
+  },
   "health": {
-    "last_check": "2026-11-20T03:40:30+08:00",
+    "last_check": "2026-11-20T03:45:31+08:00",
     "matched": 0,
     "successful_sources": 0,
     "failed_sources": 3,
-    "failures": 2,
+    "failures": 3,
     "status": "failed",
     "last_successful_check": "2026-11-20T03:30:39+08:00",
-    "last_delivery": "2026-11-16T02:05:32+08:00"
+    "last_delivery": "2026-11-16T02:05:32+08:00",
+    "alerted": true
   },
   "primary_episodes": {
     "kurumi-lvcha|01": true,
@@ -205,27 +212,27 @@
     "kurumi-lvcha": {
       "successful_sources": 0,
       "failed_sources": 3,
-      "last_check": "2026-11-20T03:40:30+08:00",
+      "last_check": "2026-11-20T03:45:31+08:00",
       "ambiguous_episodes": [],
-      "failures": 2,
+      "failures": 3,
       "status": "failed",
       "last_successful_check": "2026-11-20T03:30:39+08:00"
     },
     "anbu-nekomoe": {
       "successful_sources": 0,
       "failed_sources": 3,
-      "last_check": "2026-11-20T03:40:30+08:00",
+      "last_check": "2026-11-20T03:45:31+08:00",
       "ambiguous_episodes": [],
-      "failures": 2,
+      "failures": 3,
       "status": "failed",
       "last_successful_check": "2026-11-20T03:30:39+08:00"
     },
     "seitokai-nekomoe": {
       "successful_sources": 0,
       "failed_sources": 3,
-      "last_check": "2026-11-20T03:40:30+08:00",
+      "last_check": "2026-11-20T03:45:31+08:00",
       "ambiguous_episodes": [],
-      "failures": 2,
+      "failures": 3,
       "status": "failed",
       "last_successful_check": "2026-11-20T03:30:39+08:00"
     }

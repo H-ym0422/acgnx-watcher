@@ -133,13 +133,7 @@
     }
   },
   "state_version": 1,
-  "pending_notifications": {
-    "da7cbad154ed52f98bb9276691fb99bc4f990e447d3eafa54faced226e6399fe": {
-      "rule_id": "__health__",
-      "title": "【运行提醒】抓取异常",
-      "body": "连续 3 次未能取得有效 RSS；本轮没有推进初始化或去重基线。\n受影响番剧：FX战士久留美、某暗部的少女共栖、学生会有洞。"
-    }
-  },
+  "pending_notifications": {},
   "health": {
     "last_check": "2026-11-20T03:45:31+08:00",
     "matched": 0,
