@@ -135,13 +135,13 @@
   "state_version": 1,
   "pending_notifications": {},
   "health": {
-    "last_check": "2026-11-20T02:20:28+08:00",
+    "last_check": "2026-11-20T02:25:29+08:00",
     "matched": 97,
     "successful_sources": 5,
     "failed_sources": 0,
     "failures": 0,
     "status": "ok",
-    "last_successful_check": "2026-11-20T02:20:28+08:00",
+    "last_successful_check": "2026-11-20T02:25:29+08:00",
     "last_delivery": "2026-11-16T02:05:32+08:00"
   },
   "primary_episodes": {
@@ -183,7 +183,7 @@
       "signature": "{\"allow_unmarked_season\": null, \"exclude_any\": [], \"fallback_any_group\": true, \"from_episode\": null, \"group\": [\"绿茶字幕组\", \"绿茶发布机\"], \"include_any\": [\"久留美\"], \"keywords\": [\"久留美\"], \"season\": null, \"variant_prefer\": [\"简繁日内封\", \"简日内嵌\", \"简日双语\", \"简体\", \"简\"]}",
       "candidate": {
         "title": "[LoliHouse] FX战士久留美 / FX Senshi Kurumi-chan - 08 [WebRip 1080p HEVC-10bit AAC][简繁内封字幕]",
-        "author": "萌番組鏡像",
+        "author": "LoliHouse",
         "category": "動畫",
         "episode": "08",
         "btih": "fe635385d49263e571ee004d7dc9420ab3723343",
@@ -196,7 +196,7 @@
         "_variant": "简繁内封字幕",
         "_rid": "kurumi-lvcha",
         "_fallback": true,
-        "pub_dt": "2026-11-20T01:55:19+08:00"
+        "pub_dt": "2026-11-20T02:02:00+08:00"
       },
       "ready": false
     }
@@ -205,29 +205,29 @@
     "kurumi-lvcha": {
       "successful_sources": 1,
       "failed_sources": 0,
-      "last_check": "2026-11-20T02:20:28+08:00",
+      "last_check": "2026-11-20T02:25:29+08:00",
       "ambiguous_episodes": [],
       "failures": 0,
       "status": "ok",
-      "last_successful_check": "2026-11-20T02:20:28+08:00"
+      "last_successful_check": "2026-11-20T02:25:29+08:00"
     },
     "anbu-nekomoe": {
       "successful_sources": 1,
       "failed_sources": 0,
-      "last_check": "2026-11-20T02:20:28+08:00",
+      "last_check": "2026-11-20T02:25:29+08:00",
       "ambiguous_episodes": [],
       "failures": 0,
       "status": "ok",
-      "last_successful_check": "2026-11-20T02:20:28+08:00"
+      "last_successful_check": "2026-11-20T02:25:29+08:00"
     },
     "seitokai-nekomoe": {
       "successful_sources": 2,
       "failed_sources": 0,
-      "last_check": "2026-11-20T02:20:28+08:00",
+      "last_check": "2026-11-20T02:25:29+08:00",
       "ambiguous_episodes": [],
       "failures": 0,
       "status": "ok",
-      "last_successful_check": "2026-11-20T02:20:28+08:00"
+      "last_successful_check": "2026-11-20T02:25:29+08:00"
     }
   },
   "season_ambiguous": {},
