@@ -135,13 +135,13 @@
   "state_version": 1,
   "pending_notifications": {},
   "health": {
-    "last_check": "2026-11-21T00:05:29+08:00",
-    "matched": 97,
+    "last_check": "2026-11-21T00:10:28+08:00",
+    "matched": 98,
     "successful_sources": 5,
     "failed_sources": 0,
     "failures": 0,
     "status": "ok",
-    "last_successful_check": "2026-11-21T00:05:29+08:00",
+    "last_successful_check": "2026-11-21T00:10:28+08:00",
     "last_delivery": "2026-11-16T02:05:32+08:00"
   },
   "primary_episodes": {
@@ -199,35 +199,57 @@
         "pub_dt": "2026-11-20T02:02:00+08:00"
       },
       "ready": false
+    },
+    "anbu-nekomoe|07": {
+      "first_seen": "2026-11-20T16:10:28.146472+00:00",
+      "signature": "{\"allow_unmarked_season\": null, \"exclude_any\": [], \"fallback_any_group\": true, \"from_episode\": null, \"group\": [\"NEST\"], \"include_any\": [\"暗部\"], \"keywords\": [\"暗部\"], \"season\": null, \"variant_prefer\": [\"简日双语\", \"简繁日内封\", \"简体\", \"简\"]}",
+      "candidate": {
+        "title": "[Nix-Raws] 某暗部的少女共栖 / 暗部共生少女 / とある暗部の少女共栖 / Toaru Anbu no Shoujo Kyousei S01E07 [CR WEB-DL 1080p AVC AAC][简繁内封]",
+        "author": "MioBT鏡像",
+        "category": "RAW",
+        "episode": "07",
+        "btih": "b3edd81e3076c4bd6e772e3fd48101624c5ec825",
+        "magnet": "magnet:?xt=urn:btih:b3edd81e3076c4bd6e772e3fd48101624c5ec825",
+        "link": "https://share.acgnx.se/show-b3edd81e3076c4bd6e772e3fd48101624c5ec825.html",
+        "size": "833.1MB",
+        "_tier": 3,
+        "_rev": 1,
+        "_seen": "3:1",
+        "_variant": "简繁内封",
+        "_rid": "anbu-nekomoe",
+        "_fallback": true,
+        "pub_dt": "2026-11-20T23:40:03+08:00"
+      },
+      "ready": false
     }
   },
   "rule_health": {
     "kurumi-lvcha": {
       "successful_sources": 1,
       "failed_sources": 0,
-      "last_check": "2026-11-21T00:05:29+08:00",
+      "last_check": "2026-11-21T00:10:28+08:00",
       "ambiguous_episodes": [],
       "failures": 0,
       "status": "ok",
-      "last_successful_check": "2026-11-21T00:05:29+08:00"
+      "last_successful_check": "2026-11-21T00:10:28+08:00"
     },
     "anbu-nekomoe": {
       "successful_sources": 1,
       "failed_sources": 0,
-      "last_check": "2026-11-21T00:05:29+08:00",
+      "last_check": "2026-11-21T00:10:28+08:00",
       "ambiguous_episodes": [],
       "failures": 0,
       "status": "ok",
-      "last_successful_check": "2026-11-21T00:05:29+08:00"
+      "last_successful_check": "2026-11-21T00:10:28+08:00"
     },
     "seitokai-nekomoe": {
       "successful_sources": 2,
       "failed_sources": 0,
-      "last_check": "2026-11-21T00:05:29+08:00",
+      "last_check": "2026-11-21T00:10:28+08:00",
       "ambiguous_episodes": [],
       "failures": 0,
       "status": "ok",
-      "last_successful_check": "2026-11-21T00:05:29+08:00"
+      "last_successful_check": "2026-11-21T00:10:28+08:00"
     }
   },
   "season_ambiguous": {},
