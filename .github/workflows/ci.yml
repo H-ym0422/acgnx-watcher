@@ -3,7 +3,7 @@ on:
   pull_request:
   push:
     branches: [main]
-    paths: ['**.py', '.github/workflows/**', 'requirements-dev.txt']
+    paths: ['**.py', '.github/workflows/**', 'requirements-dev.txt', 'cloudflare-cron/**']
 permissions:
   contents: read
 jobs:
@@ -14,6 +14,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node --test cloudflare-cron/scheduler-health.test.mjs
       - run: pip install -r requirements-dev.txt
       - run: python -c "import acgnx_watch as w; w.load_config(); w.load_state(); print('config/state readable')"
       - run: python check_workflows.py --require-bash

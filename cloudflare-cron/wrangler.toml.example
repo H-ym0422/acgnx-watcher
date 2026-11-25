@@ -7,3 +7,8 @@ crons = ["*/5 * * * *"]
 
 [vars]
 REPO = "YOUR_GITHUB_USERNAME/acgnx-watcher"
+WORKFLOW = "watch.yml"
+
+[[kv_namespaces]]
+binding = "SCHEDULER_HEALTH"
+id = "YOUR_SCHEDULER_HEALTH_NAMESPACE_ID"

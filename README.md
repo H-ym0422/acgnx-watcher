@@ -180,6 +180,10 @@ GitHub Markdown 文档不能运行弹窗脚本，因此这里使用“删除入�
 
 定时目标为每 5 分钟检查一次，实际执行受调度、队列、网络和平台额度影响，不保证准点。已有 Worker 可继续使用；不要为同一部署额外重复配置多个定时器。
 
+当前生产定时触发器为 Cloudflare Worker `acgnx-cron`。2026-11-25 已核对：`GH_TOKEN` 使用经典式个人访问令牌（classic PAT），以 Cloudflare Secret 保存，实际触发成功。此令牌与删除 Issue 使用的 `ACGNX_ISSUE_DELETE_TOKEN` 分开配置。
+
+定时器单次失败不推送告警；连续 3 次失败后，会再检查 GitHub 最近 10 分钟是否已有排队、执行中或成功的任务，有则暂缓告警。同一故障仅提醒一次，恢复后通知一次；不会再因单次失败断言监听停止。部署及 KV 状态说明见 [定时触发器文档](cloudflare-cron/README.md)。
+
 ### 通知渠道
 
 | 渠道 | GitHub Secret 名称 | 配置提示 |

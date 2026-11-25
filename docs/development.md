@@ -49,7 +49,7 @@ python check_workflows.py --require-bash
 
 ## 云端部署
 
-已有仓库升级：合并通过 CI 的 PR，保留 config.json/state.json，让下一轮工作流完成状态迁移和备份。不要重新部署 Worker。
+已有仓库升级：合并通过 CI 的 PR，保留 config.json/state.json，让下一轮工作流完成状态迁移和备份。仅修改监听程序时无需重新部署 Worker；修改 cloudflare-cron 中的定时器逻辑时，要更新现有 Worker 并保留 Secrets、变量和定时配置。连续失败状态使用 SCHEDULER_HEALTH KV 绑定。
 
 新部署：复制项目到自己的仓库，将 config.example.json 复制为 config.json 并调整规则。
 在仓库 Actions Secrets 配置 `ACGNX_WEBHOOK_URL`（飞书群机器人），加签时补 `ACGNX_FEISHU_SECRET`。
@@ -71,3 +71,5 @@ python check_workflows.py --require-bash
 `cleanup-issues-20261019.yml` 是已完成的一次性维护：验证所有者身份、三条当前规则及每条目标的编号、节点 ID 和标题；只清理固定的 61 条历史 Issue，排除 PR 与后来新增的 Issue。它与状态写入任务共用并发组，不修改 config/state、不发送飞书通知；不要扩展为默认扫描删除所有 Issues。
 
 追番记录 Issue 是整理时的入口，不替代 config.json 或自动生成的《我的番剧》。修改追番列表的固定说明需同时更新 `watcher_core/watchlist.py`，否则下次生成会覆盖手工文案。飞书应用发送支持不等于已实现撤回；当前没有自动撤回与界面自动化实现。
+
+定时器回归测试运行 `node --test cloudflare-cron/scheduler-health.test.mjs`，CI 使用 Node.js 24。测试模拟 GitHub、飞书与 KV，覆盖单次失败、连续失败、近期运行复核、恢复、通知重试和密钥不落盘；不发送真实通知。当前生产 GH_TOKEN 使用经典式个人访问令牌，类型由运行时诊断确认。
