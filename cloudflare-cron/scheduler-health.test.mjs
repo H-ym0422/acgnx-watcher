@@ -224,3 +224,9 @@ test('the deployed scheduled handler uses persistent state and checks runs befor
   for (let i = 0; i < 4; i++) await worker.scheduled({ cron: '*/5 * * * *', scheduledTime: start + i * step }, f.env);
   assert.equal(notifications, 1);
 });
+
+test('manual dispatch is disabled when no access secret is configured', async t => {
+  const f = fixture();
+  t.mock.method(globalThis, 'fetch', () => { throw new Error('Unexpected dispatch'); });
+  assert.equal((await worker.fetch(new Request('https://worker.invalid/'), f.env)).status, 403);
+});

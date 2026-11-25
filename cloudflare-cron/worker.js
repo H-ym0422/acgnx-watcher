@@ -18,7 +18,7 @@ const worker = {
     if (url.pathname === "/ping") {
       return new Response("pong " + new Date().toISOString() + "\n", { status: 200 });
     }
-    if (env.SECRET && url.searchParams.get("k") !== env.SECRET) {
+    if (!env.SECRET || url.searchParams.get("k") !== env.SECRET) {
       return new Response("要带上 ?k=你的密钥 才会触发\n", { status: 403 });
     }
     const r = await wake(env);
