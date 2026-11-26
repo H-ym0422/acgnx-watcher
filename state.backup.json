@@ -137,13 +137,13 @@
   "state_version": 1,
   "pending_notifications": {},
   "health": {
-    "last_check": "2026-11-26T20:30:29+08:00",
-    "matched": 95,
+    "last_check": "2026-11-26T20:35:27+08:00",
+    "matched": 97,
     "successful_sources": 5,
     "failed_sources": 0,
     "failures": 0,
     "status": "ok",
-    "last_successful_check": "2026-11-26T20:30:29+08:00",
+    "last_successful_check": "2026-11-26T20:35:27+08:00",
     "last_delivery": "2026-11-22T04:35:59+08:00"
   },
   "primary_episodes": {
@@ -203,35 +203,57 @@
         "pub_dt": "2026-11-24T11:00:49+08:00"
       },
       "ready": false
+    },
+    "kurumi-lvcha|09": {
+      "first_seen": "2026-11-26T12:35:27.563662+00:00",
+      "signature": "{\"allow_unmarked_season\": null, \"exclude_any\": [], \"fallback_any_group\": true, \"from_episode\": null, \"group\": [\"绿茶字幕组\", \"绿茶发布机\"], \"include_any\": [\"久留美\"], \"keywords\": [\"久留美\"], \"season\": null, \"variant_prefer\": [\"简繁日内封\", \"简日内嵌\", \"简日双语\", \"简体\", \"简\"]}",
+      "candidate": {
+        "title": "[黒ネズミたち] FX 戰士久留美 / FX Senshi Kurumi-chan - 09 (CR 1920x1080 AVC AAC MKV)",
+        "author": "TrySail",
+        "category": "動畫",
+        "episode": "09",
+        "btih": "ff4c8f042a6e75a757b4f9b77432870323f0e280",
+        "magnet": "magnet:?xt=urn:btih:ff4c8f042a6e75a757b4f9b77432870323f0e280",
+        "link": "https://share.acgnx.se/show-ff4c8f042a6e75a757b4f9b77432870323f0e280.html",
+        "size": "883.4MB",
+        "_tier": 999,
+        "_rev": 1,
+        "_seen": "999:1",
+        "_variant": "",
+        "_rid": "kurumi-lvcha",
+        "_fallback": true,
+        "pub_dt": "2026-11-26T20:31:53+08:00"
+      },
+      "ready": false
     }
   },
   "rule_health": {
     "kurumi-lvcha": {
       "successful_sources": 1,
       "failed_sources": 0,
-      "last_check": "2026-11-26T20:30:29+08:00",
+      "last_check": "2026-11-26T20:35:27+08:00",
       "ambiguous_episodes": [],
       "failures": 0,
       "status": "ok",
-      "last_successful_check": "2026-11-26T20:30:29+08:00"
+      "last_successful_check": "2026-11-26T20:35:27+08:00"
     },
     "anbu-nekomoe": {
       "successful_sources": 1,
       "failed_sources": 0,
-      "last_check": "2026-11-26T20:30:29+08:00",
+      "last_check": "2026-11-26T20:35:27+08:00",
       "ambiguous_episodes": [],
       "failures": 0,
       "status": "ok",
-      "last_successful_check": "2026-11-26T20:30:29+08:00"
+      "last_successful_check": "2026-11-26T20:35:27+08:00"
     },
     "seitokai-nekomoe": {
       "successful_sources": 2,
       "failed_sources": 0,
-      "last_check": "2026-11-26T20:30:29+08:00",
+      "last_check": "2026-11-26T20:35:27+08:00",
       "ambiguous_episodes": [],
       "failures": 0,
       "status": "ok",
-      "last_successful_check": "2026-11-26T20:30:29+08:00"
+      "last_successful_check": "2026-11-26T20:35:27+08:00"
     }
   },
   "season_ambiguous": {},
