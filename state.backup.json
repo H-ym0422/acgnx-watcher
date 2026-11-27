@@ -137,13 +137,13 @@
   "state_version": 1,
   "pending_notifications": {},
   "health": {
-    "last_check": "2026-11-27T16:45:33+08:00",
-    "matched": 95,
+    "last_check": "2026-11-27T16:50:28+08:00",
+    "matched": 96,
     "successful_sources": 5,
     "failed_sources": 0,
     "failures": 0,
     "status": "ok",
-    "last_successful_check": "2026-11-27T16:45:33+08:00",
+    "last_successful_check": "2026-11-27T16:50:28+08:00",
     "last_delivery": "2026-11-22T04:35:59+08:00"
   },
   "primary_episodes": {
@@ -186,21 +186,21 @@
       "first_seen": "2026-11-21T17:10:29.196906+00:00",
       "signature": "{\"allow_unmarked_season\": null, \"exclude_any\": [], \"fallback_any_group\": true, \"from_episode\": null, \"group\": [\"喵萌奶茶屋\", \"nekomoekissaten\"], \"include_any\": [\"学生会有洞\", \"也有洞\", \"seitokainimoana\"], \"keywords\": [\"Seitokai\", \"学生会\"], \"season\": null, \"variant_prefer\": [\"简日双语\", \"简繁日内封\", \"简体\", \"简\"]}",
       "candidate": {
-        "title": "[桜都字幕组] 学生会也有洞！ / Seitokai ni mo Ana wa Aru！ [08][1080P][简体内嵌]",
-        "author": "anmli",
+        "title": "【悠哈璃羽字幕社】[脑洞学生会 / 学生会也有洞 / Seitokai ni mo Ana wa Aru][规制解除版][08][1080p HEVC][CHS][简体内嵌]",
+        "author": "悠哈璃羽字幕社",
         "category": "動畫",
         "episode": "08",
-        "btih": "57baed4cff8af668d16337fd3d2cd1c95d785ae3",
-        "magnet": "magnet:?xt=urn:btih:57baed4cff8af668d16337fd3d2cd1c95d785ae3",
-        "link": "https://share.acgnx.se/show-57baed4cff8af668d16337fd3d2cd1c95d785ae3.html",
-        "size": "280.5MB",
+        "btih": "5bc903fd1dd943d22218fec0b98e996d76d7c7da",
+        "magnet": "magnet:?xt=urn:btih:5bc903fd1dd943d22218fec0b98e996d76d7c7da",
+        "link": "https://share.acgnx.se/show-5bc903fd1dd943d22218fec0b98e996d76d7c7da.html",
+        "size": "303.9MB",
         "_tier": 2,
         "_rev": 1,
         "_seen": "2:1",
         "_variant": "简体内嵌",
         "_rid": "seitokai-nekomoe",
         "_fallback": true,
-        "pub_dt": "2026-11-27T16:18:52+08:00"
+        "pub_dt": "2026-11-27T16:46:00+08:00"
       },
       "ready": false
     },
@@ -231,29 +231,29 @@
     "kurumi-lvcha": {
       "successful_sources": 1,
       "failed_sources": 0,
-      "last_check": "2026-11-27T16:45:33+08:00",
+      "last_check": "2026-11-27T16:50:28+08:00",
       "ambiguous_episodes": [],
       "failures": 0,
       "status": "ok",
-      "last_successful_check": "2026-11-27T16:45:33+08:00"
+      "last_successful_check": "2026-11-27T16:50:28+08:00"
     },
     "anbu-nekomoe": {
       "successful_sources": 1,
       "failed_sources": 0,
-      "last_check": "2026-11-27T16:45:33+08:00",
+      "last_check": "2026-11-27T16:50:28+08:00",
       "ambiguous_episodes": [],
       "failures": 0,
       "status": "ok",
-      "last_successful_check": "2026-11-27T16:45:33+08:00"
+      "last_successful_check": "2026-11-27T16:50:28+08:00"
     },
     "seitokai-nekomoe": {
       "successful_sources": 2,
       "failed_sources": 0,
-      "last_check": "2026-11-27T16:45:33+08:00",
+      "last_check": "2026-11-27T16:50:28+08:00",
       "ambiguous_episodes": [],
       "failures": 0,
       "status": "ok",
-      "last_successful_check": "2026-11-27T16:45:33+08:00"
+      "last_successful_check": "2026-11-27T16:50:28+08:00"
     }
   },
   "season_ambiguous": {},
