@@ -138,13 +138,13 @@
   "state_version": 1,
   "pending_notifications": {},
   "health": {
-    "last_check": "2026-11-28T17:45:26+08:00",
-    "matched": 93,
+    "last_check": "2026-11-28T17:50:30+08:00",
+    "matched": 95,
     "successful_sources": 5,
     "failed_sources": 0,
     "failures": 0,
     "status": "ok",
-    "last_successful_check": "2026-11-28T17:45:26+08:00",
+    "last_successful_check": "2026-11-28T17:50:30+08:00",
     "last_delivery": "2026-11-27T18:45:36+08:00"
   },
   "primary_episodes": {
@@ -227,35 +227,79 @@
         "pub_dt": "2026-11-28T17:19:00+08:00"
       },
       "ready": false
+    },
+    "seitokai-nekomoe|955c7db4a0558ec619fb840280d832f962f21606": {
+      "first_seen": "2026-11-28T09:50:30.604998+00:00",
+      "signature": "{\"allow_unmarked_season\": null, \"exclude_any\": [], \"fallback_any_group\": true, \"from_episode\": null, \"group\": [\"喵萌奶茶屋\", \"nekomoekissaten\"], \"include_any\": [\"学生会有洞\", \"也有洞\", \"seitokainimoana\"], \"keywords\": [\"Seitokai\", \"学生会\"], \"season\": null, \"variant_prefer\": [\"简日双语\", \"简繁日内封\", \"简体\", \"简\"]}",
+      "candidate": {
+        "title": "[Nipponsei] Seitokai ni mo Ana wa Aru! OP Single - Kaze no Naka wa Hashirukkya nai! [Sangatsu no Phantasia].zip",
+        "author": "xSxSxSxSx",
+        "category": "音樂",
+        "episode": "",
+        "btih": "955c7db4a0558ec619fb840280d832f962f21606",
+        "magnet": "magnet:?xt=urn:btih:955c7db4a0558ec619fb840280d832f962f21606",
+        "link": "https://share.acgnx.se/show-955c7db4a0558ec619fb840280d832f962f21606.html",
+        "size": "30.3MB",
+        "_tier": 999,
+        "_rev": 1,
+        "_seen": "999:1",
+        "_variant": "",
+        "_rid": "seitokai-nekomoe",
+        "_fallback": true,
+        "pub_dt": "2026-11-28T17:28:00+08:00"
+      },
+      "ready": false
+    },
+    "seitokai-nekomoe|972e4324102272c33fa584bc8806f0e3ebaf4e42": {
+      "first_seen": "2026-11-28T09:50:30.604998+00:00",
+      "signature": "{\"allow_unmarked_season\": null, \"exclude_any\": [], \"fallback_any_group\": true, \"from_episode\": null, \"group\": [\"喵萌奶茶屋\", \"nekomoekissaten\"], \"include_any\": [\"学生会有洞\", \"也有洞\", \"seitokainimoana\"], \"keywords\": [\"Seitokai\", \"学生会\"], \"season\": null, \"variant_prefer\": [\"简日双语\", \"简繁日内封\", \"简体\", \"简\"]}",
+      "candidate": {
+        "title": "[Nipponsei] Seitokai ni mo Ana wa Aru! ED Single - Pi [Nanao Akari].zip",
+        "author": "xSxSxSxSx",
+        "category": "音樂",
+        "episode": "",
+        "btih": "972e4324102272c33fa584bc8806f0e3ebaf4e42",
+        "magnet": "magnet:?xt=urn:btih:972e4324102272c33fa584bc8806f0e3ebaf4e42",
+        "link": "https://share.acgnx.se/show-972e4324102272c33fa584bc8806f0e3ebaf4e42.html",
+        "size": "39.2MB",
+        "_tier": 999,
+        "_rev": 1,
+        "_seen": "999:1",
+        "_variant": "",
+        "_rid": "seitokai-nekomoe",
+        "_fallback": true,
+        "pub_dt": "2026-11-28T17:28:00+08:00"
+      },
+      "ready": false
     }
   },
   "rule_health": {
     "kurumi-lvcha": {
       "successful_sources": 1,
       "failed_sources": 0,
-      "last_check": "2026-11-28T17:45:26+08:00",
+      "last_check": "2026-11-28T17:50:30+08:00",
       "ambiguous_episodes": [],
       "failures": 0,
       "status": "ok",
-      "last_successful_check": "2026-11-28T17:45:26+08:00"
+      "last_successful_check": "2026-11-28T17:50:30+08:00"
     },
     "anbu-nekomoe": {
       "successful_sources": 1,
       "failed_sources": 0,
-      "last_check": "2026-11-28T17:45:26+08:00",
+      "last_check": "2026-11-28T17:50:30+08:00",
       "ambiguous_episodes": [],
       "failures": 0,
       "status": "ok",
-      "last_successful_check": "2026-11-28T17:45:26+08:00"
+      "last_successful_check": "2026-11-28T17:50:30+08:00"
     },
     "seitokai-nekomoe": {
       "successful_sources": 2,
       "failed_sources": 0,
-      "last_check": "2026-11-28T17:45:26+08:00",
+      "last_check": "2026-11-28T17:50:30+08:00",
       "ambiguous_episodes": [],
       "failures": 0,
       "status": "ok",
-      "last_successful_check": "2026-11-28T17:45:26+08:00"
+      "last_successful_check": "2026-11-28T17:50:30+08:00"
     }
   },
   "season_ambiguous": {},
