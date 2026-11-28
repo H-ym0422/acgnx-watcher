@@ -75,7 +75,8 @@
     "anbu-nekomoe|07|NEST": "1:1",
     "kurumi-lvcha|08|绿茶字幕组": "1:1",
     "kurumi-lvcha|09|绿茶字幕组": "1:1",
-    "anbu-nekomoe|08|NEST": "1:1"
+    "anbu-nekomoe|08|NEST": "1:1",
+    "seitokai-nekomoe|08|悠哈璃羽字幕社": "2:1"
   },
   "initialized": true,
   "unparsed": {
@@ -137,15 +138,46 @@
     }
   },
   "state_version": 1,
-  "pending_notifications": {},
+  "pending_notifications": {
+    "7d74063a8db5cb936f4ca59cef0d401552381a734b14c904342d3f8603722483": {
+      "rule_id": "seitokai-nekomoe",
+      "title": "【新番速递】学生会有洞 第08集（悠哈璃羽字幕社）",
+      "body": "字幕形式：简体内嵌\n集数：第 08 集\n大小：303.9MB\n发布：2026-11-27 16:46\n推送：2026-11-29 01:15（北京时间）\n\n兜底资源：已等满 7 天，仍未检测到「喵萌奶茶屋、nekomoekissaten」的对应版本；不代表指定组停更。\n\n发布标题：【悠哈璃羽字幕社】[脑洞学生会 / 学生会也有洞 / Seitokai ni mo Ana wa Aru][规制解除版][08][1080p HEVC][CHS][简体内嵌]\n详情：https://share.acgnx.se/show-5bc903fd1dd943d22218fec0b98e996d76d7c7da.html\n磁力：\nmagnet:?xt=urn:btih:5bc903fd1dd943d22218fec0b98e996d76d7c7da",
+      "source": {
+        "title": "【悠哈璃羽字幕社】[脑洞学生会 / 学生会也有洞 / Seitokai ni mo Ana wa Aru][规制解除版][08][1080p HEVC][CHS][简体内嵌]",
+        "author": "悠哈璃羽字幕社",
+        "category": "動畫",
+        "episode": "08",
+        "btih": "5bc903fd1dd943d22218fec0b98e996d76d7c7da",
+        "magnet": "magnet:?xt=urn:btih:5bc903fd1dd943d22218fec0b98e996d76d7c7da",
+        "link": "https://share.acgnx.se/show-5bc903fd1dd943d22218fec0b98e996d76d7c7da.html",
+        "size": "303.9MB",
+        "_tier": 2,
+        "_rev": 1,
+        "_seen": "2:1",
+        "_variant": "简体内嵌",
+        "_rid": "seitokai-nekomoe",
+        "_fallback": true,
+        "pub_dt": "2026-11-27T16:46:00+08:00"
+      },
+      "rule_signature": "{\"allow_unmarked_season\": null, \"exclude_any\": [], \"fallback_any_group\": true, \"from_episode\": null, \"group\": [\"喵萌奶茶屋\", \"nekomoekissaten\"], \"include_any\": [\"学生会有洞\", \"也有洞\", \"seitokainimoana\"], \"keywords\": [\"Seitokai\", \"学生会\"], \"season\": null, \"variant_prefer\": [\"简日双语\", \"简繁日内封\", \"简体\", \"简\"]}",
+      "delivery": {
+        "state_key": "seitokai-nekomoe|08|悠哈璃羽字幕社",
+        "group": "悠哈璃羽字幕社",
+        "fallback": true,
+        "episode_known": true,
+        "variant": "简体内嵌"
+      }
+    }
+  },
   "health": {
-    "last_check": "2026-11-29T01:10:27+08:00",
+    "last_check": "2026-11-29T01:15:28+08:00",
     "matched": 95,
     "successful_sources": 5,
     "failed_sources": 0,
     "failures": 0,
     "status": "ok",
-    "last_successful_check": "2026-11-29T01:10:27+08:00",
+    "last_successful_check": "2026-11-29T01:15:28+08:00",
     "last_delivery": "2026-11-28T19:15:28+08:00"
   },
   "primary_episodes": {
@@ -206,7 +238,7 @@
         "_fallback": true,
         "pub_dt": "2026-11-27T16:46:00+08:00"
       },
-      "ready": false
+      "ready": true
     },
     "seitokai-nekomoe|955c7db4a0558ec619fb840280d832f962f21606": {
       "first_seen": "2026-11-28T09:50:30.604998+00:00",
@@ -257,29 +289,29 @@
     "kurumi-lvcha": {
       "successful_sources": 1,
       "failed_sources": 0,
-      "last_check": "2026-11-29T01:10:27+08:00",
+      "last_check": "2026-11-29T01:15:28+08:00",
       "ambiguous_episodes": [],
       "failures": 0,
       "status": "ok",
-      "last_successful_check": "2026-11-29T01:10:27+08:00"
+      "last_successful_check": "2026-11-29T01:15:28+08:00"
     },
     "anbu-nekomoe": {
       "successful_sources": 1,
       "failed_sources": 0,
-      "last_check": "2026-11-29T01:10:27+08:00",
+      "last_check": "2026-11-29T01:15:28+08:00",
       "ambiguous_episodes": [],
       "failures": 0,
       "status": "ok",
-      "last_successful_check": "2026-11-29T01:10:27+08:00"
+      "last_successful_check": "2026-11-29T01:15:28+08:00"
     },
     "seitokai-nekomoe": {
       "successful_sources": 2,
       "failed_sources": 0,
-      "last_check": "2026-11-29T01:10:27+08:00",
+      "last_check": "2026-11-29T01:15:28+08:00",
       "ambiguous_episodes": [],
       "failures": 0,
       "status": "ok",
-      "last_successful_check": "2026-11-29T01:10:27+08:00"
+      "last_successful_check": "2026-11-29T01:15:28+08:00"
     }
   },
   "season_ambiguous": {},
