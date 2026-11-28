@@ -74,7 +74,8 @@
     "seitokai-nekomoe|07|喵萌奶茶屋": "0:1",
     "anbu-nekomoe|07|NEST": "1:1",
     "kurumi-lvcha|08|绿茶字幕组": "1:1",
-    "kurumi-lvcha|09|绿茶字幕组": "1:1"
+    "kurumi-lvcha|09|绿茶字幕组": "1:1",
+    "anbu-nekomoe|08|NEST": "1:1"
   },
   "initialized": true,
   "unparsed": {
@@ -136,15 +137,46 @@
     }
   },
   "state_version": 1,
-  "pending_notifications": {},
+  "pending_notifications": {
+    "cb07c68953a91c5aae83b6f5424f2535bd488dc3be9f4f82fe2e1b7fae675de4": {
+      "rule_id": "anbu-nekomoe",
+      "title": "【新番速递】某暗部的少女共栖 第08集（NEST）",
+      "body": "字幕形式：简繁日内封\n集数：第 08 集\n大小：824MB\n发布：2026-11-28 18:39\n推送：2026-11-28 19:15（北京时间）\n\n发布标题：[NEST] 某暗部的少女共栖 / とある暗部の少女共棲 / A Certain Dark Item - 08 [CR WEB-DL 1080p AVC AAC][简繁日内封]\n详情：https://share.acgnx.se/show-370c57898e217f44bb7901f658a62ec507b10152.html\n磁力：\nmagnet:?xt=urn:btih:370c57898e217f44bb7901f658a62ec507b10152",
+      "source": {
+        "title": "[NEST] 某暗部的少女共栖 / とある暗部の少女共棲 / A Certain Dark Item - 08 [CR WEB-DL 1080p AVC AAC][简繁日内封]",
+        "author": "華盟RIP鏡像",
+        "category": "動畫",
+        "episode": "08",
+        "btih": "370c57898e217f44bb7901f658a62ec507b10152",
+        "magnet": "magnet:?xt=urn:btih:370c57898e217f44bb7901f658a62ec507b10152",
+        "link": "https://share.acgnx.se/show-370c57898e217f44bb7901f658a62ec507b10152.html",
+        "size": "824MB",
+        "_tier": 1,
+        "_rev": 1,
+        "_seen": "1:1",
+        "_variant": "简繁日内封",
+        "_rid": "anbu-nekomoe",
+        "_fallback": false,
+        "pub_dt": "2026-11-28T18:39:09+08:00"
+      },
+      "rule_signature": "{\"allow_unmarked_season\": null, \"exclude_any\": [], \"fallback_any_group\": true, \"from_episode\": null, \"group\": [\"NEST\"], \"include_any\": [\"暗部\"], \"keywords\": [\"暗部\"], \"season\": null, \"variant_prefer\": [\"简日双语\", \"简繁日内封\", \"简体\", \"简\"]}",
+      "delivery": {
+        "state_key": "anbu-nekomoe|08|NEST",
+        "group": "NEST",
+        "fallback": false,
+        "episode_known": true,
+        "variant": "简繁日内封"
+      }
+    }
+  },
   "health": {
-    "last_check": "2026-11-28T19:10:27+08:00",
-    "matched": 94,
+    "last_check": "2026-11-28T19:15:24+08:00",
+    "matched": 95,
     "successful_sources": 5,
     "failed_sources": 0,
     "failures": 0,
     "status": "ok",
-    "last_successful_check": "2026-11-28T19:10:27+08:00",
+    "last_successful_check": "2026-11-28T19:15:24+08:00",
     "last_delivery": "2026-11-27T18:45:36+08:00"
   },
   "primary_episodes": {
@@ -181,7 +213,8 @@
     "seitokai-nekomoe|07": true,
     "anbu-nekomoe|07": true,
     "kurumi-lvcha|08": true,
-    "kurumi-lvcha|09": true
+    "kurumi-lvcha|09": true,
+    "anbu-nekomoe|08": true
   },
   "fallback_waiting": {
     "seitokai-nekomoe|08": {
@@ -203,28 +236,6 @@
         "_rid": "seitokai-nekomoe",
         "_fallback": true,
         "pub_dt": "2026-11-27T16:46:00+08:00"
-      },
-      "ready": false
-    },
-    "anbu-nekomoe|08": {
-      "first_seen": "2026-11-27T16:00:37.692236+00:00",
-      "signature": "{\"allow_unmarked_season\": null, \"exclude_any\": [], \"fallback_any_group\": true, \"from_episode\": null, \"group\": [\"NEST\"], \"include_any\": [\"暗部\"], \"keywords\": [\"暗部\"], \"season\": null, \"variant_prefer\": [\"简日双语\", \"简繁日内封\", \"简体\", \"简\"]}",
-      "candidate": {
-        "title": "[LoliHouse] 某暗部的少女共栖 / Toaru Anbu no Item - 08 [WebRip 1080p HEVC-10bit AAC][简繁内封字幕]",
-        "author": "LoliHouse",
-        "category": "動畫",
-        "episode": "08",
-        "btih": "717ccfe970e70625ee23af6f3b75d693e2a605f2",
-        "magnet": "magnet:?xt=urn:btih:717ccfe970e70625ee23af6f3b75d693e2a605f2",
-        "link": "https://share.acgnx.se/show-717ccfe970e70625ee23af6f3b75d693e2a605f2.html",
-        "size": "500.1MB",
-        "_tier": 3,
-        "_rev": 1,
-        "_seen": "3:1",
-        "_variant": "简繁内封字幕",
-        "_rid": "anbu-nekomoe",
-        "_fallback": true,
-        "pub_dt": "2026-11-28T17:19:00+08:00"
       },
       "ready": false
     },
@@ -277,29 +288,29 @@
     "kurumi-lvcha": {
       "successful_sources": 1,
       "failed_sources": 0,
-      "last_check": "2026-11-28T19:10:27+08:00",
+      "last_check": "2026-11-28T19:15:24+08:00",
       "ambiguous_episodes": [],
       "failures": 0,
       "status": "ok",
-      "last_successful_check": "2026-11-28T19:10:27+08:00"
+      "last_successful_check": "2026-11-28T19:15:24+08:00"
     },
     "anbu-nekomoe": {
       "successful_sources": 1,
       "failed_sources": 0,
-      "last_check": "2026-11-28T19:10:27+08:00",
+      "last_check": "2026-11-28T19:15:24+08:00",
       "ambiguous_episodes": [],
       "failures": 0,
       "status": "ok",
-      "last_successful_check": "2026-11-28T19:10:27+08:00"
+      "last_successful_check": "2026-11-28T19:15:24+08:00"
     },
     "seitokai-nekomoe": {
       "successful_sources": 2,
       "failed_sources": 0,
-      "last_check": "2026-11-28T19:10:27+08:00",
+      "last_check": "2026-11-28T19:15:24+08:00",
       "ambiguous_episodes": [],
       "failures": 0,
       "status": "ok",
-      "last_successful_check": "2026-11-28T19:10:27+08:00"
+      "last_successful_check": "2026-11-28T19:15:24+08:00"
     }
   },
   "season_ambiguous": {},
